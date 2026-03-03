@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="contact_quick_widget_label">Quick Contact</string>
+    <string name="contact_widget_configure_title">Configure Contact Widget</string>
+    <string name="contact_widget_contact_label">Contact</string>
+    <string name="contact_widget_action_label">Action</string>
+    <string name="contact_widget_status_loading">Loading contacts...</string>
+    <string name="contact_widget_save">Save Widget</string>
+    <string name="contact_widget_cancel">Cancel</string>
+</resources>
