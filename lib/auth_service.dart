@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:zerotrust_contacts/integrations/supabase_service.dart';
 import 'package:zerotrust_contacts/security_service.dart';
+import 'package:zerotrust_contacts/services/app_lock_service.dart';
+import 'package:zerotrust_contacts/services/vault_repository.dart';
 
 class AuthService {
   AuthService({
@@ -20,6 +22,7 @@ class AuthService {
   final LocalSecurityRepository _localSecurityRepository;
   final KeyDerivationService _keyDerivationService;
   final LocalEncryptedDatabaseService _localEncryptedDatabaseService;
+  final VaultRepository _vaultRepository = VaultRepository();
 
   Future<void> register({
     required String email,
@@ -45,6 +48,11 @@ class AuthService {
     await _localEncryptedDatabaseService.openWithDerivedKey(derivedKey);
     await _localSecurityRepository.saveEncryptedDbKey(derivedKey);
     await _localSecurityRepository.saveBiometricEnabled(enableBiometrics);
+    await AppLockService().refreshPreferences();
+    await _vaultRepository.logActivity(
+      'auth_register',
+      details: 'Created vault for $email',
+    );
   }
 
   Future<void> login({
@@ -68,18 +76,26 @@ class AuthService {
     await _localEncryptedDatabaseService.openWithDerivedKey(derivedKey);
     await _localSecurityRepository.saveEncryptedDbKey(derivedKey);
     await _localSecurityRepository.saveBiometricEnabled(enableBiometrics);
+    await AppLockService().refreshPreferences();
 
     final cloudBlob =
         await _supabaseService.fetchEncryptedVaultBlobForCurrentUser();
     if (cloudBlob != null) {
       await _localSecurityRepository.saveCachedCloudBlob(cloudBlob);
     }
+    await _vaultRepository.logActivity(
+      'auth_login',
+      details: 'Signed in as $email',
+    );
   }
 
   Future<void> signOut() async {
     await _supabaseService.signOut();
     await _localEncryptedDatabaseService.close();
     await _localSecurityRepository.clearEncryptedDbKey();
+    await AppLockService().refreshPreferences();
+    await _vaultRepository.clearPendingConflicts();
+    await _vaultRepository.logActivity('auth_sign_out');
   }
 
   Future<bool> isLocalVaultInitialized() {
@@ -100,20 +116,34 @@ class AuthService {
   }
 
   Future<void> pushVaultBlobToCloud(String dataBlob) async {
+    final bool looksEncrypted =
+        dataBlob.contains('"format":"ztc_cloud_cipher_v1"') ||
+            (dataBlob.contains('"nonce"') &&
+                dataBlob.contains('"cipherText"') &&
+                dataBlob.contains('"mac"'));
+    if (!looksEncrypted) {
+      throw StateError(
+        'Plaintext cloud uploads are disabled. Use VaultRepository.pushLocalToCloud() to upload encrypted data.',
+      );
+    }
     await _supabaseService.upsertEncryptedVaultBlobForCurrentUser(dataBlob);
+    await _vaultRepository.logActivity('vault_push_blob');
   }
 
   Future<String?> pullVaultBlobFromCloud() async {
-    final dataBlob = await _supabaseService.fetchEncryptedVaultBlobForCurrentUser();
+    final dataBlob =
+        await _supabaseService.fetchEncryptedVaultBlobForCurrentUser();
     if (dataBlob != null) {
       await _localSecurityRepository.saveCachedCloudBlob(dataBlob);
     }
+    await _vaultRepository.logActivity('vault_pull_blob');
     return dataBlob;
   }
 
   Future<void> deleteCloudVaultBlob() async {
     await _supabaseService.deleteEncryptedVaultDataForCurrentUser();
     await _localSecurityRepository.clearCachedCloudBlob();
+    await _vaultRepository.logActivity('vault_delete_cloud_blob');
   }
 
   Future<Uint8List> _deriveVaultKey(String password, List<int> salt) {

@@ -1,7 +1,9 @@
 package dev.sagron.zerotrustcontacts
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.ContactsContract
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -21,6 +23,26 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "requestContactsPermission" -> handlePermissionRequest(result)
+                    "launchDialer" -> {
+                        val phoneNumber = call.argument<String>("phoneNumber")
+                        if (phoneNumber.isNullOrBlank()) {
+                            result.error("invalid_argument", "Missing phone number.", null)
+                            return@setMethodCallHandler
+                        }
+                        launchDialer(phoneNumber)
+                        result.success(true)
+                    }
+
+                    "launchSms" -> {
+                        val phoneNumber = call.argument<String>("phoneNumber")
+                        if (phoneNumber.isNullOrBlank()) {
+                            result.error("invalid_argument", "Missing phone number.", null)
+                            return@setMethodCallHandler
+                        }
+                        launchSms(phoneNumber)
+                        result.success(true)
+                    }
+
                     "getDeviceContacts" -> {
                         val selectedAccount = call.argument<String>("selectedAccount")
                         try {
@@ -278,5 +300,21 @@ class MainActivity : FlutterActivity() {
         if (!hasReadContactsPermission()) {
             throw SecurityException("READ_CONTACTS permission not granted.")
         }
+    }
+
+    private fun launchDialer(phoneNumber: String) {
+        val intent = Intent(
+            Intent.ACTION_DIAL,
+            Uri.parse("tel:${Uri.encode(phoneNumber.trim())}"),
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+    }
+
+    private fun launchSms(phoneNumber: String) {
+        val intent = Intent(
+            Intent.ACTION_SENDTO,
+            Uri.parse("smsto:${Uri.encode(phoneNumber.trim())}"),
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
     }
 }

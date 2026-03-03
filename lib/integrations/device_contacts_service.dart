@@ -112,4 +112,24 @@ class DeviceContactsService {
     }
     return ContactSourceStats.fromMap(response);
   }
+
+  Future<void> launchDialer(String phoneNumber) async {
+    if (phoneNumber.trim().isEmpty) {
+      return;
+    }
+    await _channel.invokeMethod<void>(
+      'launchDialer',
+      <String, dynamic>{'phoneNumber': phoneNumber},
+    );
+  }
+
+  Future<void> launchSms(String phoneNumber) async {
+    if (phoneNumber.trim().isEmpty) {
+      return;
+    }
+    await _channel.invokeMethod<void>(
+      'launchSms',
+      <String, dynamic>{'phoneNumber': phoneNumber},
+    );
+  }
 }

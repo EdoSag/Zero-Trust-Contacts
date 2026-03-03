@@ -61,6 +61,11 @@ class LocalSecurityRepository {
   static const String encryptedDbKeyStorageKey = 'encrypted_db_key';
   static const String biometricEnabledStorageKey = 'biometric_enabled';
   static const String cachedCloudBlobStorageKey = 'cached_cloud_vault_blob';
+  static const String securityActivityLogStorageKey =
+      'security_activity_log_v1';
+  static const String snapshotStorageKey = 'vault_snapshots_v1';
+  static const String lastSyncAtStorageKey = 'vault_last_sync_at';
+  static const String pendingConflictsStorageKey = 'vault_pending_conflicts_v1';
 
   Future<Uint8List> getOrCreateSalt() async {
     final existing = await _secureStorage.read(key: saltStorageKey);
@@ -137,6 +142,21 @@ class LocalSecurityRepository {
 
   Future<void> clearCachedCloudBlob() async {
     await _secureStorage.delete(key: cachedCloudBlobStorageKey);
+  }
+
+  Future<void> writeString({
+    required String key,
+    required String value,
+  }) async {
+    await _secureStorage.write(key: key, value: value);
+  }
+
+  Future<String?> readString(String key) async {
+    return _secureStorage.read(key: key);
+  }
+
+  Future<void> deleteKey(String key) async {
+    await _secureStorage.delete(key: key);
   }
 }
 

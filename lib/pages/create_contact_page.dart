@@ -1,8 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
-import 'package:zerotrust_contacts/security_service.dart';
+import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zerotrust_contacts/services/vault_repository.dart';
 
 @NowaGenerated()
 class CreateContactPage extends StatefulWidget {
@@ -50,6 +49,7 @@ class _CreateContactPageState extends State<CreateContactPage> {
   final List<TextEditingController> _otherControllers = [];
 
   bool _isSaving = false;
+  bool _isFavorite = false;
 
   List<String> _allValuesFromControllers(
       List<TextEditingController> controllers) {
@@ -119,6 +119,7 @@ class _CreateContactPageState extends State<CreateContactPage> {
 
     try {
       final payload = <String, dynamic>{
+        'id': VaultContact.generateId(),
         'displayName': _buildDisplayName(
           firstName: firstName,
           lastName: lastName,
@@ -135,11 +136,16 @@ class _CreateContactPageState extends State<CreateContactPage> {
         'labels': labels,
         'birthdays': birthdays,
         'other': others,
+        'source': 'Saved',
+        'isFavorite': _isFavorite,
+        'isPinned': false,
         'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
       };
 
-      await LocalEncryptedDatabaseService().insertContactPayload(
-        jsonEncode(payload),
+      await VaultRepository().upsertSavedContact(
+        VaultContact.fromLegacyPayload(payload),
+        activity: 'contact_create',
       );
       if (!mounted) {
         return;
@@ -462,8 +468,15 @@ class _CreateContactPageState extends State<CreateContactPage> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.star_border, color: colorScheme.onSurface),
-            onPressed: () {},
+            icon: Icon(
+              _isFavorite ? Icons.star : Icons.star_border,
+              color: _isFavorite ? colorScheme.primary : colorScheme.onSurface,
+            ),
+            onPressed: () {
+              setState(() {
+                _isFavorite = !_isFavorite;
+              });
+            },
           ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),

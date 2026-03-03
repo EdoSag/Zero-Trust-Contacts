@@ -1,17 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:zerotrust_contacts/auth_service.dart';
 import 'package:zerotrust_contacts/integrations/supabase_service.dart';
-import 'package:zerotrust_contacts/security_service.dart';
-
-enum _DeleteDataScope {
-  cloud,
-  local,
-  all,
-}
+import 'package:zerotrust_contacts/services/vault_repository.dart';
 
 @NowaGenerated()
 class AccountPage extends StatefulWidget {
@@ -19,480 +12,471 @@ class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
 
   @override
-  State<AccountPage> createState() {
-    return _AccountPageState();
-  }
+  State<AccountPage> createState() => _AccountPageState();
 }
 
-@NowaGenerated()
 class _AccountPageState extends State<AccountPage> {
   final AuthService _authService = AuthService();
+  final VaultRepository _vaultRepository = VaultRepository();
 
-  bool _isSyncing = false;
-  bool _isPulling = false;
-  bool _isDeleting = false;
-  bool _isSigningOut = false;
+  bool _busy = false;
+  String? _error;
 
-  String? _errorMessage;
+  List<VaultSnapshot> _snapshots = <VaultSnapshot>[];
+  List<SecurityActivityEntry> _activity = <SecurityActivityEntry>[];
+  List<ContactMergeConflict> _conflicts = <ContactMergeConflict>[];
 
-  bool get _isBusy {
-    return _isSyncing || _isPulling || _isDeleting || _isSigningOut;
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
   }
 
-  String _readableError(Object error) {
-    return error
-        .toString()
-        .replaceFirst('Exception: ', '')
-        .replaceFirst('StateError: ', '');
-  }
-
-  void _showMessage(String message, {bool isError = false}) {
+  Future<void> _loadData() async {
+    final List<VaultSnapshot> snapshots =
+        await _vaultRepository.readSnapshots(limit: 12);
+    final List<SecurityActivityEntry> activity =
+        await _vaultRepository.readActivityEntries(limit: 20);
+    final List<ContactMergeConflict> conflicts =
+        await _vaultRepository.readPendingConflicts();
     if (!mounted) {
       return;
     }
-    final colorScheme = Theme.of(context).colorScheme;
+    setState(() {
+      _snapshots = snapshots;
+      _activity = activity;
+      _conflicts = conflicts;
+    });
+  }
+
+  Future<void> _runTask(Future<void> Function() action) async {
+    if (_busy) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await action();
+      await _loadData();
+    } catch (error) {
+      final String message = error.toString().replaceFirst('Exception: ', '');
+      _showSnack(message);
+      if (mounted) {
+        setState(() {
+          _error = message;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  void _showSnack(String text) {
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: isError ? colorScheme.error : null,
-        ),
-      );
+      ..showSnackBar(SnackBar(content: Text(text)));
   }
 
-  List<String> _parseCloudContacts(String dataBlob) {
-    final dynamic decoded = jsonDecode(dataBlob);
-    dynamic rawContacts;
-
-    if (decoded is Map<String, dynamic>) {
-      rawContacts = decoded['contacts'];
-    } else if (decoded is List) {
-      rawContacts = decoded;
-    } else {
-      throw const FormatException('Unexpected cloud payload format.');
-    }
-
-    if (rawContacts is! List) {
-      throw const FormatException(
-        'Cloud payload is missing the contacts list.',
-      );
-    }
-
-    return rawContacts
-        .map<String>((entry) {
-          if (entry is String) {
-            return entry;
-          }
-          if (entry is Map || entry is List) {
-            return jsonEncode(entry);
-          }
-          return entry.toString();
-        })
-        .where((payload) => payload.trim().isNotEmpty)
-        .toList();
-  }
-
-  Future<void> _handleSyncToCloud() async {
-    if (_isBusy) {
-      return;
-    }
-
-    setState(() {
-      _isSyncing = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final contacts =
-          await LocalEncryptedDatabaseService().readAllContactPayloads();
-      final payload = jsonEncode({
-        'version': 1,
-        'exportedAt': DateTime.now().toUtc().toIso8601String(),
-        'contacts': contacts,
-      });
-      await _authService.pushVaultBlobToCloud(payload);
-      _showMessage('Synced ${contacts.length} contact(s) to cloud.');
-    } catch (error) {
-      final message = 'Failed syncing to cloud: ${_readableError(error)}';
-      if (mounted) {
-        setState(() {
-          _errorMessage = message;
-        });
-      }
-      _showMessage(message, isError: true);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSyncing = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _handlePullFromCloud() async {
-    if (_isBusy) {
-      return;
-    }
-
-    setState(() {
-      _isPulling = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final cloudBlob = await _authService.pullVaultBlobFromCloud();
-      if (cloudBlob == null || cloudBlob.trim().isEmpty) {
-        _showMessage('No cloud data found for this account.');
-        return;
-      }
-      final cloudContacts = _parseCloudContacts(cloudBlob);
-      await LocalEncryptedDatabaseService()
-          .replaceAllContactPayloads(cloudContacts);
-      _showMessage('Pulled ${cloudContacts.length} contact(s) from cloud.');
-    } catch (error) {
-      final message = 'Failed pulling from cloud: ${_readableError(error)}';
-      if (mounted) {
-        setState(() {
-          _errorMessage = message;
-        });
-      }
-      _showMessage(message, isError: true);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isPulling = false;
-        });
-      }
-    }
-  }
-
-  Future<_DeleteDataScope?> _showDeleteDialog() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return showDialog<_DeleteDataScope>(
+  Future<String?> _showSingleInputDialog({
+    required String title,
+    required String label,
+    bool multiline = false,
+  }) async {
+    final TextEditingController controller = TextEditingController();
+    final String? value = await showDialog<String>(
       context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(36.0),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: TextField(
+            controller: controller,
+            maxLines: multiline ? 8 : 1,
+            decoration: InputDecoration(labelText: label),
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 20.0),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(controller.text.trim()),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    return value;
+  }
+
+  Future<List<String>?> _showTwoInputsDialog({
+    required String title,
+    required String firstLabel,
+    required String secondLabel,
+    bool firstMultiline = false,
+  }) async {
+    final TextEditingController first = TextEditingController();
+    final TextEditingController second = TextEditingController();
+    final List<String>? value = await showDialog<List<String>>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Delete data',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w500,
-                  ),
+                TextField(
+                  controller: first,
+                  maxLines: firstMultiline ? 8 : 1,
+                  minLines: firstMultiline ? 4 : 1,
+                  decoration: InputDecoration(labelText: firstLabel),
                 ),
-                const SizedBox(height: 14.0),
-                Text(
-                  'Choose what to delete: cloud data, local data, or all data.',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 24.0),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(_DeleteDataScope.cloud);
-                    },
-                    child: const Text('Cloud data'),
-                  ),
-                ),
-                const SizedBox(height: 4.0),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(_DeleteDataScope.local);
-                    },
-                    child: const Text('Local data'),
-                  ),
-                ),
-                const SizedBox(height: 8.0),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(_DeleteDataScope.all);
-                    },
-                    style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24.0),
-                      ),
-                    ),
-                    child: const Text('All data'),
-                  ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: second,
+                  decoration: InputDecoration(labelText: secondLabel),
                 ),
               ],
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(
+                <String>[first.text.trim(), second.text.trim()],
+              ),
+              child: const Text('OK'),
+            ),
+          ],
         );
       },
     );
+    first.dispose();
+    second.dispose();
+    return value;
   }
 
-  Future<void> _handleDeleteData() async {
-    if (_isBusy) {
-      return;
-    }
-
-    final selectedScope = await _showDeleteDialog();
-    if (selectedScope == null) {
-      return;
-    }
-
-    setState(() {
-      _isDeleting = true;
-      _errorMessage = null;
+  Future<void> _handleSyncNow() async {
+    await _runTask(() async {
+      final SyncResult result =
+          await _vaultRepository.syncWithCloud(auto: false);
+      _showSnack(
+        'Merged ${result.mergedCount} contacts. Conflicts: ${result.conflicts.length}',
+      );
     });
+  }
 
-    try {
-      String successMessage;
-      switch (selectedScope) {
-        case _DeleteDataScope.cloud:
-          await _authService.deleteCloudVaultBlob();
-          successMessage = 'Cloud data deleted.';
-        case _DeleteDataScope.local:
-          await LocalEncryptedDatabaseService().clearAllContactPayloads();
-          await LocalSecurityRepository().clearCachedCloudBlob();
-          successMessage = 'Local data deleted.';
-        case _DeleteDataScope.all:
-          await _authService.deleteCloudVaultBlob();
-          await LocalEncryptedDatabaseService().clearAllContactPayloads();
-          await LocalSecurityRepository().clearCachedCloudBlob();
-          successMessage = 'Cloud and local data deleted.';
-      }
-      _showMessage(successMessage);
-    } catch (error) {
-      final message = 'Failed deleting data: ${_readableError(error)}';
-      if (mounted) {
-        setState(() {
-          _errorMessage = message;
-        });
-      }
-      _showMessage(message, isError: true);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isDeleting = false;
-        });
-      }
+  Future<void> _handlePushLocal() async {
+    await _runTask(() async {
+      final int pushed = await _vaultRepository.pushLocalToCloud();
+      _showSnack('Pushed $pushed contacts to cloud.');
+    });
+  }
+
+  Future<void> _handlePullCloud() async {
+    await _runTask(() async {
+      final int pulled = await _vaultRepository.pullCloudToLocal();
+      _showSnack('Pulled $pulled contacts from cloud.');
+    });
+  }
+
+  Future<void> _handleExportEncrypted() async {
+    final String? passphrase = await _showSingleInputDialog(
+      title: 'Export encrypted JSON',
+      label: 'Passphrase',
+    );
+    if (passphrase == null || passphrase.length < 8) {
+      _showSnack('Passphrase must be at least 8 characters.');
+      return;
     }
+    await _runTask(() async {
+      final String package =
+          await _vaultRepository.exportEncryptedJson(passphrase: passphrase);
+      await Clipboard.setData(ClipboardData(text: package));
+      _showSnack('Encrypted export copied to clipboard.');
+    });
+  }
+
+  Future<void> _handleImportEncrypted() async {
+    final List<String>? inputs = await _showTwoInputsDialog(
+      title: 'Import encrypted JSON',
+      firstLabel: 'Encrypted package JSON',
+      secondLabel: 'Passphrase',
+      firstMultiline: true,
+    );
+    if (inputs == null) {
+      return;
+    }
+    if (inputs[0].isEmpty || inputs[1].isEmpty) {
+      _showSnack('Both package JSON and passphrase are required.');
+      return;
+    }
+    await _runTask(() async {
+      final int imported = await _vaultRepository.importEncryptedJson(
+        encryptedPackage: inputs[0],
+        passphrase: inputs[1],
+      );
+      _showSnack('Imported $imported contacts.');
+    });
+  }
+
+  Future<void> _handleExportVCard() async {
+    await _runTask(() async {
+      final contacts = await _vaultRepository.loadSavedContacts();
+      final String vcard = _vaultRepository.exportVCard(contacts);
+      await Clipboard.setData(ClipboardData(text: vcard));
+      _showSnack('vCard export copied to clipboard.');
+    });
+  }
+
+  Future<void> _handleImportVCard() async {
+    final String? vcard = await _showSingleInputDialog(
+      title: 'Import vCard',
+      label: 'Paste vCard text',
+      multiline: true,
+    );
+    if (vcard == null || vcard.isEmpty) {
+      return;
+    }
+    await _runTask(() async {
+      final int imported = await _vaultRepository.importVCard(vcard);
+      _showSnack('Imported $imported contacts from vCard.');
+    });
+  }
+
+  Future<void> _handleCreateSnapshot() async {
+    await _runTask(() async {
+      final VaultSnapshot snapshot = await _vaultRepository.createSnapshot(
+        reason: 'Manual restore point',
+      );
+      _showSnack('Created snapshot ${snapshot.id}.');
+    });
+  }
+
+  Future<void> _handleRestoreSnapshot(String snapshotId) async {
+    await _runTask(() async {
+      final int restored = await _vaultRepository.restoreSnapshot(snapshotId);
+      _showSnack('Restored $restored contacts.');
+    });
   }
 
   Future<void> _handleSignOut() async {
-    if (_isBusy) {
-      return;
-    }
-
-    setState(() {
-      _isSigningOut = true;
-      _errorMessage = null;
-    });
-
-    try {
+    await _runTask(() async {
       if (SupabaseService().currentUser != null) {
         await _authService.signOut();
       }
       if (mounted) {
         context.go('/onboarding');
       }
-    } catch (error) {
-      final message = 'Failed signing out: ${_readableError(error)}';
-      if (mounted) {
-        setState(() {
-          _errorMessage = message;
-        });
-      }
-      _showMessage(message, isError: true);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSigningOut = false;
-        });
-      }
-    }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final currentUser = SupabaseService().currentUser;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colorScheme = theme.colorScheme;
+    final String email =
+        SupabaseService().currentUser?.email ?? 'No active session';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      appBar: AppBar(
+        title: const Text('Account & Vault'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadData,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            const SizedBox(height: 8.0),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18.0, vertical: 16.0),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(20.0),
-                border: Border.all(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.65),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 10.0,
-                    offset: const Offset(0.0, 2.0),
-                  ),
-                ],
+            if (_busy)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LinearProgressIndicator(),
               ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 24.0,
-                    backgroundColor:
-                        colorScheme.primaryContainer.withValues(alpha: 0.65),
-                    child: Icon(
-                      Icons.person_outline,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 14.0),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            Card(
+              child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+                title: const Text('Signed in as'),
+                subtitle: Text(email),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: _busy ? null : _handleSyncNow,
+                  icon: const Icon(Icons.sync),
+                  label: const Text('Sync now'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _handlePushLocal,
+                  icon: const Icon(Icons.cloud_upload_outlined),
+                  label: const Text('Push local'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _handlePullCloud,
+                  icon: const Icon(Icons.cloud_download_outlined),
+                  label: const Text('Pull cloud'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () async {
+                          await context.push('/merge-conflicts');
+                          await _loadData();
+                        },
+                  icon: const Icon(Icons.merge_type_outlined),
+                  label: Text('Conflicts (${_conflicts.length})'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Import / Export', style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        Text(
-                          'Account',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: colorScheme.onSurface,
-                          ),
+                        OutlinedButton(
+                          onPressed: _busy ? null : _handleExportEncrypted,
+                          child: const Text('Export encrypted JSON'),
                         ),
-                        const SizedBox(height: 2.0),
-                        Text(
-                          currentUser?.email ?? 'No active session',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                        OutlinedButton(
+                          onPressed: _busy ? null : _handleImportEncrypted,
+                          child: const Text('Import encrypted JSON'),
+                        ),
+                        OutlinedButton(
+                          onPressed: _busy ? null : _handleExportVCard,
+                          child: const Text('Export vCard'),
+                        ),
+                        OutlinedButton(
+                          onPressed: _busy ? null : _handleImportVCard,
+                          child: const Text('Import vCard'),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 28.0),
-            ElevatedButton.icon(
-              onPressed: _isBusy ? null : _handleSyncToCloud,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(64.0),
-                backgroundColor: colorScheme.primary,
-                foregroundColor: colorScheme.onPrimary,
-                elevation: 0.0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(32.0),
+                  ],
                 ),
               ),
-              icon: _isSyncing
-                  ? SizedBox(
-                      height: 18.0,
-                      width: 18.0,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.0,
-                        color: colorScheme.onPrimary,
-                      ),
-                    )
-                  : const Icon(Icons.cloud_upload_outlined),
-              label: Text(_isSyncing ? 'Syncing...' : 'Sync to Cloud'),
             ),
-            const SizedBox(height: 16.0),
-            ElevatedButton.icon(
-              onPressed: _isBusy ? null : _handlePullFromCloud,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(64.0),
-                backgroundColor: colorScheme.primaryContainer,
-                foregroundColor: colorScheme.onPrimaryContainer,
-                elevation: 0.0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(32.0),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('Restore points',
+                            style: theme.textTheme.titleMedium),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: _busy ? null : _handleCreateSnapshot,
+                          child: const Text('Create snapshot'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    if (_snapshots.isEmpty)
+                      Text(
+                        'No snapshots yet',
+                        style: TextStyle(color: colorScheme.onSurfaceVariant),
+                      ),
+                    ..._snapshots.map((VaultSnapshot snapshot) {
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(snapshot.reason),
+                        subtitle: Text(
+                          '${snapshot.cadence.toUpperCase()}  ${snapshot.createdAt.toLocal()}',
+                        ),
+                        trailing: TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => _handleRestoreSnapshot(snapshot.id),
+                          child: const Text('Restore'),
+                        ),
+                      );
+                    }),
+                  ],
                 ),
               ),
-              icon: _isPulling
-                  ? SizedBox(
-                      height: 18.0,
-                      width: 18.0,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.0,
-                        color: colorScheme.onPrimaryContainer,
-                      ),
-                    )
-                  : const Icon(Icons.cloud_download_outlined),
-              label: Text(_isPulling ? 'Pulling...' : 'Pull from Cloud'),
             ),
-            const SizedBox(height: 16.0),
-            OutlinedButton.icon(
-              onPressed: _isBusy ? null : _handleDeleteData,
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(64.0),
-                foregroundColor: colorScheme.primary,
-                side: BorderSide(color: colorScheme.outline),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(32.0),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Security activity',
+                        style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    if (_activity.isEmpty)
+                      Text(
+                        'No activity yet',
+                        style: TextStyle(color: colorScheme.onSurfaceVariant),
+                      ),
+                    ..._activity.map((SecurityActivityEntry entry) {
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          entry.isError
+                              ? Icons.error_outline
+                              : Icons.shield_outlined,
+                          color: entry.isError
+                              ? colorScheme.error
+                              : colorScheme.primary,
+                        ),
+                        title: Text(entry.action),
+                        subtitle: Text(
+                          '${entry.createdAt.toLocal()}${entry.details.isNotEmpty ? ' • ${entry.details}' : ''}',
+                        ),
+                      );
+                    }),
+                  ],
                 ),
               ),
-              icon: _isDeleting
-                  ? SizedBox(
-                      height: 18.0,
-                      width: 18.0,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.0,
-                        color: colorScheme.primary,
-                      ),
-                    )
-                  : const Icon(Icons.delete_outline),
-              label: Text(_isDeleting ? 'Deleting...' : 'Delete Data'),
             ),
-            const SizedBox(height: 24.0),
-            ElevatedButton.icon(
-              onPressed: _isBusy ? null : _handleSignOut,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(64.0),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _busy ? null : _handleSignOut,
+              style: FilledButton.styleFrom(
                 backgroundColor: colorScheme.error,
                 foregroundColor: colorScheme.onError,
-                elevation: 0.0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(32.0),
-                ),
               ),
-              icon: _isSigningOut
-                  ? SizedBox(
-                      height: 18.0,
-                      width: 18.0,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.0,
-                        color: colorScheme.onError,
-                      ),
-                    )
-                  : const Icon(Icons.logout),
-              label: Text(_isSigningOut ? 'Signing Out...' : 'Sign Out'),
+              icon: const Icon(Icons.logout),
+              label: const Text('Sign out'),
             ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 14.0),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
               Text(
-                _errorMessage!,
-                style: TextStyle(
-                  color: colorScheme.error,
-                  fontSize: 13.0,
-                ),
+                _error!,
+                style: TextStyle(color: colorScheme.error),
               ),
             ],
           ],

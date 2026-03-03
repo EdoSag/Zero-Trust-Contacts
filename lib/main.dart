@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zerotrust_contacts/globals/app_state.dart';
 import 'package:zerotrust_contacts/globals/router.dart';
+import 'package:zerotrust_contacts/services/app_lock_service.dart';
+import 'package:zerotrust_contacts/services/vault_sync_scheduler.dart';
 
 @NowaGenerated()
 late final SharedPreferences sharedPrefs;
@@ -23,6 +25,8 @@ main() async {
     anonKey: AppConfig.supabaseAnonKey,
   );
   await AuthService().restoreLocalVaultForActiveSession();
+  await AppLockService().initialize();
+  await VaultSyncScheduler().start();
   runApp(const MyApp());
 }
 
@@ -37,9 +41,12 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider<AppState>(create: (context) => AppState()),
       ],
-      builder: (context, child) => MaterialApp.router(
-        theme: AppState.of(context).theme,
-        routerConfig: appRouter,
+      builder: (context, child) => Listener(
+        onPointerDown: (_) => AppLockService().recordInteraction(),
+        child: MaterialApp.router(
+          theme: AppState.of(context).theme,
+          routerConfig: appRouter,
+        ),
       ),
     );
   }

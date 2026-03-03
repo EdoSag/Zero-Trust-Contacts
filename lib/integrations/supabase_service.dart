@@ -68,11 +68,24 @@ class SupabaseService {
       throw StateError('No authenticated user found.');
     }
 
-    await client.from('profiles').upsert({
+    final List<dynamic> existing = await client
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .limit(1);
+
+    final Map<String, dynamic> payload = {
       'id': user.id,
       'salt': encodeBase64Url(salt),
       'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }, onConflict: 'id');
+    };
+
+    if (existing.isEmpty) {
+      await client.from('profiles').insert(payload);
+      return;
+    }
+
+    await client.from('profiles').update(payload).eq('id', user.id);
   }
 
   Future<List<int>> fetchSaltForCurrentUser() async {
@@ -100,11 +113,24 @@ class SupabaseService {
       throw StateError('No authenticated user found.');
     }
 
-    await client.from('encrypted_contacts').upsert({
+    final List<dynamic> existing = await client
+        .from('encrypted_contacts')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+    final Map<String, dynamic> payload = {
       'user_id': user.id,
       'data_blob': dataBlob,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }, onConflict: 'user_id');
+    };
+
+    if (existing.isEmpty) {
+      await client.from('encrypted_contacts').insert(payload);
+      return;
+    }
+
+    await client.from('encrypted_contacts').update(payload).eq('user_id', user.id);
   }
 
   Future<String?> fetchEncryptedVaultBlobForCurrentUser() async {
