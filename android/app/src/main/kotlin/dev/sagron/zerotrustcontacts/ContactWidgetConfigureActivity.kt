@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.provider.ContactsContract
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.Spinner
@@ -24,19 +25,28 @@ data class WidgetContactOption(
     val phoneNumber: String?,
 )
 
+data class WidgetContactDropdownItem(
+    val contact: WidgetContactOption,
+    val label: String,
+) {
+    override fun toString(): String = label
+}
+
 class ContactWidgetConfigureActivity : Activity() {
     private val requestCodeReadContacts = 3001
     private val requestCodeCallPhone = 3002
 
     private var appWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
     private val contacts = mutableListOf<WidgetContactOption>()
+    private val contactItems = mutableListOf<WidgetContactDropdownItem>()
 
     private var pendingSelection: WidgetContactOption? = null
     private var pendingMode: String? = null
+    private var selectedContact: WidgetContactOption? = null
 
     private lateinit var statusText: TextView
     private lateinit var progressBar: ProgressBar
-    private lateinit var contactSpinner: Spinner
+    private lateinit var contactDropdown: AutoCompleteTextView
     private lateinit var actionSpinner: Spinner
     private lateinit var saveButton: Button
     private lateinit var cancelButton: Button
@@ -56,10 +66,16 @@ class ContactWidgetConfigureActivity : Activity() {
         setContentView(R.layout.contact_widget_configure)
         statusText = findViewById(R.id.configure_status)
         progressBar = findViewById(R.id.configure_progress)
-        contactSpinner = findViewById(R.id.configure_contact_spinner)
+        contactDropdown = findViewById(R.id.configure_contact_dropdown)
         actionSpinner = findViewById(R.id.configure_action_spinner)
         saveButton = findViewById(R.id.configure_save_button)
         cancelButton = findViewById(R.id.configure_cancel_button)
+        contactDropdown.setOnClickListener { contactDropdown.showDropDown() }
+        contactDropdown.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                contactDropdown.showDropDown()
+            }
+        }
 
         setupActionSpinner()
         saveButton.setOnClickListener { handleSave() }
@@ -192,6 +208,7 @@ class ContactWidgetConfigureActivity : Activity() {
 
         contacts.clear()
         contacts.addAll(loadedContacts)
+        selectedContact = null
         if (contacts.isEmpty()) {
             showLoadingUi(false)
             statusText.text = "No contacts were found."
@@ -199,20 +216,28 @@ class ContactWidgetConfigureActivity : Activity() {
             return
         }
 
-        val contactLabels = contacts.map { contact ->
-            if (contact.phoneNumber.isNullOrBlank()) {
-                contact.displayName
-            } else {
-                "${contact.displayName} (${contact.phoneNumber})"
-            }
-        }
+        contactItems.clear()
+        contactItems.addAll(contacts.map { contact ->
+            WidgetContactDropdownItem(
+                contact = contact,
+                label = buildContactLabel(contact),
+            )
+        })
         val adapter = ArrayAdapter(
             this,
-            android.R.layout.simple_spinner_item,
-            contactLabels,
+            android.R.layout.simple_dropdown_item_1line,
+            contactItems,
         )
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        contactSpinner.adapter = adapter
+        contactDropdown.setAdapter(adapter)
+        contactDropdown.setOnItemClickListener { parent, _, position, _ ->
+            val item = parent.getItemAtPosition(position) as? WidgetContactDropdownItem
+            selectedContact = item?.contact
+        }
+        val initialSelection = contactItems.firstOrNull()
+        if (initialSelection != null) {
+            selectedContact = initialSelection.contact
+            contactDropdown.setText(initialSelection.label, false)
+        }
         showLoadingUi(false)
         statusText.text = "Pick a contact and widget action."
     }
@@ -243,7 +268,7 @@ class ContactWidgetConfigureActivity : Activity() {
     }
 
     private fun handleSave() {
-        val selection = contacts.getOrNull(contactSpinner.selectedItemPosition)
+        val selection = resolveSelectedContact()
         if (selection == null) {
             Toast.makeText(this, "Please select a contact.", Toast.LENGTH_SHORT).show()
             return
@@ -308,9 +333,34 @@ class ContactWidgetConfigureActivity : Activity() {
 
     private fun showLoadingUi(isLoading: Boolean) {
         progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
-        contactSpinner.visibility = if (isLoading) View.GONE else View.VISIBLE
+        contactDropdown.visibility = if (isLoading) View.GONE else View.VISIBLE
         actionSpinner.visibility = if (isLoading) View.GONE else View.VISIBLE
+        contactDropdown.isEnabled = !isLoading
         saveButton.isEnabled = !isLoading
+    }
+
+    private fun buildContactLabel(contact: WidgetContactOption): String {
+        return if (contact.phoneNumber.isNullOrBlank()) {
+            contact.displayName
+        } else {
+            "${contact.displayName} (${contact.phoneNumber})"
+        }
+    }
+
+    private fun resolveSelectedContact(): WidgetContactOption? {
+        val typedText = contactDropdown.text?.toString()?.trim().orEmpty()
+        if (typedText.isBlank()) {
+            return selectedContact
+        }
+        val typedMatch = contactItems.firstOrNull { item ->
+            item.label.equals(typedText, ignoreCase = true)
+        }?.contact
+        if (typedMatch != null) {
+            return typedMatch
+        }
+        return selectedContact?.takeIf { contact ->
+            buildContactLabel(contact).equals(typedText, ignoreCase = true)
+        }
     }
 
     private fun hasReadContactsPermission(): Boolean {

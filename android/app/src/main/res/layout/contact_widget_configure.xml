@@ -43,11 +43,16 @@
             android:textSize="14sp"
             android:textStyle="bold" />
 
-        <Spinner
-            android:id="@+id/configure_contact_spinner"
+        <AutoCompleteTextView
+            android:id="@+id/configure_contact_dropdown"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp" />
+            android:layout_marginTop="6dp"
+            android:completionThreshold="1"
+            android:hint="@string/contact_widget_contact_search_hint"
+            android:imeOptions="actionDone"
+            android:inputType="text"
+            android:singleLine="true" />
 
         <TextView
             android:layout_width="match_parent"
