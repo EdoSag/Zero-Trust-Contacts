@@ -1,0 +1,34 @@
+{
+    "canvases": [
+        {
+            "x": 500.0,
+            "y": 200.0,
+            "w": 393.0,
+            "h": 808.0,
+            "widget": "const HomePage()",
+            "deps": [
+                "lib/pages/home_page.dart"
+            ]
+        },
+        {
+            "x": 44.0,
+            "y": 200.0,
+            "w": 393.0,
+            "h": 808.0,
+            "widget": "const LoginScreen()",
+            "deps": [
+                "lib/pages/login_screen.dart"
+            ]
+        },
+        {
+            "x": -411.0,
+            "y": 200.0,
+            "w": 393.0,
+            "h": 808.0,
+            "widget": "const CreateContactPage()",
+            "deps": [
+                "lib/pages/create_contact_page.dart"
+            ]
+        }
+    ]
+}

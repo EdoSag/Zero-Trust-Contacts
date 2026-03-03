@@ -1,0 +1,19 @@
+{
+    "version": "3.5.1",
+    "app": {
+        "name": "Zero-Trust Contacts",
+        "bundleId": "dev.sagron.zerotrustcontacts"
+    },
+    "main": [
+        {
+            "key": "supabase",
+            "statement": "await SupabaseService().initialize();",
+            "imports": [
+                "package:zerotrust_contacts/integrations/supabase_service.dart"
+            ]
+        }
+    ],
+    "experimental": {
+        "load_packages": true
+    }
+}
