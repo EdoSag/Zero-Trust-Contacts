@@ -162,19 +162,19 @@ class MainActivity : FlutterActivity() {
         ensureContactsPermission()
         val sources = buildContactSources(selectedAccount)
 
-        var googleCount = 0
+        var accountCount = 0
         var simCount = 0
         var phoneCount = 0
         for (source in sources.values) {
             when (source) {
-                "Google Contacts" -> googleCount += 1
+                "Account" -> accountCount += 1
                 "SIM card" -> simCount += 1
                 else -> phoneCount += 1
             }
         }
 
         return mapOf(
-            "googleCount" to googleCount,
+            "accountCount" to accountCount,
             "simCount" to simCount,
             "phoneCount" to phoneCount,
         )
@@ -260,7 +260,7 @@ class MainActivity : FlutterActivity() {
             (selectedAccountNormalized.isNotEmpty() &&
                 normalizedName == selectedAccountNormalized)
         ) {
-            return "Google Contacts"
+            return "Account"
         }
 
         return "Phone"
@@ -269,7 +269,7 @@ class MainActivity : FlutterActivity() {
     private fun sourcePriority(source: String): Int {
         return when (source) {
             "SIM card" -> 3
-            "Google Contacts" -> 2
+            "Account" -> 2
             else -> 1
         }
     }

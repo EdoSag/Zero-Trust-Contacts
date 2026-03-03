@@ -27,20 +27,20 @@ class DeviceContact {
 
 class ContactSourceStats {
   ContactSourceStats({
-    required this.googleCount,
+    required this.accountCount,
     required this.simCount,
     required this.phoneCount,
   });
 
-  final int googleCount;
+  final int accountCount;
   final int simCount;
   final int phoneCount;
 
-  int get totalCount => googleCount + simCount + phoneCount;
+  int get totalCount => accountCount + simCount + phoneCount;
 
   factory ContactSourceStats.empty() {
     return ContactSourceStats(
-      googleCount: 0,
+      accountCount: 0,
       simCount: 0,
       phoneCount: 0,
     );
@@ -48,7 +48,7 @@ class ContactSourceStats {
 
   factory ContactSourceStats.fromMap(Map<dynamic, dynamic> map) {
     return ContactSourceStats(
-      googleCount: _toCount(map['googleCount']),
+      accountCount: _toCount(map['accountCount'] ?? map['googleCount']),
       simCount: _toCount(map['simCount']),
       phoneCount: _toCount(map['phoneCount']),
     );

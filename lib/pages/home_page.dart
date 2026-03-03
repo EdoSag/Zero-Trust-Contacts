@@ -1,9 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
-import 'package:zerotrust_contacts/globals/router.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
 import 'package:zerotrust_contacts/integrations/supabase_service.dart';
+import 'package:zerotrust_contacts/security_service.dart';
 
 @NowaGenerated()
 class HomePage extends StatefulWidget {
@@ -38,9 +40,9 @@ class _HomePageState extends State<HomePage> {
 
   List<DeviceContact> get _filteredContacts {
     switch (_activeSourceFilter) {
-      case 'google':
+      case 'account':
         return _contacts
-            .where((contact) => contact.source == 'Google Contacts')
+            .where((contact) => contact.source == 'Account')
             .toList();
       case 'sim':
         return _contacts
@@ -55,8 +57,8 @@ class _HomePageState extends State<HomePage> {
 
   String get _activeFilterLabel {
     switch (_activeSourceFilter) {
-      case 'google':
-        return 'Google contacts';
+      case 'account':
+        return 'Account contacts';
       case 'sim':
         return 'SIM contacts';
       case 'phone':
@@ -69,8 +71,71 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _selectedAccount = SupabaseService().currentUser?.email ?? 'Google account';
+    _selectedAccount = SupabaseService().currentUser?.email ?? 'No account';
     _loadContacts();
+  }
+
+  String _firstListValue(dynamic rawValue) {
+    if (rawValue is! List) {
+      return '';
+    }
+    for (final value in rawValue) {
+      final parsed = value.toString().trim();
+      if (parsed.isNotEmpty) {
+        return parsed;
+      }
+    }
+    return '';
+  }
+
+  String _displayNameFromPayload(Map<String, dynamic> payload) {
+    final displayName = (payload['displayName'] ?? '').toString().trim();
+    if (displayName.isNotEmpty) {
+      return displayName;
+    }
+
+    final firstName = (payload['firstName'] ?? '').toString().trim();
+    final lastName = (payload['lastName'] ?? '').toString().trim();
+    final fullName = '$firstName $lastName'.trim();
+    if (fullName.isNotEmpty) {
+      return fullName;
+    }
+
+    final company = (payload['company'] ?? '').toString().trim();
+    if (company.isNotEmpty) {
+      return company;
+    }
+
+    return 'Unnamed Contact';
+  }
+
+  Future<List<DeviceContact>> _loadSavedContacts() async {
+    final payloads =
+        await LocalEncryptedDatabaseService().readAllContactPayloads();
+    final contacts = <DeviceContact>[];
+
+    for (var i = 0; i < payloads.length; i++) {
+      final rawPayload = payloads[i];
+      try {
+        final decoded = jsonDecode(rawPayload);
+        if (decoded is! Map) {
+          continue;
+        }
+        final payload = Map<String, dynamic>.from(decoded);
+        contacts.add(
+          DeviceContact(
+            id: (payload['id'] ?? 'saved_$i').toString(),
+            name: _displayNameFromPayload(payload),
+            phone: _firstListValue(payload['phones']),
+            source: 'Saved',
+          ),
+        );
+      } catch (_) {
+        continue;
+      }
+    }
+
+    return contacts;
   }
 
   Future<void> _loadContacts() async {
@@ -80,7 +145,10 @@ class _HomePageState extends State<HomePage> {
       _loadError = null;
     });
 
+    List<DeviceContact> savedContacts = [];
     try {
+      savedContacts = await _loadSavedContacts();
+
       final permissionGranted =
           await _deviceContactsService.requestPermission();
       if (!permissionGranted) {
@@ -88,7 +156,7 @@ class _HomePageState extends State<HomePage> {
           return;
         }
         setState(() {
-          _contacts = [];
+          _contacts = savedContacts;
           _sourceStats = ContactSourceStats.empty();
           _permissionDenied = true;
           _isLoading = false;
@@ -101,14 +169,14 @@ class _HomePageState extends State<HomePage> {
         _deviceContactsService.loadSourceStats(
             selectedAccount: _selectedAccount),
       ]);
-      final contacts = results[0] as List<DeviceContact>;
+      final deviceContacts = results[0] as List<DeviceContact>;
       final stats = results[1] as ContactSourceStats;
 
       if (!mounted) {
         return;
       }
       setState(() {
-        _contacts = contacts;
+        _contacts = [...savedContacts, ...deviceContacts];
         _sourceStats = stats;
         _isLoading = false;
       });
@@ -117,7 +185,7 @@ class _HomePageState extends State<HomePage> {
         return;
       }
       setState(() {
-        _contacts = [];
+        _contacts = savedContacts;
         _sourceStats = ContactSourceStats.empty();
         _loadError = e.toString().replaceFirst('Exception: ', '');
         _isLoading = false;
@@ -150,8 +218,11 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             GestureDetector(
-              onTap: () {
-                context.push('/account');
+              onTap: () async {
+                await context.push('/account');
+                if (mounted) {
+                  await _loadContacts();
+                }
               },
               child: Container(
                 padding: const EdgeInsets.all(2.0),
@@ -260,9 +331,7 @@ class _HomePageState extends State<HomePage> {
 
   void _showAccountPicker() {
     final colorScheme = Theme.of(context).colorScheme;
-    final totalCount = _sourceStats.totalCount > 0
-        ? _sourceStats.totalCount
-        : _contacts.length;
+    final totalCount = _contacts.length;
     showModalBottomSheet(
       context: context,
       backgroundColor: colorScheme.surfaceContainerHigh,
@@ -292,9 +361,8 @@ class _HomePageState extends State<HomePage> {
             _buildAccountOption(
               icon: Icons.person_outline,
               title: _selectedAccount,
-              count: _sourceStats.googleCount,
-              subtitle: 'Google Contacts',
-              filterValue: 'google',
+              count: _sourceStats.accountCount,
+              filterValue: 'account',
             ),
             _buildAccountOption(
               icon: Icons.sd_card_outlined,
@@ -319,16 +387,11 @@ class _HomePageState extends State<HomePage> {
     required String title,
     required int count,
     required String filterValue,
-    String? subtitle,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     return ListTile(
       leading: Icon(icon, color: colorScheme.onSurfaceVariant),
       title: Text(title, style: TextStyle(color: colorScheme.onSurface)),
-      subtitle: subtitle == null
-          ? null
-          : Text(subtitle,
-              style: TextStyle(color: colorScheme.onSurfaceVariant)),
       trailing: Text(
         '$count',
         style: TextStyle(color: colorScheme.onSurfaceVariant),
@@ -364,7 +427,7 @@ class _HomePageState extends State<HomePage> {
                             Icons.contacts_outlined,
                             '$_activeFilterLabel (${_filteredContacts.length})',
                           ),
-                          if (_permissionDenied)
+                          if (_permissionDenied && _filteredContacts.isEmpty)
                             Padding(
                               padding: const EdgeInsets.all(32.0),
                               child: Center(
@@ -392,9 +455,7 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             ),
-                          if (!_permissionDenied &&
-                              _loadError == null &&
-                              _filteredContacts.isEmpty)
+                          if (_loadError == null && _filteredContacts.isEmpty)
                             Padding(
                               padding: const EdgeInsets.all(32.0),
                               child: Center(
@@ -406,9 +467,7 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             ),
-                          ..._filteredContacts.map((contact) {
-                            return _buildContactTile(contact);
-                          }),
+                          ..._filteredContacts.map(_buildContactTile),
                           const SizedBox(height: 80.0),
                         ],
                       ),
@@ -418,8 +477,11 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton.large(
-        onPressed: () {
-          appRouter.push('/create-contact');
+        onPressed: () async {
+          final created = await context.push('/create-contact');
+          if (created == true && mounted) {
+            await _loadContacts();
+          }
         },
         backgroundColor: colorScheme.primaryContainer,
         foregroundColor: colorScheme.onPrimaryContainer,

@@ -79,7 +79,8 @@ class LocalSecurityRepository {
         'Salt must be exactly ${KeyDerivationService.saltLength} bytes.',
       );
     }
-    await _secureStorage.write(key: saltStorageKey, value: encodeBase64Url(salt));
+    await _secureStorage.write(
+        key: saltStorageKey, value: encodeBase64Url(salt));
   }
 
   Future<Uint8List?> readSalt() async {
@@ -151,6 +152,14 @@ class LocalEncryptedDatabaseService {
 
   Database? _database;
 
+  Database get _openDatabase {
+    final database = _database;
+    if (database == null || !database.isOpen) {
+      throw StateError('Local encrypted database is not open.');
+    }
+    return database;
+  }
+
   bool get isOpen {
     return _database?.isOpen ?? false;
   }
@@ -184,6 +193,40 @@ class LocalEncryptedDatabaseService {
       _database = null;
     }
   }
+
+  Future<int> insertContactPayload(String payload) async {
+    return _openDatabase.insert('contacts', {'payload': payload});
+  }
+
+  Future<List<String>> readAllContactPayloads() async {
+    final rows = await _openDatabase.query(
+      'contacts',
+      columns: ['payload'],
+      orderBy: 'id DESC',
+    );
+    return rows
+        .map((row) => row['payload'])
+        .whereType<String>()
+        .where((payload) => payload.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> clearAllContactPayloads() async {
+    await _openDatabase.delete('contacts');
+  }
+
+  Future<void> replaceAllContactPayloads(List<String> payloads) async {
+    await _openDatabase.transaction((transaction) async {
+      await transaction.delete('contacts');
+      for (final payload in payloads) {
+        final trimmed = payload.trim();
+        if (trimmed.isEmpty) {
+          continue;
+        }
+        await transaction.insert('contacts', {'payload': trimmed});
+      }
+    });
+  }
 }
 
 @NowaGenerated()
@@ -191,8 +234,8 @@ class SecurityService {
   SecurityService({
     LocalSecurityRepository? localSecurityRepository,
     KeyDerivationService? keyDerivationService,
-  })  : _localSecurityRepository = localSecurityRepository ??
-            LocalSecurityRepository(),
+  })  : _localSecurityRepository =
+            localSecurityRepository ?? LocalSecurityRepository(),
         _keyDerivationService = keyDerivationService ?? KeyDerivationService();
 
   final LocalSecurityRepository _localSecurityRepository;

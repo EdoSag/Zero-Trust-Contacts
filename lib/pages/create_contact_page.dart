@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
+import 'package:zerotrust_contacts/security_service.dart';
 
 @NowaGenerated()
 class CreateContactPage extends StatefulWidget {
@@ -45,6 +48,118 @@ class _CreateContactPageState extends State<CreateContactPage> {
   bool _showOther = false;
 
   final List<TextEditingController> _otherControllers = [];
+
+  bool _isSaving = false;
+
+  List<String> _allValuesFromControllers(
+      List<TextEditingController> controllers) {
+    return controllers
+        .map((controller) => controller.text.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+  }
+
+  String _buildDisplayName({
+    required String firstName,
+    required String lastName,
+    required String company,
+    required List<String> phones,
+  }) {
+    final fullName = '$firstName $lastName'.trim();
+    if (fullName.isNotEmpty) {
+      return fullName;
+    }
+    if (company.isNotEmpty) {
+      return company;
+    }
+    if (phones.isNotEmpty) {
+      return phones.first;
+    }
+    return 'Unnamed Contact';
+  }
+
+  Future<void> _handleSaveContact() async {
+    if (_isSaving) {
+      return;
+    }
+
+    final firstName = _firstNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    final company = _companyController.text.trim();
+    final notes = _notesController.text.trim();
+    final phones = _allValuesFromControllers(_phoneControllers);
+    final emails = _allValuesFromControllers(_emailControllers);
+    final addresses = _allValuesFromControllers(_addressControllers);
+    final labels = _allValuesFromControllers(_labelControllers);
+    final birthdays = _allValuesFromControllers(_birthdayControllers);
+    final others = _allValuesFromControllers(_otherControllers);
+
+    final hasAnyData = firstName.isNotEmpty ||
+        lastName.isNotEmpty ||
+        company.isNotEmpty ||
+        notes.isNotEmpty ||
+        phones.isNotEmpty ||
+        emails.isNotEmpty ||
+        addresses.isNotEmpty ||
+        labels.isNotEmpty ||
+        birthdays.isNotEmpty ||
+        others.isNotEmpty;
+
+    if (!hasAnyData) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Add at least one contact detail to save.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final payload = <String, dynamic>{
+        'displayName': _buildDisplayName(
+          firstName: firstName,
+          lastName: lastName,
+          company: company,
+          phones: phones,
+        ),
+        'firstName': firstName,
+        'lastName': lastName,
+        'company': company,
+        'notes': notes,
+        'phones': phones,
+        'emails': emails,
+        'addresses': addresses,
+        'labels': labels,
+        'birthdays': birthdays,
+        'other': others,
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+
+      await LocalEncryptedDatabaseService().insertContactPayload(
+        jsonEncode(payload),
+      );
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save contact: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
 
   void _removeController(List<TextEditingController> controllers, int index) {
     if (index < 0 || index >= controllers.length) {
@@ -353,7 +468,7 @@ class _CreateContactPageState extends State<CreateContactPage> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: _isSaving ? null : _handleSaveContact,
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.primaryContainer,
                 foregroundColor: colorScheme.onPrimaryContainer,
@@ -361,7 +476,13 @@ class _CreateContactPageState extends State<CreateContactPage> {
                   borderRadius: BorderRadius.circular(20.0),
                 ),
               ),
-              child: const Text('Save'),
+              child: _isSaving
+                  ? const SizedBox(
+                      height: 16.0,
+                      width: 16.0,
+                      child: CircularProgressIndicator(strokeWidth: 2.0),
+                    )
+                  : const Text('Save'),
             ),
           ),
           IconButton(
@@ -604,7 +725,7 @@ class _CreateContactPageState extends State<CreateContactPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Saving to Device & Google',
+                    'Saving to Local Vault',
                     style:
                         TextStyle(color: colorScheme.onSurface, fontSize: 14.0),
                   ),
