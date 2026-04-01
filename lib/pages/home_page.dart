@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
@@ -28,6 +30,7 @@ class _HomePageState extends State<HomePage> {
   String _sourceFilter = 'all';
   String _activeLabelFilter = '';
   ContactSortMode _sortMode = ContactSortMode.recent;
+  StreamSubscription<VaultContact>? _openedContactSubscription;
 
   List<VaultContact> _savedContacts = <VaultContact>[];
   List<VaultContact> _deviceContacts = <VaultContact>[];
@@ -87,6 +90,8 @@ class _HomePageState extends State<HomePage> {
         _query = _searchController.text.trim().toLowerCase();
       });
     });
+    _openedContactSubscription =
+        _deviceContactsService.openedContacts.listen(_handleOpenedContact);
     _loadContacts();
   }
 
@@ -139,6 +144,7 @@ class _HomePageState extends State<HomePage> {
         _labelCounts = labelCounts;
         _loading = false;
       });
+      await _consumePendingOpenedContact();
     } catch (error) {
       if (!mounted) {
         return;
@@ -148,6 +154,30 @@ class _HomePageState extends State<HomePage> {
         _error = error.toString().replaceFirst('Exception: ', '');
       });
     }
+  }
+
+  Future<void> _consumePendingOpenedContact() async {
+    final VaultContact? contact =
+        await _deviceContactsService.consumePendingOpenedContact();
+    if (contact == null || !mounted) {
+      return;
+    }
+    await _handleOpenedContact(contact);
+  }
+
+  Future<void> _handleOpenedContact(VaultContact contact) async {
+    if (!mounted) {
+      return;
+    }
+
+    VaultContact resolved = contact;
+    for (final VaultContact item in _allContacts) {
+      if (item.id == contact.id) {
+        resolved = item;
+        break;
+      }
+    }
+    await _openContact(resolved);
   }
 
   Future<void> _openContact(VaultContact contact) async {
@@ -591,6 +621,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _openedContactSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }

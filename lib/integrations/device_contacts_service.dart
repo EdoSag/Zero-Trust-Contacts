@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:zerotrust_contacts/models/vault_contact.dart';
 
 class DeviceContact {
   DeviceContact({
@@ -69,6 +71,31 @@ class DeviceContactsService {
   static const MethodChannel _channel = MethodChannel(
     'zerotrust_contacts/device_contacts',
   );
+  static final StreamController<VaultContact> _openedContactsController =
+      StreamController<VaultContact>.broadcast();
+  static bool _handlerRegistered = false;
+
+  DeviceContactsService() {
+    _ensureHandlerRegistered();
+  }
+
+  Stream<VaultContact> get openedContacts => _openedContactsController.stream;
+
+  void _ensureHandlerRegistered() {
+    if (_handlerRegistered) {
+      return;
+    }
+    _channel.setMethodCallHandler((MethodCall call) async {
+      if (call.method != 'contactIntentReceived') {
+        return;
+      }
+      final VaultContact? contact = _vaultContactFromDynamic(call.arguments);
+      if (contact != null && !_openedContactsController.isClosed) {
+        _openedContactsController.add(contact);
+      }
+    });
+    _handlerRegistered = true;
+  }
 
   Future<bool> requestPermission() async {
     if (!Platform.isAndroid) {
@@ -130,6 +157,25 @@ class DeviceContactsService {
     await _channel.invokeMethod<void>(
       'launchSms',
       <String, dynamic>{'phoneNumber': phoneNumber},
+    );
+  }
+
+  Future<VaultContact?> consumePendingOpenedContact() async {
+    if (!Platform.isAndroid) {
+      return null;
+    }
+    final dynamic response = await _channel.invokeMethod<dynamic>(
+      'consumePendingOpenedContact',
+    );
+    return _vaultContactFromDynamic(response);
+  }
+
+  VaultContact? _vaultContactFromDynamic(dynamic raw) {
+    if (raw is! Map) {
+      return null;
+    }
+    return VaultContact.fromLegacyPayload(
+      Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
     );
   }
 }

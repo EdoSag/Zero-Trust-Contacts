@@ -3,7 +3,9 @@ package dev.sagron.zerotrustcontacts
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.database.Cursor
 import android.net.Uri
+import android.os.Bundle
 import android.provider.ContactsContract
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -16,13 +18,33 @@ class MainActivity : FlutterFragmentActivity() {
     private val channelName = "zerotrust_contacts/device_contacts"
     private val requestCodeReadContacts = 2001
     private var pendingPermissionResult: MethodChannel.Result? = null
+    private var channel: MethodChannel? = null
+    private var pendingOpenedContact: Map<String, Any?>? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        cacheContactFromIntent(intent)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
-            .setMethodCallHandler { call, result ->
+        channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+        channel
+            ?.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "requestContactsPermission" -> handlePermissionRequest(result)
+                    "consumePendingOpenedContact" -> {
+                        val contact = pendingOpenedContact?.let { payload ->
+                            val uri = payload["uri"] as? String
+                            if (uri != null && !payload.containsKey("id") && hasReadContactsPermission()) {
+                                buildOpenedContact(Uri.parse(uri)) ?: payload
+                            } else {
+                                payload
+                            }
+                        }
+                        result.success(contact)
+                        pendingOpenedContact = null
+                    }
                     "launchDialer" -> {
                         val phoneNumber = call.argument<String>("phoneNumber")
                         if (phoneNumber.isNullOrBlank()) {
@@ -84,6 +106,14 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
+        flushPendingOpenedContact()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        cacheContactFromIntent(intent)
+        flushPendingOpenedContact()
     }
 
     override fun onRequestPermissionsResult(
@@ -302,6 +332,106 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private fun cacheContactFromIntent(intent: Intent?) {
+        pendingOpenedContact = readContactFromIntent(intent) ?: pendingOpenedContact
+    }
+
+    private fun flushPendingOpenedContact() {
+        val contact = pendingOpenedContact ?: return
+        channel?.invokeMethod("contactIntentReceived", contact)
+    }
+
+    private fun readContactFromIntent(intent: Intent?): Map<String, Any?>? {
+        if (intent == null) {
+            return null
+        }
+        val action = intent.action ?: return null
+        if (action != Intent.ACTION_VIEW && action != Intent.ACTION_EDIT) {
+            return null
+        }
+
+        val contactUri = intent.data ?: return null
+        return buildOpenedContact(contactUri)
+    }
+
+    private fun buildOpenedContact(contactUri: Uri): Map<String, Any?>? {
+        if (!hasReadContactsPermission()) {
+            return mapOf(
+                "uri" to contactUri.toString(),
+                "source" to "Phone",
+            )
+        }
+
+        val resolvedUri = resolveContactUri(contactUri) ?: contactUri
+        val projection = arrayOf(
+            ContactsContract.Contacts._ID,
+            ContactsContract.Contacts.LOOKUP_KEY,
+            ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+        )
+
+        contentResolver.query(
+            resolvedUri,
+            projection,
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (!cursor.moveToFirst()) {
+                return null
+            }
+
+            val id = cursor.getLongValue(ContactsContract.Contacts._ID)
+            if (id <= 0L) {
+                return null
+            }
+            val lookupKey = cursor.getStringValue(ContactsContract.Contacts.LOOKUP_KEY)
+            val displayName = cursor
+                .getStringValue(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+                ?.trim()
+                .orEmpty()
+            val phones = readPhoneNumbers(id)
+            val source = buildContactSources(null)[id] ?: "Phone"
+
+            return mapOf(
+                "id" to "device_$id",
+                "deviceId" to id.toString(),
+                "lookupKey" to (lookupKey ?: ""),
+                "displayName" to if (displayName.isNotEmpty()) displayName else "Unnamed Contact",
+                "firstName" to displayName,
+                "phones" to phones,
+                "source" to source,
+                "uri" to resolvedUri.toString(),
+            )
+        }
+
+        return null
+    }
+
+    private fun resolveContactUri(uri: Uri): Uri? {
+        return ContactsContract.Contacts.lookupContact(contentResolver, uri)
+    }
+
+    private fun readPhoneNumbers(contactId: Long): List<String> {
+        val numbers = linkedSetOf<String>()
+        contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+            "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+            arrayOf(contactId.toString()),
+            null,
+        )?.use { cursor ->
+            val numberIndex =
+                cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            while (cursor.moveToNext()) {
+                val number = cursor.getString(numberIndex)?.trim().orEmpty()
+                if (number.isNotEmpty()) {
+                    numbers.add(number)
+                }
+            }
+        }
+        return numbers.toList()
+    }
+
     private fun launchDialer(phoneNumber: String) {
         val intent = Intent(
             Intent.ACTION_DIAL,
@@ -316,5 +446,15 @@ class MainActivity : FlutterFragmentActivity() {
             Uri.parse("smsto:${Uri.encode(phoneNumber.trim())}"),
         ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
+    }
+
+    private fun Cursor.getLongValue(columnName: String): Long {
+        val index = getColumnIndex(columnName)
+        return if (index >= 0 && !isNull(index)) getLong(index) else -1L
+    }
+
+    private fun Cursor.getStringValue(columnName: String): String? {
+        val index = getColumnIndex(columnName)
+        return if (index >= 0 && !isNull(index)) getString(index) else null
     }
 }
