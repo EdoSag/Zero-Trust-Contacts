@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zerotrust_contacts/services/contact_photo_service.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
+import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
 
 @NowaGenerated()
 class ContactDetailPage extends StatefulWidget {
@@ -36,6 +40,8 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
   bool _isEditing = false;
   bool _isSavedContact = false;
   bool _busy = false;
+  File? _pickedPhotoFile;
+  bool _photoCleared = false;
 
   @override
   void initState() {
@@ -69,6 +75,62 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
     }
   }
 
+  Future<void> _pickPhoto() async {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final XFile? picked = await showModalBottomSheet<XFile?>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.photo_library_outlined,
+                    color: colorScheme.primary),
+                title: const Text('Choose from gallery'),
+                onTap: () async {
+                  final XFile? f =
+                      await ContactPhotoService().pickFromGallery();
+                  if (ctx.mounted) Navigator.of(ctx).pop(f);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.camera_alt_outlined,
+                    color: colorScheme.primary),
+                title: const Text('Take a photo'),
+                onTap: () async {
+                  final XFile? f =
+                      await ContactPhotoService().pickFromCamera();
+                  if (ctx.mounted) Navigator.of(ctx).pop(f);
+                },
+              ),
+              if (_contact.photoPath != null || _pickedPhotoFile != null)
+                ListTile(
+                  leading: Icon(Icons.delete_outline, color: colorScheme.error),
+                  title: const Text('Remove photo'),
+                  onTap: () => Navigator.of(ctx).pop(XFile('')),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted) return;
+    if (picked == null) return;
+    if (picked.path.isEmpty) {
+      // User chose "Remove photo".
+      setState(() {
+        _pickedPhotoFile = null;
+        _photoCleared = true;
+      });
+    } else {
+      setState(() {
+        _pickedPhotoFile = File(picked.path);
+        _photoCleared = false;
+      });
+    }
+  }
+
   List<String> _splitValues(String value) {
     return value
         .split(',')
@@ -85,6 +147,9 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
       _busy = true;
     });
     try {
+      final File? photoFile = _pickedPhotoFile;
+      final bool removingPhoto = _photoCleared && _contact.photoPath != null;
+
       final VaultContact edited = _contact.applyEdits(
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
@@ -94,6 +159,8 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
         labels: _splitValues(_labelsController.text),
         notes: _notesController.text.trim(),
         source: 'Saved',
+        photoPath: photoFile != null ? _contact.id : null,
+        clearPhoto: removingPhoto,
       );
 
       final VaultContact toSave = _isSavedContact
@@ -107,6 +174,13 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
         activity:
             _isSavedContact ? 'contact_edit' : 'contact_saved_from_device',
       );
+
+      if (photoFile != null) {
+        await ContactPhotoService().saveLocally(toSave.id, photoFile);
+      } else if (removingPhoto) {
+        await ContactPhotoService().deleteLocally(toSave.id);
+      }
+
       if (!mounted) {
         return;
       }
@@ -114,6 +188,8 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
         _contact = toSave;
         _isSavedContact = true;
         _isEditing = false;
+        _pickedPhotoFile = null;
+        _photoCleared = false;
       });
       Navigator.of(context).pop(true);
     } catch (error) {
@@ -415,6 +491,38 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
       ),
       body: Column(
         children: [
+          // ── Photo header ──────────────────────────────────────────────────
+          GestureDetector(
+            onTap: _isEditing ? _pickPhoto : null,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16, bottom: 8),
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  ContactAvatar(
+                    contact: _contact,
+                    radius: 48,
+                    overridePhoto: _pickedPhotoFile,
+                  ),
+                  if (_isEditing)
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.edit,
+                        size: 16,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSecondaryContainer,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(12),
             child: Wrap(

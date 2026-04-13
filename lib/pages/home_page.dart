@@ -6,6 +6,7 @@ import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
+import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
 
 @NowaGenerated()
 class HomePage extends StatefulWidget {
@@ -342,10 +343,7 @@ class _HomePageState extends State<HomePage> {
         _savedContacts.any((VaultContact item) => item.id == contact.id);
     return ListTile(
       onTap: () => _openContact(contact),
-      leading: CircleAvatar(
-        backgroundColor: colorScheme.primaryContainer,
-        child: Icon(Icons.person, color: colorScheme.onPrimaryContainer),
-      ),
+      leading: ContactAvatar(contact: contact, radius: 20),
       title: Row(
         children: [
           Expanded(child: Text(contact.displayName)),

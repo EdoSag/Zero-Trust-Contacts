@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zerotrust_contacts/services/contact_photo_service.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 
 @NowaGenerated()
@@ -50,6 +53,53 @@ class _CreateContactPageState extends State<CreateContactPage> {
 
   bool _isSaving = false;
   bool _isFavorite = false;
+  File? _pickedPhotoFile;
+
+  Future<void> _pickContactPhoto() async {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final XFile? picked = await showModalBottomSheet<XFile?>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.photo_library_outlined,
+                    color: colorScheme.primary),
+                title: const Text('Choose from gallery'),
+                onTap: () async {
+                  final XFile? f =
+                      await ContactPhotoService().pickFromGallery();
+                  if (ctx.mounted) Navigator.of(ctx).pop(f);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.camera_alt_outlined,
+                    color: colorScheme.primary),
+                title: const Text('Take a photo'),
+                onTap: () async {
+                  final XFile? f =
+                      await ContactPhotoService().pickFromCamera();
+                  if (ctx.mounted) Navigator.of(ctx).pop(f);
+                },
+              ),
+              if (_pickedPhotoFile != null)
+                ListTile(
+                  leading: Icon(Icons.delete_outline, color: colorScheme.error),
+                  title: const Text('Remove photo'),
+                  onTap: () => Navigator.of(ctx).pop(),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted) return;
+    if (picked != null) {
+      setState(() => _pickedPhotoFile = File(picked.path));
+    }
+  }
 
   List<String> _allValuesFromControllers(
       List<TextEditingController> controllers) {
@@ -118,8 +168,11 @@ class _CreateContactPageState extends State<CreateContactPage> {
     });
 
     try {
+      final String contactId = VaultContact.generateId();
+      final File? photoToSave = _pickedPhotoFile;
+
       final payload = <String, dynamic>{
-        'id': VaultContact.generateId(),
+        'id': contactId,
         'displayName': _buildDisplayName(
           firstName: firstName,
           lastName: lastName,
@@ -139,6 +192,7 @@ class _CreateContactPageState extends State<CreateContactPage> {
         'source': 'Saved',
         'isFavorite': _isFavorite,
         'isPinned': false,
+        'photoPath': photoToSave != null ? contactId : null,
         'createdAt': DateTime.now().toIso8601String(),
         'updatedAt': DateTime.now().toIso8601String(),
       };
@@ -147,6 +201,11 @@ class _CreateContactPageState extends State<CreateContactPage> {
         VaultContact.fromLegacyPayload(payload),
         activity: 'contact_create',
       );
+
+      if (photoToSave != null) {
+        await ContactPhotoService().saveLocally(contactId, photoToSave);
+      }
+
       if (!mounted) {
         return;
       }
@@ -262,31 +321,39 @@ class _CreateContactPageState extends State<CreateContactPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    CircleAvatar(
-                      radius: 50.0,
-                      backgroundColor: colorScheme.primaryContainer,
-                      child: Icon(
-                        Icons.person,
-                        size: 60.0,
-                        color: colorScheme.onPrimaryContainer,
+                GestureDetector(
+                  onTap: _pickContactPhoto,
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      CircleAvatar(
+                        radius: 50.0,
+                        backgroundColor: colorScheme.primaryContainer,
+                        backgroundImage: _pickedPhotoFile != null
+                            ? FileImage(_pickedPhotoFile!)
+                            : null,
+                        child: _pickedPhotoFile == null
+                            ? Icon(
+                                Icons.person,
+                                size: 60.0,
+                                color: colorScheme.onPrimaryContainer,
+                              )
+                            : null,
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(4.0),
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer,
-                        shape: BoxShape.circle,
+                      Container(
+                        padding: const EdgeInsets.all(4.0),
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.add,
+                          size: 16.0,
+                          color: colorScheme.onSecondaryContainer,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.add,
-                        size: 16.0,
-                        color: colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 24.0),
                 Stack(

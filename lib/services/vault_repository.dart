@@ -6,6 +6,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:zerotrust_contacts/integrations/supabase_service.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/security_service.dart';
+import 'package:zerotrust_contacts/services/contact_photo_service.dart';
 
 enum ContactSortMode {
   alphabetical,
@@ -199,6 +200,7 @@ class VaultRepository {
       LocalEncryptedDatabaseService();
   final LocalSecurityRepository _securityRepository = LocalSecurityRepository();
   final SupabaseService _supabaseService = SupabaseService();
+  final ContactPhotoService _photoService = ContactPhotoService();
 
   Future<List<VaultContact>> loadSavedContacts() async {
     if (!_database.isOpen) {
@@ -279,11 +281,22 @@ class VaultRepository {
   Future<bool> deleteSavedContact(String contactId) async {
     final List<VaultContact> contacts = await loadSavedContacts();
     final int initialLength = contacts.length;
+    final VaultContact? target = contacts
+        .where((VaultContact c) => c.id == contactId)
+        .firstOrNull;
     contacts.removeWhere((VaultContact contact) => contact.id == contactId);
     if (contacts.length == initialLength) {
       return false;
     }
     await _replaceSavedContacts(contacts, shouldCreateSnapshot: true);
+    // Clean up local photo file if one exists.
+    if (target?.photoPath != null) {
+      await _photoService.deleteLocally(contactId);
+      final String? userId = _supabaseService.currentUser?.id;
+      if (userId != null) {
+        await _photoService.deleteFromCloud(userId, contactId);
+      }
+    }
     await logActivity('contact_delete', details: 'Deleted contact $contactId');
     return true;
   }
@@ -933,6 +946,7 @@ class VaultRepository {
       }
     }
 
+    await _syncPhotos(merged);
     await _writePendingConflicts(conflicts);
     await _writeLastSyncAt(now);
     await maybeCreateCadenceSnapshots();
@@ -978,6 +992,7 @@ class VaultRepository {
         details: 'Migrated legacy plaintext cloud blob during pull',
       );
     }
+    await _syncPhotos(cloudContacts);
     await _writeLastSyncAt(DateTime.now().toUtc());
     await logActivity('cloud_pull',
         details: 'Pulled ${cloudContacts.length} contacts from cloud');
@@ -992,10 +1007,29 @@ class VaultRepository {
     final String blob = await _buildCloudBlob(contacts);
     await _supabaseService.upsertEncryptedVaultBlobForCurrentUser(blob);
     await _securityRepository.saveCachedCloudBlob(blob);
+    await _syncPhotos(contacts);
     await _writeLastSyncAt(DateTime.now().toUtc());
     await logActivity('cloud_push',
         details: 'Pushed ${contacts.length} contacts to cloud');
     return contacts.length;
+  }
+
+  /// Syncs photos between local storage and Supabase Storage.
+  /// - Contacts with a local photo are uploaded to the cloud.
+  /// - Contacts whose photo exists only in the cloud are downloaded locally.
+  Future<void> _syncPhotos(List<VaultContact> contacts) async {
+    final String? userId = _supabaseService.currentUser?.id;
+    if (userId == null) return;
+
+    for (final VaultContact contact in contacts) {
+      if (contact.photoPath == null) continue;
+      final bool hasLocal = await _photoService.getLocalFile(contact.id) != null;
+      if (hasLocal) {
+        await _photoService.uploadToCloud(userId, contact.id);
+      } else {
+        await _photoService.downloadFromCloud(userId, contact.id);
+      }
+    }
   }
 
   Future<List<ContactMergeConflict>> readPendingConflicts() async {

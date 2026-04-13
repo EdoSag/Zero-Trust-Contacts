@@ -1,6 +1,13 @@
 import 'dart:convert';
 import 'dart:math';
 
+// Sentinel used in copyWith to distinguish "not provided" from explicit null.
+class _Absent {
+  const _Absent();
+}
+
+const _absent = _Absent();
+
 class VaultContact {
   VaultContact({
     required this.id,
@@ -23,6 +30,7 @@ class VaultContact {
     required this.updatedAt,
     required this.fieldUpdatedAt,
     this.lastContactedAt,
+    this.photoPath,
   });
 
   final String id;
@@ -46,6 +54,10 @@ class VaultContact {
   final DateTime? lastContactedAt;
   final Map<String, DateTime> fieldUpdatedAt;
 
+  /// Non-null when this contact has a saved photo.
+  /// The value is the contact's ID, used as the storage key for the photo file.
+  final String? photoPath;
+
   static const List<String> mergeableFields = <String>[
     'displayName',
     'firstName',
@@ -63,6 +75,7 @@ class VaultContact {
     'isPinned',
     'interactionCount',
     'lastContactedAt',
+    'photoPath',
   ];
 
   static VaultContact fromJson(Map<String, dynamic> json) {
@@ -120,6 +133,7 @@ class VaultContact {
       updatedAt: updatedAt.toUtc(),
       lastContactedAt: lastContactedAt?.toUtc(),
       fieldUpdatedAt: fieldUpdatedAt,
+      photoPath: json['photoPath'] as String?,
     )._withDefaultFieldTimestamps();
   }
 
@@ -156,6 +170,7 @@ class VaultContact {
       updatedAt: _parseDate(payload['updatedAt'])?.toUtc() ?? now,
       lastContactedAt: _parseDate(payload['lastContactedAt'])?.toUtc(),
       fieldUpdatedAt: <String, DateTime>{},
+      photoPath: payload['photoPath'] as String?,
     )._withDefaultFieldTimestamps();
   }
 
@@ -180,6 +195,7 @@ class VaultContact {
       'createdAt': createdAt.toUtc().toIso8601String(),
       'updatedAt': updatedAt.toUtc().toIso8601String(),
       'lastContactedAt': lastContactedAt?.toUtc().toIso8601String(),
+      'photoPath': photoPath,
       'fieldUpdatedAt': fieldUpdatedAt.map(
         (String key, DateTime value) => MapEntry<String, String>(
           key,
@@ -214,6 +230,8 @@ class VaultContact {
     DateTime? updatedAt,
     DateTime? lastContactedAt,
     Map<String, DateTime>? fieldUpdatedAt,
+    // Use Object? + sentinel so callers can pass explicit null to clear photoPath.
+    Object? photoPath = _absent,
   }) {
     return VaultContact(
       id: id ?? this.id,
@@ -236,6 +254,7 @@ class VaultContact {
       updatedAt: updatedAt ?? this.updatedAt,
       lastContactedAt: lastContactedAt ?? this.lastContactedAt,
       fieldUpdatedAt: fieldUpdatedAt ?? this.fieldUpdatedAt,
+      photoPath: identical(photoPath, _absent) ? this.photoPath : photoPath as String?,
     );
   }
 
@@ -254,6 +273,9 @@ class VaultContact {
     bool? isFavorite,
     bool? isPinned,
     String? source,
+    /// Provide the contact id to set/keep a photo, or use [clearPhoto] to remove it.
+    String? photoPath,
+    bool clearPhoto = false,
   }) {
     final DateTime now = DateTime.now().toUtc();
     final Map<String, DateTime> updates =
@@ -277,6 +299,7 @@ class VaultContact {
     final bool nextFavorite = isFavorite ?? this.isFavorite;
     final bool nextPinned = isPinned ?? this.isPinned;
     final String nextSource = source ?? this.source;
+    final String? nextPhotoPath = clearPhoto ? null : (photoPath ?? this.photoPath);
 
     if (nextDisplayName != this.displayName) touch('displayName');
     if (nextFirstName != this.firstName) touch('firstName');
@@ -292,6 +315,7 @@ class VaultContact {
     if (nextFavorite != this.isFavorite) touch('isFavorite');
     if (nextPinned != this.isPinned) touch('isPinned');
     if (nextSource != this.source) touch('source');
+    if (nextPhotoPath != this.photoPath) touch('photoPath');
 
     final String computedDisplayName = _buildDisplayName(
       explicitDisplayName: nextDisplayName,
@@ -318,6 +342,7 @@ class VaultContact {
       isPinned: nextPinned,
       updatedAt: now,
       fieldUpdatedAt: updates,
+      photoPath: nextPhotoPath,
     )._withDefaultFieldTimestamps();
   }
 
@@ -486,6 +511,11 @@ class VaultContact {
         remoteValue: other.lastContactedAt,
       ),
       fieldUpdatedAt: mergedFieldTimes,
+      photoPath: choose<String?>(
+        field: 'photoPath',
+        localValue: photoPath,
+        remoteValue: other.photoPath,
+      ),
     )._withDefaultFieldTimestamps();
   }
 

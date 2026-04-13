@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zerotrust_contacts/utils/base64_url_codec.dart';
@@ -157,5 +159,47 @@ class SupabaseService {
     }
 
     await client.from('encrypted_contacts').delete().eq('user_id', user.id);
+  }
+
+  // ── Contact photo storage ──────────────────────────────────────────────────
+  // Replace the placeholder bucket name below with your actual Supabase
+  // Storage bucket name once the bucket has been created.
+  static const String _contactPhotosBucket = 'contactsProfilePictures';
+
+  Future<void> uploadContactPhoto({
+    required String userId,
+    required String contactId,
+    required Uint8List bytes,
+  }) async {
+    final String path = '$userId/$contactId.jpg';
+    await client.storage.from(_contactPhotosBucket).uploadBinary(
+      path,
+      bytes,
+      fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
+    );
+  }
+
+  Future<Uint8List?> downloadContactPhoto({
+    required String userId,
+    required String contactId,
+  }) async {
+    try {
+      final String path = '$userId/$contactId.jpg';
+      return await client.storage.from(_contactPhotosBucket).download(path);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> deleteContactPhoto({
+    required String userId,
+    required String contactId,
+  }) async {
+    try {
+      final String path = '$userId/$contactId.jpg';
+      await client.storage.from(_contactPhotosBucket).remove(<String>[path]);
+    } catch (_) {
+      // Silently skip if the photo doesn't exist in the bucket.
+    }
   }
 }
