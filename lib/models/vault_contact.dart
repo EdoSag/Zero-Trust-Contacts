@@ -25,6 +25,8 @@ class VaultContact {
     required this.source,
     required this.isFavorite,
     required this.isPinned,
+    required this.isBlocked,
+    this.blockReason,
     required this.interactionCount,
     required this.createdAt,
     required this.updatedAt,
@@ -48,6 +50,8 @@ class VaultContact {
   final String source;
   final bool isFavorite;
   final bool isPinned;
+  final bool isBlocked;
+  final String? blockReason;
   final int interactionCount;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -73,6 +77,8 @@ class VaultContact {
     'source',
     'isFavorite',
     'isPinned',
+    'isBlocked',
+    'blockReason',
     'interactionCount',
     'lastContactedAt',
     'photoPath',
@@ -128,6 +134,8 @@ class VaultContact {
           : _readString(json['source']),
       isFavorite: json['isFavorite'] == true,
       isPinned: json['isPinned'] == true,
+      isBlocked: json['isBlocked'] == true,
+      blockReason: json['blockReason'] as String?,
       interactionCount: _readInt(json['interactionCount']),
       createdAt: createdAt.toUtc(),
       updatedAt: updatedAt.toUtc(),
@@ -165,6 +173,8 @@ class VaultContact {
           : _readString(payload['source']),
       isFavorite: payload['isFavorite'] == true,
       isPinned: payload['isPinned'] == true,
+      isBlocked: false,
+      blockReason: null,
       interactionCount: _readInt(payload['interactionCount']),
       createdAt: _parseDate(payload['createdAt'])?.toUtc() ?? now,
       updatedAt: _parseDate(payload['updatedAt'])?.toUtc() ?? now,
@@ -191,6 +201,8 @@ class VaultContact {
       'source': source,
       'isFavorite': isFavorite,
       'isPinned': isPinned,
+      'isBlocked': isBlocked,
+      'blockReason': blockReason,
       'interactionCount': interactionCount,
       'createdAt': createdAt.toUtc().toIso8601String(),
       'updatedAt': updatedAt.toUtc().toIso8601String(),
@@ -225,6 +237,8 @@ class VaultContact {
     String? source,
     bool? isFavorite,
     bool? isPinned,
+    bool? isBlocked,
+    Object? blockReason = _absent,
     int? interactionCount,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -249,6 +263,8 @@ class VaultContact {
       source: source ?? this.source,
       isFavorite: isFavorite ?? this.isFavorite,
       isPinned: isPinned ?? this.isPinned,
+      isBlocked: isBlocked ?? this.isBlocked,
+      blockReason: identical(blockReason, _absent) ? this.blockReason : blockReason as String?,
       interactionCount: interactionCount ?? this.interactionCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -272,6 +288,9 @@ class VaultContact {
     List<String>? other,
     bool? isFavorite,
     bool? isPinned,
+    bool? isBlocked,
+    String? blockReason,
+    bool clearBlockReason = false,
     String? source,
     /// Provide the contact id to set/keep a photo, or use [clearPhoto] to remove it.
     String? photoPath,
@@ -298,6 +317,8 @@ class VaultContact {
     final List<String> nextOther = other ?? this.other;
     final bool nextFavorite = isFavorite ?? this.isFavorite;
     final bool nextPinned = isPinned ?? this.isPinned;
+    final bool nextBlocked = isBlocked ?? this.isBlocked;
+    final String? nextBlockReason = clearBlockReason ? null : (blockReason ?? this.blockReason);
     final String nextSource = source ?? this.source;
     final String? nextPhotoPath = clearPhoto ? null : (photoPath ?? this.photoPath);
 
@@ -314,6 +335,8 @@ class VaultContact {
     if (!_equalLists(nextOther, this.other)) touch('other');
     if (nextFavorite != this.isFavorite) touch('isFavorite');
     if (nextPinned != this.isPinned) touch('isPinned');
+    if (nextBlocked != this.isBlocked) touch('isBlocked');
+    if (nextBlockReason != this.blockReason) touch('blockReason');
     if (nextSource != this.source) touch('source');
     if (nextPhotoPath != this.photoPath) touch('photoPath');
 
@@ -340,6 +363,8 @@ class VaultContact {
       source: nextSource,
       isFavorite: nextFavorite,
       isPinned: nextPinned,
+      isBlocked: nextBlocked,
+      blockReason: nextBlockReason,
       updatedAt: now,
       fieldUpdatedAt: updates,
       photoPath: nextPhotoPath,
@@ -497,6 +522,16 @@ class VaultContact {
         field: 'isPinned',
         localValue: isPinned,
         remoteValue: other.isPinned,
+      ),
+      isBlocked: choose<bool>(
+        field: 'isBlocked',
+        localValue: isBlocked,
+        remoteValue: other.isBlocked,
+      ),
+      blockReason: choose<String?>(
+        field: 'blockReason',
+        localValue: blockReason,
+        remoteValue: other.blockReason,
       ),
       interactionCount: choose<int>(
         field: 'interactionCount',

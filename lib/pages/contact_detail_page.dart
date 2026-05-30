@@ -266,6 +266,121 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
     await _refreshSavedState();
   }
 
+  Future<void> _blockContact() async {
+    if (!_isSavedContact || _busy) {
+      return;
+    }
+    final TextEditingController reasonController = TextEditingController();
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.block, color: colorScheme.error),
+              const SizedBox(width: 8),
+              const Text('Block contact'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('This contact will be marked as blocked.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: reasonController,
+                maxLines: 2,
+                maxLength: 200,
+                decoration: InputDecoration(
+                  labelText: 'Reason (optional)',
+                  hintText: 'e.g. Spam, unwanted contact…',
+                  labelStyle: TextStyle(color: colorScheme.error),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(
+                        color: colorScheme.error.withValues(alpha: 0.5)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: colorScheme.error),
+                  ),
+                  counterStyle:
+                      TextStyle(color: colorScheme.error.withValues(alpha: 0.7)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style:
+                  FilledButton.styleFrom(backgroundColor: colorScheme.error),
+              child: const Text('Block'),
+            ),
+          ],
+        );
+      },
+    );
+    final String? reason =
+        (confirmed == true && reasonController.text.trim().isNotEmpty)
+            ? reasonController.text.trim()
+            : null;
+    reasonController.dispose();
+    if (confirmed != true) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+    });
+    await _vaultRepository.blockContact(_contact.id, reason: reason);
+    await _refreshSavedState();
+    if (mounted) {
+      setState(() {
+        _busy = false;
+      });
+    }
+  }
+
+  Future<void> _unblockContact() async {
+    if (!_isSavedContact || _busy) {
+      return;
+    }
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Unblock contact'),
+        content: const Text('This contact will be unblocked.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Unblock'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+    });
+    await _vaultRepository.unblockContact(_contact.id);
+    await _refreshSavedState();
+    if (mounted) {
+      setState(() {
+        _busy = false;
+      });
+    }
+  }
+
   Future<void> _callContact() async {
     if (_contact.phones.isEmpty) {
       return;
@@ -523,6 +638,59 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
               ),
             ),
           ),
+          if (_isSavedContact && _contact.isBlocked)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.block,
+                      color:
+                          Theme.of(context).colorScheme.onErrorContainer,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Blocked',
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (_contact.blockReason != null &&
+                              _contact.blockReason!.isNotEmpty)
+                            Text(
+                              _contact.blockReason!,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onErrorContainer,
+                                fontSize: 12,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.all(12),
             child: Wrap(
@@ -558,6 +726,40 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
                   ),
                   label: const Text('Pin'),
                 ),
+                if (_isSavedContact)
+                  OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : (_contact.isBlocked
+                            ? _unblockContact
+                            : _blockContact),
+                    icon: Icon(
+                      _contact.isBlocked
+                          ? Icons.lock_open_outlined
+                          : Icons.block_outlined,
+                      color: (_busy || _contact.isBlocked)
+                          ? null
+                          : Theme.of(context).colorScheme.error,
+                    ),
+                    label: Text(
+                      _contact.isBlocked ? 'Unblock' : 'Block',
+                      style: TextStyle(
+                        color: (_busy || _contact.isBlocked)
+                            ? null
+                            : Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    style: _contact.isBlocked
+                        ? null
+                        : OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .error
+                                  .withValues(alpha: 0.6),
+                            ),
+                          ),
+                  ),
               ],
             ),
           ),

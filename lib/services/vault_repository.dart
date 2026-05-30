@@ -323,6 +323,30 @@ class VaultRepository {
     );
   }
 
+  Future<void> blockContact(String contactId, {String? reason}) async {
+    final VaultContact? target = await findSavedContactById(contactId);
+    if (target == null) {
+      return;
+    }
+    final String? trimmedReason =
+        (reason?.trim().isEmpty ?? true) ? null : reason!.trim();
+    await upsertSavedContact(
+      target.applyEdits(isBlocked: true, blockReason: trimmedReason),
+      activity: 'contact_block',
+    );
+  }
+
+  Future<void> unblockContact(String contactId) async {
+    final VaultContact? target = await findSavedContactById(contactId);
+    if (target == null) {
+      return;
+    }
+    await upsertSavedContact(
+      target.applyEdits(isBlocked: false, clearBlockReason: true),
+      activity: 'contact_unblock',
+    );
+  }
+
   Future<void> markContactInteraction(String contactId) async {
     final VaultContact? target = await findSavedContactById(contactId);
     if (target == null) {
