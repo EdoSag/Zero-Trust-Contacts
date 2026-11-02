@@ -364,6 +364,39 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<void> _openGoogleImport() async {
+    final bool? imported = await context.push<bool>('/import-google');
+    if (imported == true && mounted) {
+      await _loadContacts();
+    }
+  }
+
+  Widget _buildGoogleImportBanner() {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      child: Card(
+        color: colorScheme.primaryContainer,
+        child: ListTile(
+          leading: Icon(Icons.download_outlined,
+              color: colorScheme.onPrimaryContainer),
+          title: Text(
+            'Bring your Google contacts',
+            style: TextStyle(color: colorScheme.onPrimaryContainer),
+          ),
+          subtitle: Text(
+            'Import them into your encrypted vault in a few taps.',
+            style: TextStyle(color: colorScheme.onPrimaryContainer),
+          ),
+          trailing: FilledButton(
+            onPressed: _openGoogleImport,
+            child: const Text('Import'),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildContactsTab() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
@@ -377,6 +410,7 @@ class _HomePageState extends State<HomePage> {
       child: ListView(
         children: [
           _buildSearchHeader(),
+          if (_savedContacts.isEmpty) _buildGoogleImportBanner(),
           if (_permissionDenied)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),

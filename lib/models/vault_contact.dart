@@ -578,7 +578,7 @@ class VaultContact {
     final DateTime now = DateTime.now();
     DateTime? closest;
     for (final String raw in birthdays) {
-      final DateTime? parsed = _parseDate(raw);
+      final DateTime? parsed = _parseDate(raw) ?? _parseYearlessDate(raw);
       if (parsed == null) {
         continue;
       }
@@ -698,6 +698,22 @@ class VaultContact {
       return value.toUtc();
     }
     return DateTime.tryParse(value.toString())?.toUtc();
+  }
+
+  /// Parses `--MM-DD`, the format Google and vCard use for birthdays
+  /// without a year.
+  static DateTime? _parseYearlessDate(String value) {
+    final RegExpMatch? match =
+        RegExp(r'^--(\d{2})-?(\d{2})$').firstMatch(value.trim());
+    if (match == null) {
+      return null;
+    }
+    final int month = int.parse(match.group(1)!);
+    final int day = int.parse(match.group(2)!);
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+      return null;
+    }
+    return DateTime(2000, month, day);
   }
 
   static bool _equalLists(List<String> a, List<String> b) {

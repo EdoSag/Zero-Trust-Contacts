@@ -67,7 +67,17 @@ class ContactSourceStats {
   }
 }
 
+/// A Google (or other) account whose contacts are synced to this phone.
+class ImportAccount {
+  ImportAccount({required this.name, required this.contactCount});
+
+  final String name;
+  final int contactCount;
+}
+
 class DeviceContactsService {
+  static const String googleAccountType = 'com.google';
+
   static const MethodChannel _channel = MethodChannel(
     'zerotrust_contacts/device_contacts',
   );
@@ -138,6 +148,49 @@ class DeviceContactsService {
       return ContactSourceStats.empty();
     }
     return ContactSourceStats.fromMap(response);
+  }
+
+  /// Google accounts that have contacts on this phone (Android only).
+  Future<List<ImportAccount>> loadImportAccounts({
+    String accountType = googleAccountType,
+  }) async {
+    if (!Platform.isAndroid) {
+      return <ImportAccount>[];
+    }
+    final List<dynamic>? response = await _channel.invokeMethod<List<dynamic>>(
+      'getImportAccounts',
+      <String, dynamic>{'accountType': accountType},
+    );
+    return (response ?? <dynamic>[])
+        .whereType<Map<dynamic, dynamic>>()
+        .map((Map<dynamic, dynamic> item) => ImportAccount(
+              name: (item['name'] ?? '').toString(),
+              contactCount: ContactSourceStats._toCount(item['count']),
+            ))
+        .where((ImportAccount account) => account.name.isNotEmpty)
+        .toList();
+  }
+
+  /// Every contact in one account with all its details, as raw field maps.
+  /// Read on the phone from Android's contacts database, never from Google.
+  Future<List<Map<String, dynamic>>> loadAccountContacts(
+    String accountName, {
+    String accountType = googleAccountType,
+  }) async {
+    if (!Platform.isAndroid) {
+      return <Map<String, dynamic>>[];
+    }
+    final List<dynamic>? response = await _channel.invokeMethod<List<dynamic>>(
+      'getAccountContacts',
+      <String, dynamic>{
+        'accountType': accountType,
+        'accountName': accountName,
+      },
+    );
+    return (response ?? <dynamic>[])
+        .whereType<Map<dynamic, dynamic>>()
+        .map((Map<dynamic, dynamic> item) => Map<String, dynamic>.from(item))
+        .toList();
   }
 
   Future<void> launchDialer(String phoneNumber) async {

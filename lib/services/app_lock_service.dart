@@ -24,6 +24,7 @@ class AppLockService extends ChangeNotifier with WidgetsBindingObserver {
   bool _isLocked = false;
   DateTime _lastInteraction = DateTime.now().toUtc();
   DateTime? _pausedAt;
+  int _systemUiDepth = 0;
 
   Duration idleTimeout = const Duration(minutes: 3);
 
@@ -62,6 +63,26 @@ class AppLockService extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     notifyListeners();
+  }
+
+  /// Runs [action] while the app hands off to system UI it opened itself (a
+  /// permission prompt or the file picker), so leaving the app for that
+  /// screen does not lock the vault and drop the user out of what they were
+  /// doing. The idle timeout still applies.
+  Future<T> whileShowingSystemUi<T>(Future<T> Function() action) async {
+    _systemUiDepth += 1;
+    try {
+      return await action();
+    } finally {
+      _systemUiDepth -= 1;
+      // Time spent in the system screen still counts as idle: lock if the
+      // timeout passed meanwhile, and only otherwise count the return as
+      // activity.
+      _checkIdleTimeout();
+      if (!_isLocked) {
+        _lastInteraction = DateTime.now().toUtc();
+      }
+    }
   }
 
   void lock({String reason = 'manual'}) {
@@ -137,8 +158,12 @@ class AppLockService extends ChangeNotifier with WidgetsBindingObserver {
     }
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      _pausedAt = DateTime.now().toUtc();
-      lock(reason: 'app_paused');
+      _pausedAt ??= DateTime.now().toUtc();
+      // Leaving for a system screen the app opened itself does not lock at
+      // once; the resume check below still applies the idle timeout.
+      if (_systemUiDepth == 0) {
+        lock(reason: 'app_paused');
+      }
     }
     if (state == AppLifecycleState.resumed) {
       final DateTime now = DateTime.now().toUtc();

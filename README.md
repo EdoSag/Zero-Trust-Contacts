@@ -48,6 +48,16 @@ It is built for security-first personal CRM workflows:
   - restore from snapshot
 
 ### Import, export, and sharing
+- Import from Google in a few taps (Account & Vault, or the banner on an empty vault):
+  - Android: pick a Google account already on the phone; every contact is read
+    on-device from Android's contacts database with all fields (names, phones,
+    emails, addresses, company/title, notes, birthdays, labels, websites, starred).
+  - Any platform: open the `.vcf` file from contacts.google.com → Export →
+    "vCard (for iOS Contacts)".
+  - No Google sign-in or Google API, nothing leaves the device unencrypted.
+  - Shows new/updated/already-here counts before writing; matches on phone,
+    email (or name when neither has any) and merges new details instead of
+    duplicating, so re-importing is safe. A restore point is taken first.
 - Encrypted JSON export/import (passphrase-protected).
 - vCard export/import.
 - Secure one-contact share package generation (encrypted payload + passphrase + expiry).
