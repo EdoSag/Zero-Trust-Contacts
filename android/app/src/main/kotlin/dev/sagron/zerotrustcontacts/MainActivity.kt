@@ -16,6 +16,7 @@ import java.util.Locale
 
 class MainActivity : FlutterFragmentActivity() {
     private val channelName = "zerotrust_contacts/device_contacts"
+    private val googleAccountType = "com.google"
     private val requestCodeReadContacts = 2001
     private var pendingPermissionResult: MethodChannel.Result? = null
     private var channel: MethodChannel? = null
@@ -101,6 +102,50 @@ class MainActivity : FlutterFragmentActivity() {
                                 null,
                             )
                         }
+                    }
+
+                    "getImportAccounts" -> {
+                        val accountType = call.argument<String>("accountType") ?: googleAccountType
+                        try {
+                            result.success(getImportAccounts(accountType))
+                        } catch (error: SecurityException) {
+                            result.error(
+                                "permission_denied",
+                                "Contacts permission is required to list accounts.",
+                                null,
+                            )
+                        } catch (error: Exception) {
+                            result.error("accounts_read_failed", error.localizedMessage, null)
+                        }
+                    }
+
+                    "getAccountContacts" -> {
+                        val accountType = call.argument<String>("accountType") ?: googleAccountType
+                        val accountName = call.argument<String>("accountName")
+                        if (accountName.isNullOrBlank()) {
+                            result.error("invalid_argument", "Missing account name.", null)
+                            return@setMethodCallHandler
+                        }
+                        // Reading every row can take a moment on big address books,
+                        // so keep it off the UI thread.
+                        Thread {
+                            try {
+                                val contacts = getAccountContacts(accountType, accountName)
+                                runOnUiThread { result.success(contacts) }
+                            } catch (error: SecurityException) {
+                                runOnUiThread {
+                                    result.error(
+                                        "permission_denied",
+                                        "Contacts permission is required to read contacts.",
+                                        null,
+                                    )
+                                }
+                            } catch (error: Exception) {
+                                runOnUiThread {
+                                    result.error("contacts_read_failed", error.localizedMessage, null)
+                                }
+                            }
+                        }.start()
                     }
 
                     else -> result.notImplemented()
@@ -324,6 +369,179 @@ class MainActivity : FlutterFragmentActivity() {
             "Account" -> 2
             else -> 1
         }
+    }
+
+    /** Accounts of [accountType] that have contacts on this phone, with counts. */
+    private fun getImportAccounts(accountType: String): List<Map<String, Any>> {
+        ensureContactsPermission()
+        val counts = linkedMapOf<String, Int>()
+        contentResolver.query(
+            ContactsContract.RawContacts.CONTENT_URI,
+            arrayOf(ContactsContract.RawContacts.ACCOUNT_NAME),
+            "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ? AND ${ContactsContract.RawContacts.DELETED} = 0",
+            arrayOf(accountType),
+            "${ContactsContract.RawContacts.ACCOUNT_NAME} COLLATE NOCASE ASC",
+        )?.use { cursor ->
+            val nameIndex = cursor.getColumnIndexOrThrow(ContactsContract.RawContacts.ACCOUNT_NAME)
+            while (cursor.moveToNext()) {
+                val name = cursor.getString(nameIndex)?.trim().orEmpty()
+                if (name.isNotEmpty()) {
+                    counts[name] = (counts[name] ?: 0) + 1
+                }
+            }
+        }
+        return counts.map { (name, count) -> mapOf("name" to name, "count" to count) }
+    }
+
+    /**
+     * Every contact stored in one account, with all the fields the vault keeps.
+     * Read straight from the phone's contacts database: no network, no Google API.
+     */
+    private fun getAccountContacts(
+        accountType: String,
+        accountName: String,
+    ): List<Map<String, Any>> {
+        ensureContactsPermission()
+
+        val contacts = linkedMapOf<Long, MutableMap<String, Any>>()
+        contentResolver.query(
+            ContactsContract.RawContacts.CONTENT_URI,
+            arrayOf(ContactsContract.RawContacts._ID, ContactsContract.RawContacts.STARRED),
+            "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ? AND " +
+                "${ContactsContract.RawContacts.ACCOUNT_NAME} = ? AND " +
+                "${ContactsContract.RawContacts.DELETED} = 0",
+            arrayOf(accountType, accountName),
+            null,
+        )?.use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow(ContactsContract.RawContacts._ID)
+            val starredIndex = cursor.getColumnIndexOrThrow(ContactsContract.RawContacts.STARRED)
+            while (cursor.moveToNext()) {
+                contacts[cursor.getLong(idIndex)] = mutableMapOf(
+                    "isFavorite" to (cursor.getInt(starredIndex) == 1),
+                    "phones" to mutableListOf<String>(),
+                    "emails" to mutableListOf<String>(),
+                    "addresses" to mutableListOf<String>(),
+                    "labels" to mutableListOf<String>(),
+                    "birthdays" to mutableListOf<String>(),
+                    "other" to mutableListOf<String>(),
+                )
+            }
+        }
+        if (contacts.isEmpty()) {
+            return emptyList()
+        }
+
+        val groupTitles = readUserGroupTitles(accountType, accountName)
+        val projection = arrayOf(
+            ContactsContract.Data.RAW_CONTACT_ID,
+            ContactsContract.Data.MIMETYPE,
+            ContactsContract.Data.DATA1,
+            ContactsContract.Data.DATA2,
+            ContactsContract.Data.DATA3,
+            ContactsContract.Data.DATA4,
+            ContactsContract.Data.DATA5,
+        )
+
+        contacts.keys.chunked(400).forEach { chunk ->
+            val placeholders = chunk.joinToString(",") { "?" }
+            contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                projection,
+                "${ContactsContract.Data.RAW_CONTACT_ID} IN ($placeholders)",
+                chunk.map { it.toString() }.toTypedArray(),
+                null,
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val contact = contacts[cursor.getLong(0)] ?: continue
+                    val mimeType = cursor.getString(1) ?: continue
+                    val data1 = cursor.getString(2)?.trim().orEmpty()
+                    applyDataRow(contact, mimeType, data1, cursor, groupTitles)
+                }
+            }
+        }
+
+        return contacts.values.filter { contact ->
+            listOf("displayName", "firstName", "lastName", "company").any {
+                (contact[it] as? String).orEmpty().isNotBlank()
+            } || (contact["phones"] as List<*>).isNotEmpty() ||
+                (contact["emails"] as List<*>).isNotEmpty()
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun applyDataRow(
+        contact: MutableMap<String, Any>,
+        mimeType: String,
+        data1: String,
+        cursor: Cursor,
+        groupTitles: Map<Long, String>,
+    ) {
+        fun list(key: String) = contact[key] as MutableList<String>
+        fun column(index: Int) = cursor.getString(index)?.trim().orEmpty()
+
+        when (mimeType) {
+            ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> {
+                contact["displayName"] = data1
+                contact["firstName"] = listOf(column(3), column(6))
+                    .filter { it.isNotEmpty() }
+                    .joinToString(" ")
+                contact["lastName"] = column(4)
+            }
+            ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE ->
+                if (data1.isNotEmpty()) list("phones").add(data1)
+            ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE ->
+                if (data1.isNotEmpty()) list("emails").add(data1)
+            ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE ->
+                if (data1.isNotEmpty()) list("addresses").add(data1.replace("\n", ", "))
+            ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
+                val title = column(5)
+                contact["company"] = listOf(title, data1).filter { it.isNotEmpty() }.joinToString(", ")
+            }
+            ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE ->
+                if (data1.isNotEmpty()) contact["notes"] = data1
+            ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE -> {
+                if (data1.isEmpty()) return
+                val type = cursor.getInt(3)
+                if (type == ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY) {
+                    list("birthdays").add(data1)
+                } else if (type == ContactsContract.CommonDataKinds.Event.TYPE_ANNIVERSARY) {
+                    list("other").add("Anniversary: $data1")
+                }
+            }
+            ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE -> {
+                val title = data1.toLongOrNull()?.let { groupTitles[it] }
+                if (!title.isNullOrBlank()) list("labels").add(title)
+            }
+            ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE ->
+                if (data1.isNotEmpty()) list("other").add(data1)
+            ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE ->
+                if (data1.isNotEmpty()) list("other").add("Nickname: $data1")
+        }
+    }
+
+    /** User-made labels only; system groups such as "My Contacts" are skipped. */
+    private fun readUserGroupTitles(accountType: String, accountName: String): Map<Long, String> {
+        val titles = mutableMapOf<Long, String>()
+        contentResolver.query(
+            ContactsContract.Groups.CONTENT_URI,
+            arrayOf(
+                ContactsContract.Groups._ID,
+                ContactsContract.Groups.TITLE,
+                ContactsContract.Groups.SYSTEM_ID,
+            ),
+            "${ContactsContract.Groups.ACCOUNT_TYPE} = ? AND " +
+                "${ContactsContract.Groups.ACCOUNT_NAME} = ? AND " +
+                "${ContactsContract.Groups.DELETED} = 0",
+            arrayOf(accountType, accountName),
+            null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                if (!cursor.isNull(2)) continue
+                val title = cursor.getString(1)?.trim().orEmpty()
+                if (title.isNotEmpty()) titles[cursor.getLong(0)] = title
+            }
+        }
+        return titles
     }
 
     private fun ensureContactsPermission() {

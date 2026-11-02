@@ -1,0 +1,535 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:zerotrust_contacts/import/android_account_contacts.dart';
+import 'package:zerotrust_contacts/import/contact_import_planner.dart';
+import 'package:zerotrust_contacts/import/vcard_parser.dart';
+import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
+import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zerotrust_contacts/services/app_lock_service.dart';
+import 'package:zerotrust_contacts/services/vault_repository.dart';
+
+/// "Import from Google" in a few taps.
+///
+/// Two ways in, neither of which signs in to Google or sends contacts
+/// anywhere: read the Google account already synced to this phone (Android),
+/// or open the .vcf file Google Contacts exports. Contacts are parsed on the
+/// device and written straight into the encrypted vault.
+class GoogleImportPage extends StatefulWidget {
+  const GoogleImportPage({super.key});
+
+  @override
+  State<GoogleImportPage> createState() => _GoogleImportPageState();
+}
+
+class _GoogleImportPageState extends State<GoogleImportPage> {
+  final DeviceContactsService _deviceService = DeviceContactsService();
+  final VaultRepository _vaultRepository = VaultRepository();
+
+  bool _loadingAccounts = true;
+  bool _permissionDenied = false;
+  List<ImportAccount> _accounts = <ImportAccount>[];
+
+  bool _busy = false;
+  String? _busyText;
+
+  /// Set once a source is read: what the import will do, before it does it.
+  _PendingImport? _pending;
+
+  bool get _isAndroid => Platform.isAndroid;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAccounts();
+  }
+
+  Future<void> _loadAccounts() async {
+    if (!_isAndroid) {
+      setState(() => _loadingAccounts = false);
+      return;
+    }
+    try {
+      final bool granted = await AppLockService()
+          .whileShowingSystemUi(_deviceService.requestPermission);
+      if (!granted) {
+        if (mounted) {
+          setState(() {
+            _permissionDenied = true;
+            _loadingAccounts = false;
+          });
+        }
+        return;
+      }
+      final List<ImportAccount> accounts =
+          await _deviceService.loadImportAccounts();
+      if (mounted) {
+        setState(() {
+          _accounts = accounts;
+          _permissionDenied = false;
+          _loadingAccounts = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadingAccounts = false);
+      }
+    }
+  }
+
+  Future<void> _previewAccount(ImportAccount account) async {
+    await _withBusy('Reading ${account.name}…', () async {
+      final List<Map<String, dynamic>> rows =
+          await _deviceService.loadAccountContacts(account.name);
+      await _preparePreview(
+        sourceLabel: account.name,
+        incoming: vaultContactsFromAccountFields(rows),
+      );
+    });
+  }
+
+  Future<void> _pickExportFile() async {
+    final FilePickerResult? result =
+        await AppLockService().whileShowingSystemUi(
+      () => FilePicker.pickFiles(type: FileType.any, withData: true),
+    );
+    final PlatformFile? file = result?.files.singleOrNull;
+    if (file == null) {
+      return;
+    }
+    await _withBusy('Reading ${file.name}…', () async {
+      final List<int>? bytes = file.bytes ??
+          (file.path == null ? null : await File(file.path!).readAsBytes());
+      if (bytes == null) {
+        throw StateError('Could not open that file.');
+      }
+      final String text = utf8.decode(bytes, allowMalformed: true);
+      if (!text.toUpperCase().contains('BEGIN:VCARD')) {
+        throw StateError(
+          'That file is not a contacts export. In Google Contacts choose '
+          'Export, then "vCard (for iOS Contacts)".',
+        );
+      }
+      await _preparePreview(
+        sourceLabel: file.name,
+        incoming: const VCardParser().parse(text),
+      );
+    });
+  }
+
+  Future<void> _preparePreview({
+    required String sourceLabel,
+    required List<VaultContact> incoming,
+  }) async {
+    if (incoming.isEmpty) {
+      throw StateError('No contacts found in $sourceLabel.');
+    }
+    final ContactImportPlan plan = await _vaultRepository.planImport(incoming);
+    if (mounted) {
+      setState(() {
+        _pending = _PendingImport(
+          sourceLabel: sourceLabel,
+          incoming: incoming,
+          plan: plan,
+        );
+      });
+    }
+  }
+
+  Future<void> _confirmImport() async {
+    final _PendingImport? pending = _pending;
+    if (pending == null) {
+      return;
+    }
+    await _withBusy('Encrypting and saving…', () async {
+      final ContactImportPlan done = await _vaultRepository.importContacts(
+        pending.incoming,
+        sourceLabel: 'Google (${pending.sourceLabel})',
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_summary(done))),
+      );
+      Navigator.of(context).pop(true);
+    });
+  }
+
+  String _summary(ContactImportPlan plan) {
+    if (plan.isEmpty) {
+      return 'Everything was already in your vault.';
+    }
+    final List<String> parts = <String>[
+      if (plan.toAdd.isNotEmpty) '${plan.toAdd.length} added',
+      if (plan.toUpdate.isNotEmpty) '${plan.toUpdate.length} updated',
+    ];
+    return 'Imported from Google: ${parts.join(', ')}.';
+  }
+
+  Future<void> _withBusy(String text, Future<void> Function() action) async {
+    if (_busy) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _busyText = text;
+    });
+    try {
+      await action();
+    } catch (error) {
+      if (mounted) {
+        final String message = error
+            .toString()
+            .replaceFirst('Bad state: ', '')
+            .replaceFirst('Exception: ', '');
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _busyText = null;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _pending == null || _busy,
+      onPopInvokedWithResult: (bool didPop, Object? _) {
+        if (!didPop && !_busy) {
+          setState(() => _pending = null);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Import from Google')),
+        body: Column(
+          children: [
+            if (_busy) const LinearProgressIndicator(),
+            Expanded(
+              child: _pending == null
+                  ? _buildSources(context)
+                  : _buildPreview(context, _pending!),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSources(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colors = theme.colorScheme;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _PrivacyNote(colors: colors),
+        const SizedBox(height: 16),
+        if (_isAndroid) ...[
+          Text('Google accounts on this phone',
+              style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (_loadingAccounts)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_permissionDenied)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.lock_outline),
+                title: const Text('Allow access to contacts'),
+                subtitle: const Text(
+                  'Needed to read the Google contacts already on this phone.',
+                ),
+                trailing: TextButton(
+                  onPressed: _busy ? null : _loadAccounts,
+                  child: const Text('Allow'),
+                ),
+              ),
+            )
+          else if (_accounts.isEmpty)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.person_off_outlined),
+                title: const Text('No Google contacts on this phone'),
+                subtitle: const Text(
+                  'Add your Google account in Android Settings, or use an '
+                  'export file below.',
+                ),
+              ),
+            )
+          else
+            ..._accounts.map((ImportAccount account) {
+              return Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: colors.primaryContainer,
+                    child: Icon(Icons.account_circle_outlined,
+                        color: colors.onPrimaryContainer),
+                  ),
+                  title: Text(account.name),
+                  subtitle: Text('${account.contactCount} contacts'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _busy ? null : () => _previewAccount(account),
+                ),
+              );
+            }),
+          const SizedBox(height: 20),
+        ],
+        Text('Google Contacts export file', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _Step(
+                  number: 1,
+                  text: 'Open contacts.google.com and tap Export.',
+                ),
+                const _Step(
+                  number: 2,
+                  text: 'Choose "vCard (for iOS Contacts)" and save the file.',
+                ),
+                const _Step(
+                  number: 3,
+                  text: 'Pick that file here.',
+                ),
+                const SizedBox(height: 8),
+                FilledButton.tonalIcon(
+                  onPressed: _busy ? null : _pickExportFile,
+                  icon: const Icon(Icons.file_open_outlined),
+                  label: const Text('Choose export file'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_busyText != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Text(_busyText!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: colors.onSurfaceVariant)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPreview(BuildContext context, _PendingImport pending) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colors = theme.colorScheme;
+    final ContactImportPlan plan = pending.plan;
+    final List<VaultContact> sample = <VaultContact>[
+      ...plan.toAdd,
+      ...plan.toUpdate,
+    ].take(50).toList();
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text('Ready to import', style: theme.textTheme.headlineSmall),
+              const SizedBox(height: 4),
+              Text(
+                'From ${pending.sourceLabel}',
+                style: TextStyle(color: colors.onSurfaceVariant),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _CountTile(
+                      label: 'New', count: plan.toAdd.length, colors: colors),
+                  const SizedBox(width: 8),
+                  _CountTile(
+                      label: 'Updated',
+                      count: plan.toUpdate.length,
+                      colors: colors),
+                  const SizedBox(width: 8),
+                  _CountTile(
+                      label: 'Already here',
+                      count: plan.unchangedCount,
+                      colors: colors),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                plan.isEmpty
+                    ? 'Everything in this source is already in your vault.'
+                    : 'Matching contacts get the missing phones, emails and '
+                        'details added. Nothing you already have is changed or '
+                        'removed, and a restore point is saved first so you can '
+                        'undo the import from Account & Vault.',
+                style: TextStyle(color: colors.onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              ...sample.map((VaultContact contact) {
+                final bool isNew = plan.toAdd.contains(contact);
+                final String detail = <String>[
+                  if (contact.phones.isNotEmpty) contact.phones.first,
+                  if (contact.emails.isNotEmpty) contact.emails.first,
+                ].join(' · ');
+                return ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    isNew ? Icons.person_add_alt : Icons.sync_alt,
+                    color: colors.primary,
+                  ),
+                  title: Text(contact.displayName),
+                  subtitle: detail.isEmpty ? null : Text(detail),
+                  trailing: Text(isNew ? 'New' : 'Update',
+                      style: theme.textTheme.labelSmall),
+                );
+              }),
+              if (plan.changeCount > sample.length)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'and ${plan.changeCount - sample.length} more',
+                    style: TextStyle(color: colors.onSurfaceVariant),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed:
+                        _busy ? null : () => setState(() => _pending = null),
+                    child: const Text('Back'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    onPressed: _busy || plan.isEmpty ? null : _confirmImport,
+                    child: Text(plan.isEmpty
+                        ? 'Nothing to import'
+                        : 'Import ${plan.changeCount} contacts'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PendingImport {
+  _PendingImport({
+    required this.sourceLabel,
+    required this.incoming,
+    required this.plan,
+  });
+
+  final String sourceLabel;
+  final List<VaultContact> incoming;
+  final ContactImportPlan plan;
+}
+
+class _PrivacyNote extends StatelessWidget {
+  const _PrivacyNote({required this.colors});
+
+  final ColorScheme colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.secondaryContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.shield_outlined, color: colors.onSecondaryContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No Google sign-in needed. Your contacts are read on this '
+              'device and encrypted before they are saved or synced.',
+              style: TextStyle(color: colors.onSecondaryContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Step extends StatelessWidget {
+  const _Step({required this.number, required this.text});
+
+  final int number;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 11,
+            child: Text('$number', style: const TextStyle(fontSize: 12)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text)),
+        ],
+      ),
+    );
+  }
+}
+
+class _CountTile extends StatelessWidget {
+  const _CountTile({
+    required this.label,
+    required this.count,
+    required this.colors,
+  });
+
+  final String label;
+  final int count;
+  final ColorScheme colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: [
+            Text('$count', style: Theme.of(context).textTheme.titleLarge),
+            Text(label,
+                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+}

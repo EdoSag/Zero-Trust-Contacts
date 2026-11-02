@@ -355,6 +355,17 @@ class _AccountPageState extends State<AccountPage> {
                   children: [
                     Text('Import / Export', style: theme.textTheme.titleMedium),
                     const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () async {
+                              await context.push<bool>('/import-google');
+                              await _loadData();
+                            },
+                      icon: const Icon(Icons.download_outlined),
+                      label: const Text('Import from Google'),
+                    ),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,

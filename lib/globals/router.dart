@@ -8,6 +8,7 @@ import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/pages/login_screen.dart';
 import 'package:zerotrust_contacts/pages/merge_conflicts_page.dart';
 import 'package:zerotrust_contacts/pages/create_contact_page.dart';
+import 'package:zerotrust_contacts/pages/google_import_page.dart';
 import 'package:zerotrust_contacts/pages/unlock_screen.dart';
 import 'package:zerotrust_contacts/services/app_lock_service.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
@@ -60,6 +61,10 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(path: '/account', builder: (context, state) => const AccountPage()),
+    GoRoute(
+      path: '/import-google',
+      builder: (context, state) => const GoogleImportPage(),
+    ),
     GoRoute(path: '/unlock', builder: (context, state) => const UnlockScreen()),
     GoRoute(
       path: '/merge-conflicts',

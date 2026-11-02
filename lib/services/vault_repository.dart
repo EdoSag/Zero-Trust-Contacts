@@ -3,6 +3,8 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:zerotrust_contacts/import/contact_import_planner.dart';
+import 'package:zerotrust_contacts/import/vcard_parser.dart';
 import 'package:zerotrust_contacts/integrations/supabase_service.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/security_service.dart';
@@ -798,22 +800,48 @@ class VaultRepository {
   }
 
   Future<int> importVCard(String rawVCard) async {
-    final List<VaultContact> parsed = _parseVCard(rawVCard);
-    if (parsed.isEmpty) {
-      return 0;
-    }
+    final ContactImportPlan plan = await importContacts(
+      const VCardParser().parse(rawVCard),
+      sourceLabel: 'vCard',
+    );
+    return plan.changeCount;
+  }
+
+  /// Works out what importing [incoming] would add or update, without
+  /// writing anything.
+  Future<ContactImportPlan> planImport(List<VaultContact> incoming) async {
     final List<VaultContact> local = await loadSavedContacts();
-    final Map<String, VaultContact> byId = <String, VaultContact>{
-      for (final VaultContact item in local) item.id: item,
-    };
-    for (final VaultContact contact in parsed) {
-      byId[contact.id] = contact;
+    return const ContactImportPlanner().plan(
+      existing: local,
+      incoming: incoming,
+    );
+  }
+
+  /// Adds [incoming] to the vault, merging matches into existing contacts so
+  /// nothing is duplicated. A restore point is taken first, so the whole
+  /// import can be undone from Account & Vault.
+  Future<ContactImportPlan> importContacts(
+    List<VaultContact> incoming, {
+    required String sourceLabel,
+  }) async {
+    final List<VaultContact> local = await loadSavedContacts();
+    const ContactImportPlanner planner = ContactImportPlanner();
+    final ContactImportPlan plan =
+        planner.plan(existing: local, incoming: incoming);
+    if (plan.isEmpty) {
+      return plan;
     }
-    await _replaceSavedContacts(byId.values.toList(),
-        shouldCreateSnapshot: true);
-    await logActivity('vcard_import',
-        details: 'Imported ${parsed.length} contacts from vCard');
-    return parsed.length;
+    await _replaceSavedContacts(
+      planner.apply(local, plan),
+      shouldCreateSnapshot: true,
+      snapshotReason: 'Before import from $sourceLabel',
+    );
+    await logActivity(
+      'contacts_import',
+      details: 'Imported from $sourceLabel: ${plan.toAdd.length} new, '
+          '${plan.toUpdate.length} updated',
+    );
+    return plan;
   }
 
   Future<SecureSharePackage> createSecureSharePackage({
@@ -1387,128 +1415,12 @@ class VaultRepository {
     }
   }
 
-  List<VaultContact> _parseVCard(String raw) {
-    final List<VaultContact> contacts = <VaultContact>[];
-    final List<String> lines = raw.split(RegExp(r'\r?\n'));
-    bool inCard = false;
-    final Map<String, dynamic> current = <String, dynamic>{
-      'phones': <String>[],
-      'emails': <String>[],
-      'addresses': <String>[],
-      'labels': <String>[],
-      'birthdays': <String>[],
-      'other': <String>[],
-    };
-
-    void finalizeCard() {
-      final VaultContact contact = VaultContact.fromLegacyPayload(
-        <String, dynamic>{
-          'id': VaultContact.generateId(),
-          'displayName': current['displayName'] ??
-              current['firstName'] ??
-              current['lastName'] ??
-              '',
-          'firstName': current['firstName'] ?? '',
-          'lastName': current['lastName'] ?? '',
-          'company': current['company'] ?? '',
-          'notes': current['notes'] ?? '',
-          'phones': current['phones'],
-          'emails': current['emails'],
-          'addresses': current['addresses'],
-          'labels': current['labels'],
-          'birthdays': current['birthdays'],
-          'other': current['other'],
-          'source': 'Saved',
-        },
-      );
-      contacts.add(contact);
-    }
-
-    for (final String rawLine in lines) {
-      final String line = rawLine.trim();
-      if (line.isEmpty) {
-        continue;
-      }
-      if (line.toUpperCase() == 'BEGIN:VCARD') {
-        inCard = true;
-        current
-          ..clear()
-          ..addAll(<String, dynamic>{
-            'phones': <String>[],
-            'emails': <String>[],
-            'addresses': <String>[],
-            'labels': <String>[],
-            'birthdays': <String>[],
-            'other': <String>[],
-          });
-        continue;
-      }
-      if (line.toUpperCase() == 'END:VCARD') {
-        if (inCard) {
-          finalizeCard();
-        }
-        inCard = false;
-        continue;
-      }
-      if (!inCard) {
-        continue;
-      }
-
-      if (line.startsWith('FN:')) {
-        current['displayName'] = _unescapeVCard(line.substring(3));
-      } else if (line.startsWith('N:')) {
-        final String value = _unescapeVCard(line.substring(2));
-        final List<String> parts = value.split(';');
-        if (parts.isNotEmpty) {
-          current['lastName'] = parts[0];
-        }
-        if (parts.length > 1) {
-          current['firstName'] = parts[1];
-        }
-      } else if (line.startsWith('TEL')) {
-        final int split = line.indexOf(':');
-        if (split != -1) {
-          (current['phones'] as List<String>)
-              .add(_unescapeVCard(line.substring(split + 1)));
-        }
-      } else if (line.startsWith('EMAIL')) {
-        final int split = line.indexOf(':');
-        if (split != -1) {
-          (current['emails'] as List<String>)
-              .add(_unescapeVCard(line.substring(split + 1)));
-        }
-      } else if (line.startsWith('ORG:')) {
-        current['company'] = _unescapeVCard(line.substring(4));
-      } else if (line.startsWith('NOTE:')) {
-        current['notes'] = _unescapeVCard(line.substring(5));
-      } else if (line.startsWith('BDAY:')) {
-        (current['birthdays'] as List<String>)
-            .add(_unescapeVCard(line.substring(5)));
-      } else if (line.startsWith('ADR')) {
-        final int split = line.indexOf(':');
-        if (split != -1) {
-          (current['addresses'] as List<String>)
-              .add(_unescapeVCard(line.substring(split + 1)));
-        }
-      }
-    }
-    return contacts;
-  }
-
   String _escapeVCard(String value) {
     return value
         .replaceAll(r'\', r'\\')
         .replaceAll(';', r'\;')
         .replaceAll(',', r'\,')
         .replaceAll('\n', r'\n');
-  }
-
-  String _unescapeVCard(String value) {
-    return value
-        .replaceAll(r'\n', '\n')
-        .replaceAll(r'\,', ',')
-        .replaceAll(r'\;', ';')
-        .replaceAll(r'\\', '\\');
   }
 
   String _generatePassphrase() {
