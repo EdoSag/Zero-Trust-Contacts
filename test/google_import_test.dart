@@ -83,6 +83,8 @@ void main() {
       expect(c.firstName, 'Jürgen');
       expect(c.displayName, 'Jürgen Müller');
       expect(c.phones, <String>['0151 2345678']);
+      expect(c.notes, 'Line one and more',
+          reason: 'soft break keeps the continuation, space included');
     });
 
     test('normalizes birthdays', () {

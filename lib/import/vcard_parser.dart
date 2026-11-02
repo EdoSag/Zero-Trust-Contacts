@@ -154,15 +154,16 @@ class VCardParser {
     final List<String> logical = <String>[];
     for (final String line in physical) {
       if (logical.isNotEmpty &&
+          logical.last.endsWith('=') &&
+          _isQuotedPrintable(logical.last)) {
+        // vCard 2.1 quoted-printable soft line break: the continuation is
+        // taken as-is, leading whitespace included. Checked before folding.
+        logical[logical.length - 1] =
+            logical.last.substring(0, logical.last.length - 1) + line;
+      } else if (logical.isNotEmpty &&
           (line.startsWith(' ') || line.startsWith('\t'))) {
         // RFC 6350 folding: drop the single leading whitespace.
         logical[logical.length - 1] += line.substring(1);
-      } else if (logical.isNotEmpty &&
-          logical.last.endsWith('=') &&
-          _isQuotedPrintable(logical.last)) {
-        // vCard 2.1 quoted-printable soft line break.
-        logical[logical.length - 1] =
-            logical.last.substring(0, logical.last.length - 1) + line;
       } else {
         logical.add(line);
       }

@@ -75,7 +75,13 @@ class AppLockService extends ChangeNotifier with WidgetsBindingObserver {
       return await action();
     } finally {
       _systemUiDepth -= 1;
-      _lastInteraction = DateTime.now().toUtc();
+      // Time spent in the system screen still counts as idle: lock if the
+      // timeout passed meanwhile, and only otherwise count the return as
+      // activity.
+      _checkIdleTimeout();
+      if (!_isLocked) {
+        _lastInteraction = DateTime.now().toUtc();
+      }
     }
   }
 
@@ -150,13 +156,14 @@ class AppLockService extends ChangeNotifier with WidgetsBindingObserver {
     if (!_initialized || !isLockRequired) {
       return;
     }
-    if (_systemUiDepth > 0) {
-      return;
-    }
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      _pausedAt = DateTime.now().toUtc();
-      lock(reason: 'app_paused');
+      _pausedAt ??= DateTime.now().toUtc();
+      // Leaving for a system screen the app opened itself does not lock at
+      // once; the resume check below still applies the idle timeout.
+      if (_systemUiDepth == 0) {
+        lock(reason: 'app_paused');
+      }
     }
     if (state == AppLifecycleState.resumed) {
       final DateTime now = DateTime.now().toUtc();
