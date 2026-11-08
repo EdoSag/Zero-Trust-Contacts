@@ -56,13 +56,10 @@ jobs:
             printf '%s\n' "$ENV_FILE" > .env
             echo "Wrote .env from the ENV_FILE secret."
           else
-            # Public client values (the Supabase URL and publishable key ship
-            # inside every APK anyway). Set an ENV_FILE secret to override.
-            cat > .env <<'ENVEOF'
-          SUPABASE_URL=https://ohgxpnchqmisvktqjmcx.supabase.co
-          SUPABASE_ANON_KEY=sb_publishable_C1geAnwr0LZSxfQKRg21YA_G-OXHYky
-          ENVEOF
-            echo "Wrote .env with the shared public Supabase values."
+            # This app needs more keys than the shared Supabase URL and key
+            # (APP_INTERNAL_SALT etc.), so there is no safe default.
+            echo "::error::No .env found. Commit one or add an ENV_FILE secret."
+            exit 1
           fi
 
       - name: Restore the release keystore
