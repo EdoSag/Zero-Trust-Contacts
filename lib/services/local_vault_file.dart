@@ -10,12 +10,27 @@ import 'package:zero_trust_core/zero_trust_core.dart';
 /// Kept as one JSON document, sealed (AES-256-GCM) under a key derived from
 /// the app key, so it is unreadable while the vault is locked and belongs to
 /// one account.
-abstract interface class LocalVaultFile {
+abstract class LocalVaultFile {
   Future<Map<String, Object?>> read();
   Future<void> write(Map<String, Object?> data);
+
+  Future<void> _queue = Future<void>.value();
+
+  /// Reads, changes and writes the document as one step. Updates run one
+  /// after another, so two at once (a save while old photos move over, say)
+  /// can't drop each other's entries or collide on the file.
+  Future<void> update(void Function(Map<String, Object?> data) change) {
+    final Future<void> next = _queue.then((_) async {
+      final Map<String, Object?> data = await read();
+      change(data);
+      await write(data);
+    });
+    _queue = next.catchError((Object _) {});
+    return next;
+  }
 }
 
-class SealedLocalVaultFile implements LocalVaultFile {
+class SealedLocalVaultFile extends LocalVaultFile {
   SealedLocalVaultFile._(this._file, this._key);
 
   final File _file;
@@ -62,7 +77,7 @@ class SealedLocalVaultFile implements LocalVaultFile {
   void close() => _key.fillRange(0, _key.length, 0);
 }
 
-class InMemoryLocalVaultFile implements LocalVaultFile {
+class InMemoryLocalVaultFile extends LocalVaultFile {
   Map<String, Object?> data = {};
 
   @override

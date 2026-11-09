@@ -186,12 +186,14 @@ class LegacyPhotoMover {
     required this.source,
     required this.photos,
     required this.load,
+    required this.find,
     required this.save,
   });
 
   final LegacyContactsSource source;
   final ContactPhotos photos;
   final Future<List<VaultContact>> Function() load;
+  final Future<VaultContact?> Function(String id) find;
   final Future<void> Function(VaultContact contact) save;
 
   /// Returns how many photos were moved. Stops at the first photo that
@@ -206,18 +208,25 @@ class LegacyPhotoMover {
       } on LegacyPhotoUnavailable {
         break;
       }
-      final VaultContact updated;
-      if (bytes == null) {
-        // The photo is gone everywhere: stop looking for it.
-        updated = contact.copyWith(photoPath: null);
-      } else {
-        updated = contact.copyWith(
-          photo: await photos.store(bytes),
-          photoPath: null,
-        );
-        moved++;
+      final Map<String, Object?>? stored =
+          bytes == null ? null : await photos.store(bytes);
+      // The list stays usable meanwhile: apply the move to the contact as
+      // it is now, so an edit made during the upload isn't overwritten.
+      final VaultContact? current = await find(contact.id);
+      if (current == null ||
+          current.photoPath == null ||
+          current.photo != null) {
+        // Deleted, or given a new photo, in the meantime.
+        if (stored != null) {
+          await photos.deletePhotoOf(current?.copyWith(photo: stored) ??
+              contact.copyWith(photo: stored));
+        }
+        await DeviceLegacyContactsSource.deleteLocalPhoto(contact.id);
+        continue;
       }
-      await save(updated);
+      // A photo gone everywhere just stops being looked for.
+      await save(current.copyWith(photo: stored, photoPath: null));
+      if (stored != null) moved++;
       await DeviceLegacyContactsSource.deleteLocalPhoto(contact.id);
     }
     return moved;

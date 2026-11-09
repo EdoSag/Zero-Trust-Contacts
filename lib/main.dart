@@ -25,11 +25,11 @@ Future<void> main() async {
   );
 }
 
-class ZeroTrustContactsApp extends StatelessWidget {
+class ZeroTrustContactsApp extends ConsumerWidget {
   const ZeroTrustContactsApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ZtThemeBuilder(
       builder: (context, theme, darkTheme, mode) => MaterialApp(
         // On-device task switcher label; the store name is Zero-Trust Contacts.
@@ -38,6 +38,13 @@ class ZeroTrustContactsApp extends StatelessWidget {
         darkTheme: darkTheme,
         themeMode: mode,
         home: const AppGate(),
+        // Any touch on any screen, including ones pushed over the list
+        // (editor, settings, imports), counts as activity for auto-lock.
+        builder: (BuildContext context, Widget? child) => Listener(
+          onPointerDown: (_) =>
+              ref.read(vaultControllerProvider.notifier).touch(),
+          child: child,
+        ),
       ),
     );
   }

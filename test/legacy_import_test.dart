@@ -11,6 +11,8 @@ import 'package:zerotrust_contacts/legacy/legacy_contacts_crypto.dart';
 import 'package:zerotrust_contacts/legacy/legacy_contacts_importer.dart';
 import 'package:zerotrust_contacts/legacy/legacy_contacts_source.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zerotrust_contacts/services/contact_photo_service.dart';
+import 'package:zerotrust_contacts/services/local_vault_file.dart';
 
 import 'support/contacts_overrides.dart';
 import 'support/fake_legacy_source.dart';
@@ -248,5 +250,76 @@ void main() {
     expect(read.map((VaultContact c) => c.displayName),
         unorderedEquals(<String>['Ada', 'Grace']));
     dir.deleteSync(recursive: true);
+  });
+
+  moverAndFileTests();
+}
+
+void moverAndFileTests() {
+  group('photo mover', () {
+    late Map<String, VaultContact> saved;
+    late InMemoryAttachmentBackend files;
+    late ContactPhotos photos;
+
+    setUp(() {
+      saved = <String, VaultContact>{};
+      files = InMemoryAttachmentBackend();
+      photos = ContactPhotos(ZtAttachments(
+        appId: 'contacts',
+        userId: 'u1',
+        backend: files,
+        cache: InMemoryAttachmentCache(),
+      ));
+    });
+
+    LegacyPhotoMover mover(FakeLegacySource source,
+            {void Function()? whileUploading}) =>
+        LegacyPhotoMover(
+          source: source,
+          photos: photos,
+          load: () async => saved.values.toList(),
+          find: (String id) async {
+            whileUploading?.call();
+            whileUploading = null;
+            return saved[id];
+          },
+          save: (VaultContact c) async => saved[c.id] = c,
+        );
+
+    test('keeps an edit made while the photo was uploading', () async {
+      saved['c1'] = contact('c1', 'Ada').copyWith(photoPath: 'c1');
+      final FakeLegacySource source = FakeLegacySource(
+          photos: <String, Uint8List>{'c1': Uint8List.fromList(<int>[1])});
+
+      final int moved = await mover(source, whileUploading: () {
+        saved['c1'] = saved['c1']!.applyEdits(notes: 'edited meanwhile');
+      }).run();
+
+      expect(moved, 1);
+      expect(saved['c1']!.notes, 'edited meanwhile');
+      expect(saved['c1']!.photo, isNotNull);
+      expect(saved['c1']!.photoPath, isNull);
+    });
+
+    test('doesn\'t bring back a contact deleted meanwhile', () async {
+      saved['c1'] = contact('c1', 'Ada').copyWith(photoPath: 'c1');
+      final FakeLegacySource source = FakeLegacySource(
+          photos: <String, Uint8List>{'c1': Uint8List.fromList(<int>[1])});
+
+      await mover(source, whileUploading: () => saved.remove('c1')).run();
+
+      expect(saved, isEmpty);
+    });
+  });
+
+  test('local file updates at the same time all land', () async {
+    final InMemoryLocalVaultFile file = InMemoryLocalVaultFile();
+    await Future.wait(<Future<void>>[
+      for (var i = 0; i < 20; i++)
+        file.update((Map<String, Object?> data) {
+          data['n'] = ((data['n'] as int?) ?? 0) + 1;
+        }),
+    ]);
+    expect((await file.read())['n'], 20);
   });
 }

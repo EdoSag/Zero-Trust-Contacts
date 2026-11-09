@@ -111,6 +111,7 @@ class LegacyImportController extends Notifier<LegacyImportStatus> {
         source: source,
         photos: photos,
         load: repo.loadSavedContacts,
+        find: repo.findSavedContactById,
         save: (contact) =>
             repo.upsertSavedContact(contact, activity: 'legacy_photo_moved'),
       ).run();

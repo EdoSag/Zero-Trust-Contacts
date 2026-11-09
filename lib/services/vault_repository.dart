@@ -469,23 +469,21 @@ class VaultRepository {
     String details = '',
     bool isError = false,
   }) async {
-    final Map<String, Object?> data = await _localFile.read();
-    final List<SecurityActivityEntry> current = _activityFrom(data);
-    current.insert(
-      0,
-      SecurityActivityEntry(
-        id: VaultContact.generateId(),
-        action: action,
-        createdAt: DateTime.now().toUtc(),
-        details: details,
-        isError: isError,
-      ),
+    final SecurityActivityEntry entry = SecurityActivityEntry(
+      id: VaultContact.generateId(),
+      action: action,
+      createdAt: DateTime.now().toUtc(),
+      details: details,
+      isError: isError,
     );
-    data['activity'] = current
-        .take(_maxActivityEntries)
-        .map((SecurityActivityEntry item) => item.toJson())
-        .toList();
-    await _localFile.write(data);
+    await _localFile.update((Map<String, Object?> data) {
+      final List<SecurityActivityEntry> current = _activityFrom(data)
+        ..insert(0, entry);
+      data['activity'] = current
+          .take(_maxActivityEntries)
+          .map((SecurityActivityEntry item) => item.toJson())
+          .toList();
+    });
   }
 
   Future<List<SecurityActivityEntry>> readActivityEntries(
@@ -517,14 +515,14 @@ class VaultRepository {
       cadence: cadence,
       contacts: contacts,
     );
-    final Map<String, Object?> data = await _localFile.read();
-    final List<VaultSnapshot> current = _snapshotsFrom(data);
-    current.insert(0, snapshot);
-    data['snapshots'] = current
-        .take(_maxSnapshots)
-        .map((VaultSnapshot item) => item.toJson())
-        .toList();
-    await _localFile.write(data);
+    await _localFile.update((Map<String, Object?> data) {
+      final List<VaultSnapshot> current = _snapshotsFrom(data)
+        ..insert(0, snapshot);
+      data['snapshots'] = current
+          .take(_maxSnapshots)
+          .map((VaultSnapshot item) => item.toJson())
+          .toList();
+    });
     return snapshot;
   }
 

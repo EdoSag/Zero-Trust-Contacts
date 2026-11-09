@@ -119,11 +119,8 @@ class _AppGateState extends ConsumerState<AppGate> with WidgetsBindingObserver {
       );
     }
 
-    // Any touch counts as activity for auto-lock.
-    return Listener(
-      onPointerDown: (_) => ref.read(vaultControllerProvider.notifier).touch(),
-      child: const _ContactsHome(),
-    );
+    // Touches count as activity for auto-lock: see ZeroTrustContactsApp.
+    return const _ContactsHome();
   }
 }
 
