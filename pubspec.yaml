@@ -1,34 +1,43 @@
 name: zerotrust_contacts
-description: A new Nowa project.
+description: "Zero-Trust Contacts: an end-to-end encrypted address book."
 publish_to: none
-version: 1.0.0+1
+version: 1.1.0+1
+
 environment:
-  sdk: ">=3.2.0 <4.0.0"
+  sdk: ^3.9.0
+
+# Builds SQLite3MultipleCiphers instead of plain SQLite, so the core's local
+# store is encrypted as a whole file (see Zero-Trust-Core README, "Sync").
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
+
 dependencies:
   flutter:
     sdk: flutter
-  nowa_runtime: ^0.1.3
-  provider: ^6.1.5
-  shared_preferences: ^2.5.3
-  dio: ^5.5.0+1
-  flutter_dotenv: ^5.1.0
-  flutter_secure_storage: ^9.2.2
-  sqflite: ^2.3.3
-  sqlcipher_flutter_libs: ^0.6.4
-  cryptography: ^2.7.0
-  local_auth: ^2.3.0
-  flutter_bloc: ^8.1.6
-  path_provider: ^2.1.4
-  path: ^1.9.0
-  encrypt: ^5.0.3
-  go_router: ^17.0.1
+  # Shared account, keys, sync, settings and look of every Zero-Trust app.
+  zero_trust_core:
+    git:
+      url: https://github.com/EdoSag/Zero-Trust-Core.git
+      path: packages/zero_trust_core
+      ref: v0.7.0
+  flutter_riverpod: ^3.0.0
   supabase_flutter: ^2.9.0
+  flutter_dotenv: ^6.0.1
+  flutter_secure_storage: ^11.2.0
+  sqlite3: ^3.7.0
+  cryptography: ^2.7.0
+  path_provider: ^2.1.4
   image_picker: ^1.1.2
-  file_picker: ^11.0.3
+  file_picker: ^13.3.2
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+
 flutter:
   uses-material-design: true
   assets:

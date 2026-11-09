@@ -2,16 +2,18 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:nowa_runtime/nowa_runtime.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:zero_trust_core/zero_trust_core.dart';
+import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/services/contact_photo_service.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
+import 'package:zerotrust_contacts/widgets/compact_button_style.dart';
 
-@NowaGenerated()
-class ContactDetailPage extends StatefulWidget {
-  @NowaGenerated({'loader': 'auto-constructor'})
+class ContactDetailPage extends ConsumerStatefulWidget {
   const ContactDetailPage({
     super.key,
     required this.contact,
@@ -20,11 +22,11 @@ class ContactDetailPage extends StatefulWidget {
   final VaultContact contact;
 
   @override
-  State<ContactDetailPage> createState() => _ContactDetailPageState();
+  ConsumerState<ContactDetailPage> createState() => _ContactDetailPageState();
 }
 
-class _ContactDetailPageState extends State<ContactDetailPage> {
-  final VaultRepository _vaultRepository = VaultRepository();
+class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
+  late final VaultRepository _vaultRepository = requireRepository(ref);
   final DeviceContactsService _deviceContactsService = DeviceContactsService();
 
   late VaultContact _contact;
@@ -90,7 +92,7 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
                 title: const Text('Choose from gallery'),
                 onTap: () async {
                   final XFile? f =
-                      await ContactPhotoService().pickFromGallery();
+                      await ref.read(vaultControllerProvider.notifier).whileShowingSystemUi(const PhotoPicker().pickFromGallery);
                   if (ctx.mounted) Navigator.of(ctx).pop(f);
                 },
               ),
@@ -100,11 +102,11 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
                 title: const Text('Take a photo'),
                 onTap: () async {
                   final XFile? f =
-                      await ContactPhotoService().pickFromCamera();
+                      await ref.read(vaultControllerProvider.notifier).whileShowingSystemUi(const PhotoPicker().pickFromCamera);
                   if (ctx.mounted) Navigator.of(ctx).pop(f);
                 },
               ),
-              if (_contact.photoPath != null || _pickedPhotoFile != null)
+              if (_contact.hasPhoto || _pickedPhotoFile != null)
                 ListTile(
                   leading: Icon(Icons.delete_outline, color: colorScheme.error),
                   title: const Text('Remove photo'),
@@ -148,7 +150,11 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
     });
     try {
       final File? photoFile = _pickedPhotoFile;
-      final bool removingPhoto = _photoCleared && _contact.photoPath != null;
+      final bool removingPhoto = _photoCleared && _contact.hasPhoto;
+      final Map<String, Object?>? newPhoto = photoFile == null
+          ? null
+          : await (await ref.read(contactPhotosProvider.future))
+              .storeFile(photoFile);
 
       final VaultContact edited = _contact.applyEdits(
         firstName: _firstNameController.text.trim(),
@@ -159,8 +165,8 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
         labels: _splitValues(_labelsController.text),
         notes: _notesController.text.trim(),
         source: 'Saved',
-        photoPath: photoFile != null ? _contact.id : null,
-        clearPhoto: removingPhoto,
+        photo: newPhoto,
+        clearPhoto: removingPhoto && newPhoto == null,
       );
 
       final VaultContact toSave = _isSavedContact
@@ -174,12 +180,6 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
         activity:
             _isSavedContact ? 'contact_edit' : 'contact_saved_from_device',
       );
-
-      if (photoFile != null) {
-        await ContactPhotoService().saveLocally(toSave.id, photoFile);
-      } else if (removingPhoto) {
-        await ContactPhotoService().deleteLocally(toSave.id);
-      }
 
       if (!mounted) {
         return;
@@ -698,16 +698,19 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
+                  style: compactButtonStyle,
                   onPressed: _contact.phones.isEmpty ? null : _callContact,
                   icon: const Icon(Icons.call_outlined),
                   label: const Text('Call'),
                 ),
                 OutlinedButton.icon(
+                  style: compactButtonStyle,
                   onPressed: _contact.phones.isEmpty ? null : _messageContact,
                   icon: const Icon(Icons.sms_outlined),
                   label: const Text('Message'),
                 ),
                 OutlinedButton.icon(
+                  style: compactButtonStyle,
                   onPressed:
                       (!_isSavedContact || _busy) ? null : _toggleFavorite,
                   icon: Icon(
@@ -718,6 +721,7 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
                   label: const Text('Favorite'),
                 ),
                 OutlinedButton.icon(
+                  style: compactButtonStyle,
                   onPressed: (!_isSavedContact || _busy) ? null : _togglePinned,
                   icon: Icon(
                     _contact.isPinned
@@ -750,8 +754,9 @@ class _ContactDetailPageState extends State<ContactDetailPage> {
                       ),
                     ),
                     style: _contact.isBlocked
-                        ? null
+                        ? compactButtonStyle
                         : OutlinedButton.styleFrom(
+                            minimumSize: const Size(64, 40),
                             side: BorderSide(
                               color: Theme.of(context)
                                   .colorScheme

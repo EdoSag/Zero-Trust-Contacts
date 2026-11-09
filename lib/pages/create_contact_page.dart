@@ -1,24 +1,23 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:nowa_runtime/nowa_runtime.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:zero_trust_core/zero_trust_core.dart';
+import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/services/contact_photo_service.dart';
-import 'package:zerotrust_contacts/services/vault_repository.dart';
 
-@NowaGenerated()
-class CreateContactPage extends StatefulWidget {
-  @NowaGenerated({'loader': 'auto-constructor'})
+class CreateContactPage extends ConsumerStatefulWidget {
   const CreateContactPage({super.key});
 
   @override
-  State<CreateContactPage> createState() {
+  ConsumerState<CreateContactPage> createState() {
     return _CreateContactPageState();
   }
 }
 
-@NowaGenerated()
-class _CreateContactPageState extends State<CreateContactPage> {
+class _CreateContactPageState extends ConsumerState<CreateContactPage> {
   final TextEditingController _firstNameController = TextEditingController();
 
   final TextEditingController _lastNameController = TextEditingController();
@@ -70,7 +69,7 @@ class _CreateContactPageState extends State<CreateContactPage> {
                 title: const Text('Choose from gallery'),
                 onTap: () async {
                   final XFile? f =
-                      await ContactPhotoService().pickFromGallery();
+                      await ref.read(vaultControllerProvider.notifier).whileShowingSystemUi(const PhotoPicker().pickFromGallery);
                   if (ctx.mounted) Navigator.of(ctx).pop(f);
                 },
               ),
@@ -80,7 +79,7 @@ class _CreateContactPageState extends State<CreateContactPage> {
                 title: const Text('Take a photo'),
                 onTap: () async {
                   final XFile? f =
-                      await ContactPhotoService().pickFromCamera();
+                      await ref.read(vaultControllerProvider.notifier).whileShowingSystemUi(const PhotoPicker().pickFromCamera);
                   if (ctx.mounted) Navigator.of(ctx).pop(f);
                 },
               ),
@@ -192,19 +191,18 @@ class _CreateContactPageState extends State<CreateContactPage> {
         'source': 'Saved',
         'isFavorite': _isFavorite,
         'isPinned': false,
-        'photoPath': photoToSave != null ? contactId : null,
+        'photo': photoToSave == null
+            ? null
+            : await (await ref.read(contactPhotosProvider.future))
+                .storeFile(photoToSave),
         'createdAt': DateTime.now().toIso8601String(),
         'updatedAt': DateTime.now().toIso8601String(),
       };
 
-      await VaultRepository().upsertSavedContact(
+      await requireRepository(ref).upsertSavedContact(
         VaultContact.fromLegacyPayload(payload),
         activity: 'contact_create',
       );
-
-      if (photoToSave != null) {
-        await ContactPhotoService().saveLocally(contactId, photoToSave);
-      }
 
       if (!mounted) {
         return;

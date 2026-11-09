@@ -2,106 +2,72 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:zerotrust_contacts/integrations/supabase_service.dart';
+import 'package:zero_trust_core/zero_trust_core.dart';
+import 'package:zerotrust_contacts/models/vault_contact.dart';
 
-/// Manages local storage and cloud sync of contact profile pictures.
-class ContactPhotoService {
-  ContactPhotoService._();
+/// Contact photos as encrypted attachments: each photo has its own key,
+/// kept inside the contact, and is encrypted on the phone before upload.
+class ContactPhotos {
+  ContactPhotos(this._attachments);
 
-  static final ContactPhotoService _instance = ContactPhotoService._();
+  final ZtAttachments _attachments;
 
-  factory ContactPhotoService() => _instance;
+  /// Encrypts and stores [bytes]; returns the reference to keep in the
+  /// contact (`VaultContact.photo`).
+  Future<Map<String, Object?>> store(Uint8List bytes) async {
+    final ZtAttachmentRef ref =
+        await _attachments.put(bytes, mimeType: 'image/jpeg');
+    return ref.toJson();
+  }
 
-  final ImagePicker _picker = ImagePicker();
+  Future<Map<String, Object?>> storeFile(File file) async =>
+      store(await file.readAsBytes());
 
-  Future<Directory> _photosDir() async {
-    final Directory appDir = await getApplicationDocumentsDirectory();
-    final Directory dir = Directory('${appDir.path}/contact_photos');
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
+  /// The photo of [contact], or null when it has none (or it can't be
+  /// fetched right now).
+  Future<Uint8List?> read(VaultContact contact) async {
+    final Map<String, Object?>? json = contact.photo;
+    if (json == null) {
+      return null;
     }
-    return dir;
+    try {
+      return await _attachments.read(ZtAttachmentRef.fromJson(json));
+    } on Object {
+      return null;
+    }
   }
 
-  // ── Picking ────────────────────────────────────────────────────────────────
-
-  Future<XFile?> pickFromGallery() {
-    return _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
-    );
+  Future<void> deletePhotoOf(VaultContact contact) async {
+    final Map<String, Object?>? json = contact.photo;
+    if (json == null) {
+      return;
+    }
+    try {
+      await _attachments.delete(ZtAttachmentRef.fromJson(json));
+    } on Object {
+      // Best effort: an orphaned encrypted file reveals nothing.
+    }
   }
+}
 
-  Future<XFile?> pickFromCamera() {
-    return _picker.pickImage(
-      source: ImageSource.camera,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
-    );
-  }
+/// Picks a photo. Call through `VaultController.whileShowingSystemUi`, so
+/// the vault doesn't lock while the picker covers the app.
+class PhotoPicker {
+  const PhotoPicker();
 
-  // ── Local storage ──────────────────────────────────────────────────────────
+  static final ImagePicker _picker = ImagePicker();
 
-  /// Copies [sourceFile] into the app's photo directory keyed by [contactId].
-  Future<File> saveLocally(String contactId, File sourceFile) async {
-    final Directory dir = await _photosDir();
-    final File dest = File('${dir.path}/$contactId.jpg');
-    return sourceFile.copy(dest.path);
-  }
+  Future<XFile?> pickFromGallery() => _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
 
-  /// Returns the local [File] for [contactId], or null if none exists.
-  Future<File?> getLocalFile(String contactId) async {
-    final Directory dir = await _photosDir();
-    final File file = File('${dir.path}/$contactId.jpg');
-    if (await file.exists()) return file;
-    return null;
-  }
-
-  /// Deletes the local photo for [contactId] if it exists.
-  Future<void> deleteLocally(String contactId) async {
-    final Directory dir = await _photosDir();
-    final File file = File('${dir.path}/$contactId.jpg');
-    if (await file.exists()) await file.delete();
-  }
-
-  // ── Cloud sync ─────────────────────────────────────────────────────────────
-
-  /// Uploads the local photo to Supabase Storage.
-  /// Does nothing if there is no local photo.
-  Future<void> uploadToCloud(String userId, String contactId) async {
-    final File? file = await getLocalFile(contactId);
-    if (file == null) return;
-    final Uint8List bytes = await file.readAsBytes();
-    await SupabaseService().uploadContactPhoto(
-      userId: userId,
-      contactId: contactId,
-      bytes: bytes,
-    );
-  }
-
-  /// Downloads a photo from Supabase Storage and saves it locally.
-  /// Returns true if the photo was downloaded successfully.
-  Future<bool> downloadFromCloud(String userId, String contactId) async {
-    final Uint8List? bytes = await SupabaseService().downloadContactPhoto(
-      userId: userId,
-      contactId: contactId,
-    );
-    if (bytes == null) return false;
-    final Directory dir = await _photosDir();
-    final File file = File('${dir.path}/$contactId.jpg');
-    await file.writeAsBytes(bytes);
-    return true;
-  }
-
-  /// Deletes the photo from Supabase Storage.
-  Future<void> deleteFromCloud(String userId, String contactId) async {
-    await SupabaseService().deleteContactPhoto(
-      userId: userId,
-      contactId: contactId,
-    );
-  }
+  Future<XFile?> pickFromCamera() => _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
 }

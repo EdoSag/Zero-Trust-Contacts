@@ -228,7 +228,7 @@ class DeviceContactsService {
       return null;
     }
     return VaultContact.fromLegacyPayload(
-      Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+      Map<String, dynamic>.from(raw),
     );
   }
 }
