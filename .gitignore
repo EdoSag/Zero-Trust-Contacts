@@ -49,3 +49,6 @@ app.*.map.json
 
 /android/key.properties
 /android/app/upload-keystore.jks
+
+# Supabase client settings; CI writes its own.
+.env

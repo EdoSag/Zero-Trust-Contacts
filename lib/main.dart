@@ -1,51 +1,49 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:zerotrust_contacts/integrations/supabase_service.dart';
-import 'package:zerotrust_contacts/config/app_config.dart';
-import 'package:zerotrust_contacts/auth_service.dart';
-import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:zerotrust_contacts/globals/app_state.dart';
-import 'package:zerotrust_contacts/globals/router.dart';
-import 'package:zerotrust_contacts/services/app_lock_service.dart';
-import 'package:zerotrust_contacts/services/vault_sync_scheduler.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:zero_trust_core/zero_trust_core.dart';
+import 'package:zerotrust_contacts/app/app_gate.dart';
 
-@NowaGenerated()
-late final SharedPreferences sharedPrefs;
+const ZtAppConfig contactsAppConfig = ZtAppConfig(
+  appId: 'contacts',
+  displayName: 'Zero-Trust Contacts',
+);
 
-@NowaGenerated()
-main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
-  AppConfig.loadFromEnvOrThrow();
-  sharedPrefs = await SharedPreferences.getInstance();
-  await SupabaseService().initialize(
-    url: AppConfig.supabaseUrl,
-    anonKey: AppConfig.supabaseAnonKey,
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
-  await AuthService().restoreLocalVaultForActiveSession();
-  await AppLockService().initialize();
-  await VaultSyncScheduler().start();
-  runApp(const MyApp());
+  runApp(
+    ProviderScope(
+      overrides: [ztAppConfigProvider.overrideWithValue(contactsAppConfig)],
+      child: const ZeroTrustContactsApp(),
+    ),
+  );
 }
 
-@NowaGenerated({'visibleInNowa': false})
-class MyApp extends StatelessWidget {
-  @NowaGenerated({'loader': 'auto-constructor'})
-  const MyApp({super.key});
+class ZeroTrustContactsApp extends ConsumerWidget {
+  const ZeroTrustContactsApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AppState>(create: (context) => AppState()),
-      ],
-      builder: (context, child) => Listener(
-        onPointerDown: (_) => AppLockService().recordInteraction(),
-        child: MaterialApp.router(
-          theme: AppState.of(context).theme,
-          routerConfig: appRouter,
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ZtThemeBuilder(
+      builder: (context, theme, darkTheme, mode) => MaterialApp(
+        // On-device task switcher label; the store name is Zero-Trust Contacts.
+        title: 'ZT Contacts',
+        theme: theme,
+        darkTheme: darkTheme,
+        themeMode: mode,
+        home: const AppGate(),
+        // Any touch on any screen, including ones pushed over the list
+        // (editor, settings, imports), counts as activity for auto-lock.
+        builder: (BuildContext context, Widget? child) => Listener(
+          onPointerDown: (_) =>
+              ref.read(vaultControllerProvider.notifier).touch(),
+          child: child,
         ),
       ),
     );

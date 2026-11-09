@@ -3,12 +3,14 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zero_trust_core/zero_trust_core.dart';
+import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/import/android_account_contacts.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
 import 'package:zerotrust_contacts/import/vcard_parser.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
-import 'package:zerotrust_contacts/services/app_lock_service.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 
 /// "Import from Google" in a few taps.
@@ -17,16 +19,16 @@ import 'package:zerotrust_contacts/services/vault_repository.dart';
 /// anywhere: read the Google account already synced to this phone (Android),
 /// or open the .vcf file Google Contacts exports. Contacts are parsed on the
 /// device and written straight into the encrypted vault.
-class GoogleImportPage extends StatefulWidget {
+class GoogleImportPage extends ConsumerStatefulWidget {
   const GoogleImportPage({super.key});
 
   @override
-  State<GoogleImportPage> createState() => _GoogleImportPageState();
+  ConsumerState<GoogleImportPage> createState() => _GoogleImportPageState();
 }
 
-class _GoogleImportPageState extends State<GoogleImportPage> {
+class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
   final DeviceContactsService _deviceService = DeviceContactsService();
-  final VaultRepository _vaultRepository = VaultRepository();
+  late final VaultRepository _vaultRepository = requireRepository(ref);
 
   bool _loadingAccounts = true;
   bool _permissionDenied = false;
@@ -52,7 +54,8 @@ class _GoogleImportPageState extends State<GoogleImportPage> {
       return;
     }
     try {
-      final bool granted = await AppLockService()
+      final bool granted = await ref
+          .read(vaultControllerProvider.notifier)
           .whileShowingSystemUi(_deviceService.requestPermission);
       if (!granted) {
         if (mounted) {
@@ -91,20 +94,15 @@ class _GoogleImportPageState extends State<GoogleImportPage> {
   }
 
   Future<void> _pickExportFile() async {
-    final FilePickerResult? result =
-        await AppLockService().whileShowingSystemUi(
-      () => FilePicker.pickFiles(type: FileType.any, withData: true),
-    );
-    final PlatformFile? file = result?.files.singleOrNull;
+    final List<PlatformFile> picked = await ref
+        .read(vaultControllerProvider.notifier)
+        .whileShowingSystemUi(() => FilePicker.pickFiles(type: FileType.any));
+    final PlatformFile? file = picked.singleOrNull;
     if (file == null) {
       return;
     }
     await _withBusy('Reading ${file.name}…', () async {
-      final List<int>? bytes = file.bytes ??
-          (file.path == null ? null : await File(file.path!).readAsBytes());
-      if (bytes == null) {
-        throw StateError('Could not open that file.');
-      }
+      final List<int> bytes = await file.xFile.readAsBytes();
       final String text = utf8.decode(bytes, allowMalformed: true);
       if (!text.toUpperCase().contains('BEGIN:VCARD')) {
         throw StateError(

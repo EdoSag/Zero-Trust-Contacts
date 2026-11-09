@@ -4,6 +4,12 @@
 <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Take a photo for a contact.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Choose a photo for a contact.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Unlock your contacts with Face ID.</string>
     <key>CFBundleDisplayName</key>
     <string>ZT Contacts</string>
     <key>CFBundleExecutable</key>

@@ -1,21 +1,21 @@
 # Zero-Trust Contacts
 
-Zero-Trust Contacts is a Flutter contact vault that combines local encrypted storage, cloud sync, and Android contact integration.
-
-It is built for security-first personal CRM workflows:
-- sign in with Supabase auth
-- keep a local encrypted contact vault
-- sync encrypted vault data to cloud with merge/conflict handling
-- manage, organize, and recover contacts with snapshots and activity logs
+Zero-Trust Contacts ("ZT Contacts" on the phone) is the address book of the
+Zero-Trust suite. It runs on [Zero-Trust-Core](https://github.com/EdoSag/Zero-Trust-Core):
+one Zero-Trust account across Notes, Tasks, Fitness and Contacts, end-to-end
+encrypted contacts, an encrypted on-device store, and the suite's shared
+sign-in, unlock, settings and look.
 
 ## What The App Offers
 
-### Vault and security
-- Password-based vault key derivation using PBKDF2-HMAC-SHA256 (600000 iterations, 256-bit key).
-- Local SQLCipher-backed encrypted database for saved contact payloads.
-- Optional biometric lock flow with dedicated unlock screen.
-- Automatic lock on app pause/inactivity (idle timeout currently 3 minutes).
-- Security activity log (auth, sync, lock/unlock, import/export events).
+### Vault and security (from the core)
+- Zero-Trust account shared with the other apps: recovery key, password reset,
+  biometric unlock, auto-lock, sign out of other devices, account deletion.
+- Each contact is its own end-to-end encrypted item (`vault_items`), so edits
+  on two devices merge per contact instead of overwriting a whole vault.
+- Encrypted on-device store (SQLite3 Multiple Ciphers); photos are encrypted
+  attachments.
+- Security activity log (sync, imports, exports, restores).
 
 ### Contact management
 - Create rich vault contacts with fields like:
@@ -35,20 +35,15 @@ It is built for security-first personal CRM workflows:
   - duplicate detection and one-tap merge
 
 ### Sync, merge, and recovery
-- Manual sync now + push local + pull cloud.
-- Automatic background sync scheduler:
-  - on startup
-  - on app resume
-  - on configurable interval (`SYNC_INTERVAL_HOURS`)
-- Per-contact merge with conflict detection when local and cloud changed since last sync.
-- Conflict resolution screen (keep local / keep cloud / use merged).
-- Restore points (snapshots):
-  - manual snapshots
-  - automatic daily/weekly cadence snapshots
-  - restore from snapshot
+- Live sync through the core: on start, on resume, on every change, and
+  through Supabase realtime.
+- When the same contact is edited on two devices the newer edit wins, and the
+  other shows up under Settings → Sync conflicts (keep, use mine, or combine).
+- Restore points: taken before bulk changes (imports, merges, restores) plus
+  daily and weekly, and restorable from Settings.
 
 ### Import, export, and sharing
-- Import from Google in a few taps (Account & Vault, or the banner on an empty vault):
+- Import from Google in a few taps (Settings, or the banner on an empty vault):
   - Android: pick a Google account already on the phone; every contact is read
     on-device from Android's contacts database with all fields (names, phones,
     emails, addresses, company/title, notes, birthdays, labels, websites, starred).
@@ -71,13 +66,21 @@ It is built for security-first personal CRM workflows:
   - call selected contact
   - or open contact details
 
-## Security and Cloud Model (Current)
+## Contacts from before the core
 
-- Cloud vault blobs are stored in `encrypted_contacts.data_blob`.
-- Cloud blob format is encrypted (`AES-256-GCM`) before upload.
-- Legacy plaintext cloud blobs are auto-migrated to encrypted format during sync/pull.
-- Supabase RLS policies limit `profiles` and `encrypted_contacts` rows to the authenticated user.
-- Salt is also stored in `profiles` to support key re-derivation on sign-in.
+Versions up to 1.0 kept one encrypted blob per account in
+`encrypted_contacts`, a local SQLite database (`vault_contacts.db`) and plain
+photos in the `contactsProfilePictures` bucket. Their key was PBKDF2 of
+`password:<app pepper>`, so it differs from the core's legacy key.
+`lib/legacy/` brings that data over once per account:
+
+- A phone that ran the old version imports with the key it already holds; a
+  new phone asks once for the password from before.
+- The cloud copy and any unsynced local contacts are merged; a contact another
+  device already imported is never overwritten.
+- After import the old local database and keys are removed from the phone.
+  Old cloud rows and bucket photos are left in place, so older builds of the
+  other apps keep working.
 
 ## Platform Notes
 
@@ -86,42 +89,30 @@ It is built for security-first personal CRM workflows:
 
 ## Configuration
 
-Create a `.env` file with:
+Create a `.env` file (not committed) with:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-- `APP_INTERNAL_SALT` (minimum 16 characters)
-- `IS_DEBUG_MODE` (`true` or `false`)
-- `SYNC_INTERVAL_HOURS` (integer > 0)
 
-## Supabase Setup
-
-1. Apply migration:
-   - `supabase/migrations/20260303_shared_auth.sql`
-2. Ensure Supabase Auth behavior matches this app flow:
-   - Registration expects an immediate active session.
-   - If email confirmation is enabled, first-time sign-up flow will not proceed as implemented.
+The APK workflow writes it from the `ENV_FILE` secret, or from the suite's
+public client values.
 
 ## Run Locally
 
 ```bash
 flutter pub get
 flutter run
+flutter test
 ```
+
+The launcher icon is drawn from the suite's brand mark by
+`flutter test tool/launcher_icon_test.dart`.
 
 ## Key Files
 
-- App bootstrap: `lib/main.dart`
-- Routing and guards: `lib/globals/router.dart`
-- Auth orchestration: `lib/auth_service.dart`
-- Local security/DB primitives: `lib/security_service.dart`
-- Vault domain logic (sync/merge/export/snapshots/activity): `lib/services/vault_repository.dart`
-- Auto sync scheduler: `lib/services/vault_sync_scheduler.dart`
-- Biometric lock service: `lib/services/app_lock_service.dart`
-- Main screens:
-  - `lib/pages/login_screen.dart`
-  - `lib/pages/unlock_screen.dart`
-  - `lib/pages/home_page.dart`
-  - `lib/pages/contact_detail_page.dart`
-  - `lib/pages/create_contact_page.dart`
-  - `lib/pages/account_page.dart`
-  - `lib/pages/merge_conflicts_page.dart`
+- App bootstrap and gate: `lib/main.dart`, `lib/app/app_gate.dart`
+- Providers and the contacts collection: `lib/app/`
+- Contacts logic (merge, snapshots, activity, import/export): `lib/services/vault_repository.dart`
+- Pre-core import: `lib/legacy/`
+- Main screens: `lib/pages/home_page.dart`, `contact_detail_page.dart`,
+  `create_contact_page.dart`, `settings_page.dart`, `google_import_page.dart`,
+  `merge_conflicts_page.dart`, `vault_history_page.dart`

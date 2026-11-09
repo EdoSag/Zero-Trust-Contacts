@@ -1,25 +1,32 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:nowa_runtime/nowa_runtime.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
+import 'package:zerotrust_contacts/legacy/legacy_import_banner.dart';
+import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
+import 'package:zerotrust_contacts/pages/create_contact_page.dart';
+import 'package:zerotrust_contacts/pages/google_import_page.dart';
+import 'package:zerotrust_contacts/pages/settings_page.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
+import 'package:zerotrust_contacts/widgets/compact_button_style.dart';
 
-@NowaGenerated()
-class HomePage extends StatefulWidget {
-  @NowaGenerated({'loader': 'auto-constructor'})
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> {
   final DeviceContactsService _deviceContactsService = DeviceContactsService();
-  final VaultRepository _vaultRepository = VaultRepository();
+  late final VaultRepository _vaultRepository = requireRepository(ref);
+  StreamSubscription<Set<String>>? _storeChanges;
+  Timer? _reloadDebounce;
   final TextEditingController _searchController = TextEditingController();
 
   int _tabIndex = 0;
@@ -93,21 +100,37 @@ class _HomePageState extends State<HomePage> {
     });
     _openedContactSubscription =
         _deviceContactsService.openedContacts.listen(_handleOpenedContact);
+    // Edits here and on other devices (synced live) refresh the list.
+    _storeChanges = _vaultRepository.changes.listen((_) {
+      _reloadDebounce?.cancel();
+      _reloadDebounce = Timer(const Duration(milliseconds: 300), () {
+        if (mounted) _loadContacts(quiet: true);
+      });
+    });
     _loadContacts();
   }
 
-  Future<void> _loadContacts() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-      _permissionDenied = false;
-    });
+  bool _askedPermission = false;
+
+  Future<void> _loadContacts({bool quiet = false}) async {
+    if (!quiet) {
+      setState(() {
+        _loading = true;
+        _error = null;
+        _permissionDenied = false;
+      });
+    }
 
     try {
       final List<VaultContact> saved =
           await _vaultRepository.loadSavedContacts();
-      final bool permissionGranted =
-          await _deviceContactsService.requestPermission();
+      // The permission prompt covers the app: don't auto-lock under it.
+      final bool permissionGranted = _askedPermission && quiet
+          ? !_permissionDenied
+          : await ref
+              .read(vaultControllerProvider.notifier)
+              .whileShowingSystemUi(_deviceContactsService.requestPermission);
+      _askedPermission = true;
       List<VaultContact> deviceContacts = <VaultContact>[];
 
       if (permissionGranted) {
@@ -182,9 +205,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _openContact(VaultContact contact) async {
-    final bool? changed = await context.push<bool>(
-      '/contact-detail',
-      extra: contact.toJson(),
+    final bool? changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+          builder: (_) => ContactDetailPage(contact: contact)),
     );
     if (changed == true && mounted) {
       await _loadContacts();
@@ -236,12 +259,14 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(width: 8),
               IconButton.filledTonal(
                 onPressed: () async {
-                  await context.push('/account');
+                  await Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => const ContactsSettingsPage()));
                   if (mounted) {
                     await _loadContacts();
                   }
                 },
-                icon: const Icon(Icons.manage_accounts_outlined),
+                tooltip: 'Settings',
+                icon: const Icon(Icons.settings_outlined),
               ),
             ],
           ),
@@ -365,7 +390,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _openGoogleImport() async {
-    final bool? imported = await context.push<bool>('/import-google');
+    final bool? imported = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(builder: (_) => const GoogleImportPage()));
     if (imported == true && mounted) {
       await _loadContacts();
     }
@@ -389,6 +415,7 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(color: colorScheme.onPrimaryContainer),
           ),
           trailing: FilledButton(
+            style: compactButtonStyle,
             onPressed: _openGoogleImport,
             child: const Text('Import'),
           ),
@@ -410,6 +437,7 @@ class _HomePageState extends State<HomePage> {
       child: ListView(
         children: [
           _buildSearchHeader(),
+          const LegacyImportBanner(),
           if (_savedContacts.isEmpty) _buildGoogleImportBanner(),
           if (_permissionDenied)
             const Padding(
@@ -625,7 +653,9 @@ class _HomePageState extends State<HomePage> {
       ),
       floatingActionButton: FloatingActionButton.large(
         onPressed: () async {
-          final bool? created = await context.push<bool>('/create-contact');
+          final bool? created = await Navigator.of(context).push<bool>(
+              MaterialPageRoute<bool>(
+                  builder: (_) => const CreateContactPage()));
           if (created == true && mounted) {
             await _loadContacts();
           }
@@ -654,6 +684,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _openedContactSubscription?.cancel();
+    _storeChanges?.cancel();
+    _reloadDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }

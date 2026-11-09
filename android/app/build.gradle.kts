@@ -33,7 +33,8 @@ android {
         applicationId = "dev.sagron.zerotrustcontacts"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdk = flutter.minSdkVersion
+        // 28: biometric unlock keeps the key behind BiometricPrompt (Zero-Trust-Core).
+        minSdk = 28
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

@@ -33,6 +33,7 @@ class VaultContact {
     required this.fieldUpdatedAt,
     this.lastContactedAt,
     this.photoPath,
+    this.photo,
   });
 
   final String id;
@@ -58,9 +59,16 @@ class VaultContact {
   final DateTime? lastContactedAt;
   final Map<String, DateTime> fieldUpdatedAt;
 
-  /// Non-null when this contact has a saved photo.
-  /// The value is the contact's ID, used as the storage key for the photo file.
+  /// Set by versions before the core: the contact had a photo stored as a
+  /// plain file (on the phone and in the `contactsProfilePictures` bucket).
+  /// Cleared once that photo has been moved into [photo].
   final String? photoPath;
+
+  /// The contact's photo: an encrypted attachment (`ZtAttachmentRef` JSON,
+  /// which holds the photo's own key).
+  final Map<String, Object?>? photo;
+
+  bool get hasPhoto => photo != null || photoPath != null;
 
   static const List<String> mergeableFields = <String>[
     'displayName',
@@ -82,6 +90,7 @@ class VaultContact {
     'interactionCount',
     'lastContactedAt',
     'photoPath',
+    'photo',
   ];
 
   static VaultContact fromJson(Map<String, dynamic> json) {
@@ -142,6 +151,7 @@ class VaultContact {
       lastContactedAt: lastContactedAt?.toUtc(),
       fieldUpdatedAt: fieldUpdatedAt,
       photoPath: json['photoPath'] as String?,
+      photo: _readMap(json['photo']),
     )._withDefaultFieldTimestamps();
   }
 
@@ -181,6 +191,7 @@ class VaultContact {
       lastContactedAt: _parseDate(payload['lastContactedAt'])?.toUtc(),
       fieldUpdatedAt: <String, DateTime>{},
       photoPath: payload['photoPath'] as String?,
+      photo: _readMap(payload['photo']),
     )._withDefaultFieldTimestamps();
   }
 
@@ -208,6 +219,7 @@ class VaultContact {
       'updatedAt': updatedAt.toUtc().toIso8601String(),
       'lastContactedAt': lastContactedAt?.toUtc().toIso8601String(),
       'photoPath': photoPath,
+      'photo': photo,
       'fieldUpdatedAt': fieldUpdatedAt.map(
         (String key, DateTime value) => MapEntry<String, String>(
           key,
@@ -246,6 +258,7 @@ class VaultContact {
     Map<String, DateTime>? fieldUpdatedAt,
     // Use Object? + sentinel so callers can pass explicit null to clear photoPath.
     Object? photoPath = _absent,
+    Object? photo = _absent,
   }) {
     return VaultContact(
       id: id ?? this.id,
@@ -271,6 +284,9 @@ class VaultContact {
       lastContactedAt: lastContactedAt ?? this.lastContactedAt,
       fieldUpdatedAt: fieldUpdatedAt ?? this.fieldUpdatedAt,
       photoPath: identical(photoPath, _absent) ? this.photoPath : photoPath as String?,
+      photo: identical(photo, _absent)
+          ? this.photo
+          : photo as Map<String, Object?>?,
     );
   }
 
@@ -295,6 +311,8 @@ class VaultContact {
     /// Provide the contact id to set/keep a photo, or use [clearPhoto] to remove it.
     String? photoPath,
     bool clearPhoto = false,
+    /// A new photo (`ZtAttachmentRef` JSON). Replaces any earlier one.
+    Map<String, Object?>? photo,
   }) {
     final DateTime now = DateTime.now().toUtc();
     final Map<String, DateTime> updates =
@@ -320,7 +338,11 @@ class VaultContact {
     final bool nextBlocked = isBlocked ?? this.isBlocked;
     final String? nextBlockReason = clearBlockReason ? null : (blockReason ?? this.blockReason);
     final String nextSource = source ?? this.source;
-    final String? nextPhotoPath = clearPhoto ? null : (photoPath ?? this.photoPath);
+    final String? nextPhotoPath = clearPhoto || photo != null
+        ? null
+        : (photoPath ?? this.photoPath);
+    final Map<String, Object?>? nextPhoto =
+        clearPhoto ? null : (photo ?? this.photo);
 
     if (nextDisplayName != this.displayName) touch('displayName');
     if (nextFirstName != this.firstName) touch('firstName');
@@ -339,6 +361,7 @@ class VaultContact {
     if (nextBlockReason != this.blockReason) touch('blockReason');
     if (nextSource != this.source) touch('source');
     if (nextPhotoPath != this.photoPath) touch('photoPath');
+    if (!identical(nextPhoto, this.photo)) touch('photo');
 
     final String computedDisplayName = _buildDisplayName(
       explicitDisplayName: nextDisplayName,
@@ -368,6 +391,7 @@ class VaultContact {
       updatedAt: now,
       fieldUpdatedAt: updates,
       photoPath: nextPhotoPath,
+      photo: nextPhoto,
     )._withDefaultFieldTimestamps();
   }
 
@@ -551,6 +575,11 @@ class VaultContact {
         localValue: photoPath,
         remoteValue: other.photoPath,
       ),
+      photo: choose<Map<String, Object?>?>(
+        field: 'photo',
+        localValue: photo,
+        remoteValue: other.photo,
+      ),
     )._withDefaultFieldTimestamps();
   }
 
@@ -669,6 +698,9 @@ class VaultContact {
     }
     return value.toString().trim();
   }
+
+  static Map<String, Object?>? _readMap(dynamic value) =>
+      value is Map ? Map<String, Object?>.from(value) : null;
 
   static int _readInt(dynamic value) {
     if (value is int) {

@@ -3,12 +3,13 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:zero_trust_core/zero_trust_core.dart';
+import 'package:zerotrust_contacts/app/contacts_collection.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
 import 'package:zerotrust_contacts/import/vcard_parser.dart';
-import 'package:zerotrust_contacts/integrations/supabase_service.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
-import 'package:zerotrust_contacts/security_service.dart';
 import 'package:zerotrust_contacts/services/contact_photo_service.dart';
+import 'package:zerotrust_contacts/services/local_vault_file.dart';
 
 enum ContactSortMode {
   alphabetical,
@@ -103,67 +104,6 @@ class VaultSnapshot {
   }
 }
 
-class ContactMergeConflict {
-  ContactMergeConflict({
-    required this.contactId,
-    required this.local,
-    required this.remote,
-    required this.merged,
-  });
-
-  final String contactId;
-  final VaultContact local;
-  final VaultContact remote;
-  final VaultContact merged;
-
-  factory ContactMergeConflict.fromJson(Map<String, dynamic> json) {
-    return ContactMergeConflict(
-      contactId: (json['contactId'] ?? '').toString(),
-      local: VaultContact.fromJson(
-        Map<String, dynamic>.from(
-            (json['local'] ?? <String, dynamic>{}) as Map),
-      ),
-      remote: VaultContact.fromJson(
-        Map<String, dynamic>.from(
-            (json['remote'] ?? <String, dynamic>{}) as Map),
-      ),
-      merged: VaultContact.fromJson(
-        Map<String, dynamic>.from(
-            (json['merged'] ?? <String, dynamic>{}) as Map),
-      ),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'contactId': contactId,
-      'local': local.toJson(),
-      'remote': remote.toJson(),
-      'merged': merged.toJson(),
-    };
-  }
-}
-
-class SyncResult {
-  SyncResult({
-    required this.localCount,
-    required this.cloudCount,
-    required this.mergedCount,
-    required this.conflicts,
-    required this.pushedToCloud,
-    required this.pulledFromCloud,
-    required this.skipped,
-  });
-
-  final int localCount;
-  final int cloudCount;
-  final int mergedCount;
-  final List<ContactMergeConflict> conflicts;
-  final bool pushedToCloud;
-  final bool pulledFromCloud;
-  final bool skipped;
-}
-
 class SecureSharePackage {
   SecureSharePackage({
     required this.payload,
@@ -176,130 +116,87 @@ class SecureSharePackage {
   final DateTime expiresAt;
 }
 
-class _CloudBlobParseResult {
-  _CloudBlobParseResult({
-    required this.contacts,
-    required this.wasEncrypted,
-  });
+/// A local edit that lost to a newer edit from another device. The newer
+/// version is what's saved now; [mine] is kept so the user can restore it.
+class ContactConflict {
+  ContactConflict({required this.contactId, required this.mine, this.current});
 
-  final List<VaultContact> contacts;
-  final bool wasEncrypted;
+  final String contactId;
+
+  /// This device's edit, which lost.
+  final VaultContact mine;
+
+  /// The saved version that won, or null if it was deleted.
+  final VaultContact? current;
 }
 
+/// The address book, on top of the core: contacts are items of the
+/// account's encrypted local store, synced per contact by the core's sync
+/// controller. Restore points and the activity log stay on this device in a
+/// sealed [LocalVaultFile].
 class VaultRepository {
-  VaultRepository._();
-
-  static final VaultRepository _instance = VaultRepository._();
-
-  factory VaultRepository() {
-    return _instance;
-  }
+  VaultRepository({
+    required LocalItemStore store,
+    required SyncController sync,
+    required LocalVaultFile localFile,
+    ContactPhotos? photos,
+    Stream<Set<String>>? changes,
+  })  : _store = store,
+        _sync = sync,
+        _localFile = localFile,
+        _photos = photos,
+        changes = changes ?? const Stream<Set<String>>.empty();
 
   static const int _maxActivityEntries = 200;
-  static const int _maxSnapshots = 40;
+  static const int _maxSnapshots = 20;
 
-  final LocalEncryptedDatabaseService _database =
-      LocalEncryptedDatabaseService();
-  final LocalSecurityRepository _securityRepository = LocalSecurityRepository();
-  final SupabaseService _supabaseService = SupabaseService();
-  final ContactPhotoService _photoService = ContactPhotoService();
+  final LocalItemStore _store;
+  final SyncController _sync;
+  final LocalVaultFile _localFile;
+  final ContactPhotos? _photos;
+
+  /// Item ids changed in the store (local edits and other devices' edits).
+  final Stream<Set<String>> changes;
 
   Future<List<VaultContact>> loadSavedContacts() async {
-    if (!_database.isOpen) {
-      throw StateError(
-        'Local vault is not open on this device. Please sign out and sign in again.',
-      );
-    }
-
-    final List<String> payloads = await _database.readAllContactPayloads();
-    final Map<String, VaultContact> contactsById = <String, VaultContact>{};
-    bool payloadNeedsRefresh = false;
-
-    for (final String payload in payloads) {
-      final Map<String, dynamic>? decoded = _readJsonMap(payload);
-      if (decoded == null) {
-        continue;
-      }
-      final VaultContact contact = _decodeContact(decoded);
-      final VaultContact? existing = contactsById[contact.id];
-      if (existing == null || contact.updatedAt.isAfter(existing.updatedAt)) {
-        contactsById[contact.id] = contact;
-      }
-      if (decoded['id'] == null ||
-          decoded['createdAt'] == null ||
-          decoded['updatedAt'] == null ||
-          decoded['fieldUpdatedAt'] == null) {
-        payloadNeedsRefresh = true;
-      }
-    }
-
-    final List<VaultContact> contacts = contactsById.values.toList()
+    final List<VaultContact> contacts = await contactsCollection.list(_store)
       ..sort((VaultContact a, VaultContact b) =>
           b.updatedAt.compareTo(a.updatedAt));
-
-    if (payloadNeedsRefresh) {
-      await _replaceSavedContacts(
-        contacts,
-        shouldCreateSnapshot: false,
-      );
-    }
     return contacts;
   }
 
-  Future<VaultContact?> findSavedContactById(String id) async {
-    final List<VaultContact> contacts = await loadSavedContacts();
-    for (final VaultContact contact in contacts) {
-      if (contact.id == id) {
-        return contact;
-      }
-    }
-    return null;
-  }
+  /// Contacts saved by a newer version of the app, which this one can't show.
+  Future<int> newerVersionCount() async =>
+      (await contactsCollection.newerItems(_store)).length;
+
+  Future<VaultContact?> findSavedContactById(String id) =>
+      contactsCollection.get(_store, id);
 
   Future<void> upsertSavedContact(
     VaultContact contact, {
     String activity = 'contact_upsert',
   }) async {
-    final List<VaultContact> contacts = await loadSavedContacts();
-    bool replaced = false;
-    final List<VaultContact> updated = contacts.map((VaultContact current) {
-      if (current.id == contact.id) {
-        replaced = true;
-        return contact;
-      }
-      return current;
-    }).toList();
-    if (!replaced) {
-      updated.add(contact);
-    }
-    await _replaceSavedContacts(updated, shouldCreateSnapshot: true);
+    final VaultContact? existing = await findSavedContactById(contact.id);
+    await contactsCollection.save(_sync, _store, contact);
+    await _deleteReplacedPhoto(existing, contact);
     await maybeCreateCadenceSnapshots();
     await logActivity(
       activity,
-      details: '${replaced ? 'Updated' : 'Created'} ${contact.displayName}',
+      details: '${existing != null ? 'Updated' : 'Created'} '
+          '${contact.displayName}',
     );
   }
 
   Future<bool> deleteSavedContact(String contactId) async {
-    final List<VaultContact> contacts = await loadSavedContacts();
-    final int initialLength = contacts.length;
-    final VaultContact? target = contacts
-        .where((VaultContact c) => c.id == contactId)
-        .firstOrNull;
-    contacts.removeWhere((VaultContact contact) => contact.id == contactId);
-    if (contacts.length == initialLength) {
+    final VaultContact? target = await findSavedContactById(contactId);
+    if (target == null) {
       return false;
     }
-    await _replaceSavedContacts(contacts, shouldCreateSnapshot: true);
-    // Clean up local photo file if one exists.
-    if (target?.photoPath != null) {
-      await _photoService.deleteLocally(contactId);
-      final String? userId = _supabaseService.currentUser?.id;
-      if (userId != null) {
-        await _photoService.deleteFromCloud(userId, contactId);
-      }
-    }
-    await logActivity('contact_delete', details: 'Deleted contact $contactId');
+    await createSnapshot(reason: 'Before deleting ${target.displayName}');
+    await contactsCollection.delete(_sync, contactId);
+    await _photos?.deletePhotoOf(target);
+    await logActivity('contact_delete',
+        details: 'Deleted ${target.displayName}');
     return true;
   }
 
@@ -504,7 +401,11 @@ class VaultRepository {
     saved.removeWhere((VaultContact item) =>
         duplicates.any((VaultContact dup) => dup.id == item.id));
     saved.add(merged);
-    await _replaceSavedContacts(saved, shouldCreateSnapshot: true);
+    await _replaceSavedContacts(
+      saved,
+      shouldCreateSnapshot: true,
+      snapshotReason: 'Before merging duplicates',
+    );
     await logActivity(
       'contact_duplicates_merged',
       details:
@@ -568,49 +469,38 @@ class VaultRepository {
     String details = '',
     bool isError = false,
   }) async {
-    final List<SecurityActivityEntry> current = await readActivityEntries();
-    current.insert(
-      0,
-      SecurityActivityEntry(
-        id: VaultContact.generateId(),
-        action: action,
-        createdAt: DateTime.now().toUtc(),
-        details: details,
-        isError: isError,
-      ),
+    final SecurityActivityEntry entry = SecurityActivityEntry(
+      id: VaultContact.generateId(),
+      action: action,
+      createdAt: DateTime.now().toUtc(),
+      details: details,
+      isError: isError,
     );
-    final List<SecurityActivityEntry> trimmed =
-        current.take(_maxActivityEntries).toList();
-    final String encoded = jsonEncode(
-      trimmed.map((SecurityActivityEntry item) => item.toJson()).toList(),
-    );
-    await _securityRepository.writeString(
-      key: LocalSecurityRepository.securityActivityLogStorageKey,
-      value: encoded,
-    );
+    await _localFile.update((Map<String, Object?> data) {
+      final List<SecurityActivityEntry> current = _activityFrom(data)
+        ..insert(0, entry);
+      data['activity'] = current
+          .take(_maxActivityEntries)
+          .map((SecurityActivityEntry item) => item.toJson())
+          .toList();
+    });
   }
 
   Future<List<SecurityActivityEntry>> readActivityEntries(
       {int limit = 100}) async {
-    final String? raw = await _securityRepository.readString(
-      LocalSecurityRepository.securityActivityLogStorageKey,
-    );
-    if (raw == null || raw.trim().isEmpty) {
+    return _activityFrom(await _localFile.read()).take(limit).toList();
+  }
+
+  List<SecurityActivityEntry> _activityFrom(Map<String, Object?> data) {
+    final Object? raw = data['activity'];
+    if (raw is! List) {
       return <SecurityActivityEntry>[];
     }
-    final dynamic decoded = jsonDecode(raw);
-    if (decoded is! List) {
-      return <SecurityActivityEntry>[];
-    }
-    final List<SecurityActivityEntry> entries = <SecurityActivityEntry>[];
-    for (final dynamic item in decoded) {
-      final Map<String, dynamic>? map = _readJsonMap(item);
-      if (map == null) {
-        continue;
-      }
-      entries.add(SecurityActivityEntry.fromJson(map));
-    }
-    return entries.take(limit).toList();
+    return <SecurityActivityEntry>[
+      for (final Object? item in raw)
+        if (_readJsonMap(item) case final Map<String, dynamic> map)
+          SecurityActivityEntry.fromJson(map),
+    ];
   }
 
   Future<VaultSnapshot> createSnapshot({
@@ -625,13 +515,19 @@ class VaultRepository {
       cadence: cadence,
       contacts: contacts,
     );
-    final List<VaultSnapshot> current = await readSnapshots();
-    current.insert(0, snapshot);
-    final List<VaultSnapshot> trimmed = current.take(_maxSnapshots).toList();
-    await _writeSnapshots(trimmed);
+    await _localFile.update((Map<String, Object?> data) {
+      final List<VaultSnapshot> current = _snapshotsFrom(data)
+        ..insert(0, snapshot);
+      data['snapshots'] = current
+          .take(_maxSnapshots)
+          .map((VaultSnapshot item) => item.toJson())
+          .toList();
+    });
     return snapshot;
   }
 
+  /// Daily and weekly restore points, taken on the first edit after each is
+  /// due.
   Future<void> maybeCreateCadenceSnapshots() async {
     final List<VaultSnapshot> snapshots = await readSnapshots();
     final DateTime now = DateTime.now().toUtc();
@@ -661,27 +557,20 @@ class VaultRepository {
   }
 
   Future<List<VaultSnapshot>> readSnapshots({int limit = _maxSnapshots}) async {
-    final String? raw = await _securityRepository.readString(
-      LocalSecurityRepository.snapshotStorageKey,
-    );
-    if (raw == null || raw.trim().isEmpty) {
+    return _snapshotsFrom(await _localFile.read()).take(limit).toList();
+  }
+
+  List<VaultSnapshot> _snapshotsFrom(Map<String, Object?> data) {
+    final Object? raw = data['snapshots'];
+    if (raw is! List) {
       return <VaultSnapshot>[];
     }
-    final dynamic decoded = jsonDecode(raw);
-    if (decoded is! List) {
-      return <VaultSnapshot>[];
-    }
-    final List<VaultSnapshot> snapshots = <VaultSnapshot>[];
-    for (final dynamic entry in decoded) {
-      final Map<String, dynamic>? map = _readJsonMap(entry);
-      if (map == null) {
-        continue;
-      }
-      snapshots.add(VaultSnapshot.fromJson(map));
-    }
-    snapshots.sort((VaultSnapshot a, VaultSnapshot b) =>
+    return <VaultSnapshot>[
+      for (final Object? item in raw)
+        if (_readJsonMap(item) case final Map<String, dynamic> map)
+          VaultSnapshot.fromJson(map),
+    ]..sort((VaultSnapshot a, VaultSnapshot b) =>
         b.createdAt.compareTo(a.createdAt));
-    return snapshots.take(limit).toList();
   }
 
   Future<int> restoreSnapshot(String snapshotId) async {
@@ -695,7 +584,7 @@ class VaultRepository {
     await _replaceSavedContacts(
       selected.contacts,
       shouldCreateSnapshot: true,
-      snapshotReason: 'Before restoring snapshot ${selected.id}',
+      snapshotReason: 'Before restoring a restore point',
     );
     await logActivity(
       'snapshot_restore',
@@ -907,298 +796,76 @@ class VaultRepository {
     return imported;
   }
 
-  Future<SyncResult> syncWithCloud({bool auto = false}) async {
-    if (_supabaseService.currentUser == null) {
-      throw StateError('No authenticated user found. Please sign in again.');
-    }
-
-    final DateTime now = DateTime.now().toUtc();
-    final DateTime? lastSyncAt = await _readLastSyncAt();
-    final List<VaultContact> localContacts = await loadSavedContacts();
-    final String? cloudBlob =
-        await _supabaseService.fetchEncryptedVaultBlobForCurrentUser();
-    final _CloudBlobParseResult cloudParseResult =
-        await _parseCloudBlob(cloudBlob);
-    final List<VaultContact> cloudContacts = cloudParseResult.contacts;
-
-    final Map<String, VaultContact> localMap = <String, VaultContact>{
-      for (final VaultContact contact in localContacts) contact.id: contact,
-    };
-    final Map<String, VaultContact> cloudMap = <String, VaultContact>{
-      for (final VaultContact contact in cloudContacts) contact.id: contact,
-    };
-
-    final Set<String> allIds = <String>{...localMap.keys, ...cloudMap.keys};
-    final List<ContactMergeConflict> conflicts = <ContactMergeConflict>[];
-    final List<VaultContact> merged = <VaultContact>[];
-
-    for (final String id in allIds) {
-      final VaultContact? local = localMap[id];
-      final VaultContact? remote = cloudMap[id];
-
-      if (local == null && remote != null) {
-        merged.add(remote);
+  /// Local edits that lost to a newer edit from another device since the
+  /// app was opened, from the core's sync status.
+  Future<List<ContactConflict>> conflictsFrom(SyncStatus status) async {
+    final List<ContactConflict> result = <ContactConflict>[];
+    for (final SyncConflict conflict in status.conflicts) {
+      final LocalItem lost = conflict.lostLocal;
+      final VaultContact? mine =
+          lost.json == null ? null : contactsCollection.decode(lost);
+      if (mine == null) {
         continue;
       }
-      if (remote == null && local != null) {
-        merged.add(local);
-        continue;
-      }
-      if (local == null || remote == null) {
-        continue;
-      }
-      if (local.fingerprint == remote.fingerprint) {
-        merged.add(local.updatedAt.isAfter(remote.updatedAt) ? local : remote);
-        continue;
-      }
-
-      final VaultContact mergedContact = local.mergeWith(remote);
-      merged.add(mergedContact);
-
-      final bool localChangedSinceSync =
-          lastSyncAt == null || local.updatedAt.isAfter(lastSyncAt);
-      final bool cloudChangedSinceSync =
-          lastSyncAt == null || remote.updatedAt.isAfter(lastSyncAt);
-
-      if (localChangedSinceSync && cloudChangedSinceSync) {
-        conflicts.add(
-          ContactMergeConflict(
-            contactId: id,
-            local: local,
-            remote: remote,
-            merged: mergedContact,
-          ),
-        );
-      }
+      result.add(ContactConflict(
+        contactId: conflict.itemId,
+        mine: mine,
+        current: await findSavedContactById(conflict.itemId),
+      ));
     }
+    return result;
+  }
 
-    sortContactsInPlace(merged, ContactSortMode.recent);
-
-    final bool localNeedsUpdate = !_sameContactSets(localContacts, merged);
-    final bool cloudNeedsUpdate = !_sameContactSets(cloudContacts, merged) ||
-        !cloudParseResult.wasEncrypted;
-
-    if (localNeedsUpdate) {
-      await _replaceSavedContacts(
-        merged,
-        shouldCreateSnapshot: true,
-        snapshotReason: 'Before sync merge',
-      );
-    }
-
-    if (cloudNeedsUpdate) {
-      final String payload = await _buildCloudBlob(merged);
-      await _supabaseService.upsertEncryptedVaultBlobForCurrentUser(payload);
-      await _securityRepository.saveCachedCloudBlob(payload);
-      if (!cloudParseResult.wasEncrypted) {
-        await logActivity(
-          'cloud_blob_migrated_to_encrypted',
-          details: 'Migrated legacy plaintext cloud blob to encrypted format',
-        );
-      }
-    }
-
-    await _syncPhotos(merged);
-    await _writePendingConflicts(conflicts);
-    await _writeLastSyncAt(now);
-    await maybeCreateCadenceSnapshots();
-    await logActivity(
-      auto ? 'auto_sync' : 'manual_sync',
-      details:
-          'Local ${localContacts.length}, cloud ${cloudContacts.length}, merged ${merged.length}, conflicts ${conflicts.length}',
-    );
-
-    return SyncResult(
-      localCount: localContacts.length,
-      cloudCount: cloudContacts.length,
-      mergedCount: merged.length,
-      conflicts: conflicts,
-      pushedToCloud: cloudNeedsUpdate,
-      pulledFromCloud: localNeedsUpdate,
-      skipped: false,
+  /// Keeps [chosen] for a conflicted contact: saved as a new edit, so it
+  /// wins on every device.
+  Future<void> resolveConflict(VaultContact chosen) async {
+    await upsertSavedContact(
+      chosen.copyWith(updatedAt: DateTime.now().toUtc()),
+      activity: 'sync_conflict_resolved',
     );
   }
 
-  Future<int> pullCloudToLocal() async {
-    if (_supabaseService.currentUser == null) {
-      throw StateError('No authenticated user found. Please sign in again.');
-    }
-    final String? cloudBlob =
-        await _supabaseService.fetchEncryptedVaultBlobForCurrentUser();
-    final _CloudBlobParseResult cloudParseResult =
-        await _parseCloudBlob(cloudBlob);
-    final List<VaultContact> cloudContacts = cloudParseResult.contacts;
-    await _replaceSavedContacts(
-      cloudContacts,
-      shouldCreateSnapshot: true,
-      snapshotReason: 'Before pull from cloud',
-    );
-    if (!cloudParseResult.wasEncrypted) {
-      final String encryptedPayload = await _buildCloudBlob(cloudContacts);
-      await _supabaseService.upsertEncryptedVaultBlobForCurrentUser(
-        encryptedPayload,
-      );
-      await _securityRepository.saveCachedCloudBlob(encryptedPayload);
-      await logActivity(
-        'cloud_blob_migrated_to_encrypted',
-        details: 'Migrated legacy plaintext cloud blob during pull',
-      );
-    }
-    await _syncPhotos(cloudContacts);
-    await _writeLastSyncAt(DateTime.now().toUtc());
-    await logActivity('cloud_pull',
-        details: 'Pulled ${cloudContacts.length} contacts from cloud');
-    return cloudContacts.length;
-  }
+  Future<void> syncNow() => _sync.syncNow();
 
-  Future<int> pushLocalToCloud() async {
-    if (_supabaseService.currentUser == null) {
-      throw StateError('No authenticated user found. Please sign in again.');
-    }
-    final List<VaultContact> contacts = await loadSavedContacts();
-    final String blob = await _buildCloudBlob(contacts);
-    await _supabaseService.upsertEncryptedVaultBlobForCurrentUser(blob);
-    await _securityRepository.saveCachedCloudBlob(blob);
-    await _syncPhotos(contacts);
-    await _writeLastSyncAt(DateTime.now().toUtc());
-    await logActivity('cloud_push',
-        details: 'Pushed ${contacts.length} contacts to cloud');
-    return contacts.length;
-  }
-
-  /// Syncs photos between local storage and Supabase Storage.
-  /// - Contacts with a local photo are uploaded to the cloud.
-  /// - Contacts whose photo exists only in the cloud are downloaded locally.
-  Future<void> _syncPhotos(List<VaultContact> contacts) async {
-    final String? userId = _supabaseService.currentUser?.id;
-    if (userId == null) return;
-
-    for (final VaultContact contact in contacts) {
-      if (contact.photoPath == null) continue;
-      final bool hasLocal = await _photoService.getLocalFile(contact.id) != null;
-      if (hasLocal) {
-        await _photoService.uploadToCloud(userId, contact.id);
-      } else {
-        await _photoService.downloadFromCloud(userId, contact.id);
-      }
-    }
-  }
-
-  Future<List<ContactMergeConflict>> readPendingConflicts() async {
-    final String? raw = await _securityRepository.readString(
-      LocalSecurityRepository.pendingConflictsStorageKey,
-    );
-    if (raw == null || raw.trim().isEmpty) {
-      return <ContactMergeConflict>[];
-    }
-    final dynamic decoded = jsonDecode(raw);
-    if (decoded is! List) {
-      return <ContactMergeConflict>[];
-    }
-    final List<ContactMergeConflict> conflicts = <ContactMergeConflict>[];
-    for (final dynamic item in decoded) {
-      final Map<String, dynamic>? map = _readJsonMap(item);
-      if (map == null) {
-        continue;
-      }
-      conflicts.add(ContactMergeConflict.fromJson(map));
-    }
-    return conflicts;
-  }
-
-  Future<void> clearPendingConflicts() async {
-    await _securityRepository
-        .deleteKey(LocalSecurityRepository.pendingConflictsStorageKey);
-  }
-
-  Future<void> resolveConflict({
-    required String contactId,
-    required VaultContact resolvedContact,
-  }) async {
-    final List<VaultContact> local = await loadSavedContacts();
-    bool updated = false;
-    final List<VaultContact> next = local.map((VaultContact contact) {
-      if (contact.id == contactId) {
-        updated = true;
-        return resolvedContact;
-      }
-      return contact;
-    }).toList();
-    if (!updated) {
-      next.add(resolvedContact);
-    }
-    await _replaceSavedContacts(next, shouldCreateSnapshot: true);
-
-    final List<ContactMergeConflict> conflicts = await readPendingConflicts();
-    conflicts.removeWhere(
-        (ContactMergeConflict item) => item.contactId == contactId);
-    await _writePendingConflicts(conflicts);
-    await pushLocalToCloud();
-    await logActivity('sync_conflict_resolved',
-        details: 'Resolved conflict for $contactId');
-  }
-
+  /// Makes the saved contacts equal to [contacts]: saves the new and changed
+  /// ones and deletes the rest, each as its own synced change.
   Future<void> _replaceSavedContacts(
     List<VaultContact> contacts, {
     required bool shouldCreateSnapshot,
     String snapshotReason = 'Before replacing local contacts',
   }) async {
-    if (!_database.isOpen) {
-      throw StateError(
-        'Local vault is not open on this device. Please sign out and sign in again.',
-      );
-    }
     if (shouldCreateSnapshot) {
       await createSnapshot(reason: snapshotReason);
     }
-    final List<VaultContact> deduped = <VaultContact>[];
-    final Set<String> ids = <String>{};
+    final Map<String, VaultContact> current = <String, VaultContact>{
+      for (final VaultContact item in await loadSavedContacts()) item.id: item,
+    };
+    final Set<String> keep = <String>{};
     for (final VaultContact item in contacts) {
-      if (ids.add(item.id)) {
-        deduped.add(item);
+      if (!keep.add(item.id)) {
+        continue;
+      }
+      final VaultContact? existing = current[item.id];
+      if (existing != null && existing.fingerprint == item.fingerprint) {
+        continue;
+      }
+      await contactsCollection.save(_sync, _store, item);
+    }
+    for (final VaultContact gone in current.values) {
+      if (!keep.contains(gone.id)) {
+        await contactsCollection.delete(_sync, gone.id);
       }
     }
-    final List<String> payloads =
-        deduped.map((VaultContact item) => item.toStoragePayload()).toList();
-    await _database.replaceAllContactPayloads(payloads);
   }
 
-  Future<void> _writeSnapshots(List<VaultSnapshot> snapshots) async {
-    final String encoded = jsonEncode(
-      snapshots.map((VaultSnapshot item) => item.toJson()).toList(),
-    );
-    await _securityRepository.writeString(
-      key: LocalSecurityRepository.snapshotStorageKey,
-      value: encoded,
-    );
-  }
-
-  Future<void> _writePendingConflicts(
-      List<ContactMergeConflict> conflicts) async {
-    final String encoded = jsonEncode(
-      conflicts.map((ContactMergeConflict item) => item.toJson()).toList(),
-    );
-    await _securityRepository.writeString(
-      key: LocalSecurityRepository.pendingConflictsStorageKey,
-      value: encoded,
-    );
-  }
-
-  Future<DateTime?> _readLastSyncAt() async {
-    final String? raw = await _securityRepository.readString(
-      LocalSecurityRepository.lastSyncAtStorageKey,
-    );
-    if (raw == null || raw.trim().isEmpty) {
-      return null;
+  /// A replaced photo's file isn't referenced any more.
+  Future<void> _deleteReplacedPhoto(
+      VaultContact? before, VaultContact after) async {
+    final Object? oldId = before?.photo?['id'];
+    if (oldId == null || oldId == after.photo?['id']) {
+      return;
     }
-    return DateTime.tryParse(raw)?.toUtc();
-  }
-
-  Future<void> _writeLastSyncAt(DateTime value) async {
-    await _securityRepository.writeString(
-      key: LocalSecurityRepository.lastSyncAtStorageKey,
-      value: value.toUtc().toIso8601String(),
-    );
+    await _photos?.deletePhotoOf(before!);
   }
 
   VaultContact _decodeContact(Map<String, dynamic> payload) {
@@ -1206,53 +873,6 @@ class VaultRepository {
       return VaultContact.fromJson(payload);
     }
     return VaultContact.fromLegacyPayload(payload);
-  }
-
-  Future<_CloudBlobParseResult> _parseCloudBlob(String? cloudBlob) async {
-    if (cloudBlob == null || cloudBlob.trim().isEmpty) {
-      return _CloudBlobParseResult(
-        contacts: <VaultContact>[],
-        wasEncrypted: true,
-      );
-    }
-    final Map<String, dynamic>? root = _readJsonMap(cloudBlob);
-    if (root == null) {
-      return _CloudBlobParseResult(
-        contacts: <VaultContact>[],
-        wasEncrypted: true,
-      );
-    }
-
-    final bool appearsEncrypted = root['format'] == 'ztc_cloud_cipher_v1' ||
-        (root.containsKey('nonce') &&
-            root.containsKey('cipherText') &&
-            root.containsKey('mac'));
-    if (appearsEncrypted) {
-      final String decrypted = await _decryptCloudBlob(root);
-      final Map<String, dynamic>? plainRoot = _readJsonMap(decrypted);
-      if (plainRoot == null) {
-        throw StateError('Decrypted cloud payload is invalid.');
-      }
-      return _CloudBlobParseResult(
-        contacts: _contactsFromDynamic(plainRoot['contacts']),
-        wasEncrypted: true,
-      );
-    }
-
-    return _CloudBlobParseResult(
-      contacts: _contactsFromDynamic(root['contacts']),
-      wasEncrypted: false,
-    );
-  }
-
-  Future<String> _buildCloudBlob(List<VaultContact> contacts) async {
-    final String plainPayload = jsonEncode(<String, dynamic>{
-      'version': 2,
-      'exportedAt': DateTime.now().toUtc().toIso8601String(),
-      'contacts':
-          contacts.map((VaultContact contact) => contact.toJson()).toList(),
-    });
-    return _encryptCloudBlob(plainPayload);
   }
 
   List<VaultContact> _contactsFromDynamic(dynamic rawContacts) {
@@ -1268,66 +888,6 @@ class VaultRepository {
       contacts.add(_decodeContact(map));
     }
     return contacts;
-  }
-
-  Future<String> _encryptCloudBlob(String plainText) async {
-    final Uint8List? keyBytes = await _securityRepository.readEncryptedDbKey();
-    if (keyBytes == null || keyBytes.isEmpty) {
-      throw StateError(
-        'Missing local encryption key. Please sign out and sign in again.',
-      );
-    }
-
-    final Uint8List nonce = _randomBytes(12);
-    final AesGcm algorithm = AesGcm.with256bits();
-    final SecretBox secretBox = await algorithm.encrypt(
-      utf8.encode(plainText),
-      nonce: nonce,
-      secretKey: SecretKey(keyBytes),
-    );
-
-    return jsonEncode(<String, dynamic>{
-      'format': 'ztc_cloud_cipher_v1',
-      'alg': 'AES-256-GCM',
-      'encryptedAt': DateTime.now().toUtc().toIso8601String(),
-      'nonce': base64Encode(secretBox.nonce),
-      'cipherText': base64Encode(secretBox.cipherText),
-      'mac': base64Encode(secretBox.mac.bytes),
-    });
-  }
-
-  Future<String> _decryptCloudBlob(Map<String, dynamic> encrypted) async {
-    final Uint8List? keyBytes = await _securityRepository.readEncryptedDbKey();
-    if (keyBytes == null || keyBytes.isEmpty) {
-      throw StateError(
-        'Missing local encryption key. Please sign out and sign in again.',
-      );
-    }
-
-    final String nonceEncoded = (encrypted['nonce'] ?? '').toString();
-    final String cipherEncoded = (encrypted['cipherText'] ?? '').toString();
-    final String macEncoded = (encrypted['mac'] ?? '').toString();
-    if (nonceEncoded.isEmpty || cipherEncoded.isEmpty || macEncoded.isEmpty) {
-      throw StateError('Encrypted cloud payload is incomplete.');
-    }
-
-    final Uint8List nonce = Uint8List.fromList(base64Decode(nonceEncoded));
-    final Uint8List cipherText =
-        Uint8List.fromList(base64Decode(cipherEncoded));
-    final Uint8List macBytes = Uint8List.fromList(base64Decode(macEncoded));
-
-    final AesGcm algorithm = AesGcm.with256bits();
-    try {
-      final List<int> plainBytes = await algorithm.decrypt(
-        SecretBox(cipherText, nonce: nonce, mac: Mac(macBytes)),
-        secretKey: SecretKey(keyBytes),
-      );
-      return utf8.decode(plainBytes);
-    } catch (_) {
-      throw StateError(
-        'Failed to decrypt cloud data. Your local key may not match this vault.',
-      );
-    }
   }
 
   Future<Map<String, dynamic>> _encryptTextWithPassphrase({
@@ -1438,28 +998,6 @@ class VaultRepository {
     final Random random = Random.secure();
     return Uint8List.fromList(
         List<int>.generate(length, (_) => random.nextInt(256)));
-  }
-
-  bool _sameContactSets(List<VaultContact> first, List<VaultContact> second) {
-    if (first.length != second.length) {
-      return false;
-    }
-    final Map<String, String> a = <String, String>{
-      for (final VaultContact contact in first) contact.id: contact.fingerprint,
-    };
-    final Map<String, String> b = <String, String>{
-      for (final VaultContact contact in second)
-        contact.id: contact.fingerprint,
-    };
-    if (a.length != b.length) {
-      return false;
-    }
-    for (final MapEntry<String, String> entry in a.entries) {
-      if (b[entry.key] != entry.value) {
-        return false;
-      }
-    }
-    return true;
   }
 
   static Map<String, dynamic>? _readJsonMap(dynamic value) {
