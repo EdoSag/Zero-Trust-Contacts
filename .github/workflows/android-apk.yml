@@ -25,7 +25,7 @@ concurrency:
 
 env:
   APP_SLUG: zero-trust-contacts
-  APP_TITLE: Zero Trust Contacts
+  APP_TITLE: Zero-Trust Contacts
 
 jobs:
   apk:

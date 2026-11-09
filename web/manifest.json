@@ -1,6 +1,6 @@
 {
-    "name": "zerotrust_contacts",
-    "short_name": "zerotrust_contacts",
+    "name": "Zero-Trust Contacts",
+    "short_name": "ZT Contacts",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
