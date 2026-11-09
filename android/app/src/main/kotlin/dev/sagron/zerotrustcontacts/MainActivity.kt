@@ -1,6 +1,7 @@
 package dev.sagron.zerotrustcontacts
 
 import android.Manifest
+import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
@@ -18,7 +19,9 @@ class MainActivity : FlutterFragmentActivity() {
     private val channelName = "zerotrust_contacts/device_contacts"
     private val googleAccountType = "com.google"
     private val requestCodeReadContacts = 2001
+    private val requestCodeWriteContacts = 2002
     private var pendingPermissionResult: MethodChannel.Result? = null
+    private var pendingWritePermissionResult: MethodChannel.Result? = null
     private var channel: MethodChannel? = null
     private var pendingOpenedContact: Map<String, Any?>? = null
 
@@ -34,6 +37,7 @@ class MainActivity : FlutterFragmentActivity() {
             ?.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "requestContactsPermission" -> handlePermissionRequest(result)
+                    "requestWriteContactsPermission" -> handleWritePermissionRequest(result)
                     "consumePendingOpenedContact" -> {
                         val contact = pendingOpenedContact?.let { payload ->
                             val uri = payload["uri"] as? String
@@ -148,7 +152,27 @@ class MainActivity : FlutterFragmentActivity() {
                         }.start()
                     }
 
-                    else -> result.notImplemented()
+                    "getRawContactPhoto" -> {
+                        val rawId = call.argument<Number>("rawContactId")?.toLong()
+                        if (rawId == null) {
+                            result.error("invalid_argument", "Missing raw contact id.", null)
+                            return@setMethodCallHandler
+                        }
+                        Thread {
+                            try {
+                                val bytes = readRawContactPhoto(rawId)
+                                runOnUiThread { result.success(bytes) }
+                            } catch (error: SecurityException) {
+                                runOnUiThread {
+                                    result.error("permission_denied", "Contacts permission is required.", null)
+                                }
+                            } catch (error: Exception) {
+                                runOnUiThread { result.success(null) }
+                            }
+                        }.start()
+                    }
+
+                    else -> PhoneContactsSync.handle(this, call, result) ?: result.notImplemented()
                 }
             }
         flushPendingOpenedContact()
@@ -167,6 +191,13 @@ class MainActivity : FlutterFragmentActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == requestCodeWriteContacts) {
+            val granted = grantResults.isNotEmpty() &&
+                grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+            pendingWritePermissionResult?.success(granted)
+            pendingWritePermissionResult = null
+            return
+        }
         if (requestCode != requestCodeReadContacts) {
             return
         }
@@ -198,6 +229,21 @@ class MainActivity : FlutterFragmentActivity() {
             arrayOf(Manifest.permission.READ_CONTACTS),
             requestCodeReadContacts,
         )
+    }
+
+    /** Read and write contacts, for "Show in Phone and Messages". */
+    private fun handleWritePermissionRequest(result: MethodChannel.Result) {
+        val needed = arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)
+        if (needed.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }) {
+            result.success(true)
+            return
+        }
+        if (pendingWritePermissionResult != null) {
+            result.error("permission_request_in_progress", "A contacts permission request is already in progress.", null)
+            return
+        }
+        pendingWritePermissionResult = result
+        ActivityCompat.requestPermissions(this, needed, requestCodeWriteContacts)
     }
 
     private fun hasReadContactsPermission(): Boolean {
@@ -235,6 +281,8 @@ class MainActivity : FlutterFragmentActivity() {
 
             while (cursor.moveToNext()) {
                 val contactId = cursor.getLong(idIndex)
+                // Copies the app itself put on the phone are already in the vault.
+                if (sources[contactId] == ownSource) continue
                 val name = cursor.getString(nameIndex)?.trim().orEmpty()
                 val phone = cursor.getString(phoneIndex)?.trim().orEmpty()
 
@@ -264,6 +312,7 @@ class MainActivity : FlutterFragmentActivity() {
         var phoneCount = 0
         for (source in sources.values) {
             when (source) {
+                ownSource -> Unit
                 "Account" -> accountCount += 1
                 "SIM card" -> simCount += 1
                 else -> phoneCount += 1
@@ -342,6 +391,9 @@ class MainActivity : FlutterFragmentActivity() {
         accountName: String?,
         selectedAccountNormalized: String,
     ): String {
+        if (accountType == PhoneContactsSync.ACCOUNT_TYPE) {
+            return ownSource
+        }
         val normalizedType = accountType?.lowercase(Locale.US).orEmpty()
         val normalizedName = accountName?.lowercase(Locale.US).orEmpty()
 
@@ -363,8 +415,11 @@ class MainActivity : FlutterFragmentActivity() {
         return "Phone"
     }
 
+    private val ownSource = "ZT Contacts"
+
     private fun sourcePriority(source: String): Int {
         return when (source) {
+            ownSource -> 0
             "SIM card" -> 3
             "Account" -> 2
             else -> 1
@@ -416,7 +471,10 @@ class MainActivity : FlutterFragmentActivity() {
             val idIndex = cursor.getColumnIndexOrThrow(ContactsContract.RawContacts._ID)
             val starredIndex = cursor.getColumnIndexOrThrow(ContactsContract.RawContacts.STARRED)
             while (cursor.moveToNext()) {
-                contacts[cursor.getLong(idIndex)] = mutableMapOf(
+                val rawId = cursor.getLong(idIndex)
+                contacts[rawId] = mutableMapOf(
+                    "rawId" to rawId,
+                    "hasPhoto" to false,
                     "isFavorite" to (cursor.getInt(starredIndex) == 1),
                     "phones" to mutableListOf<String>(),
                     "emails" to mutableListOf<String>(),
@@ -440,6 +498,8 @@ class MainActivity : FlutterFragmentActivity() {
             ContactsContract.Data.DATA3,
             ContactsContract.Data.DATA4,
             ContactsContract.Data.DATA5,
+            ContactsContract.Data.DATA14,
+            ContactsContract.Data.DATA15,
         )
 
         contacts.keys.chunked(400).forEach { chunk ->
@@ -454,6 +514,11 @@ class MainActivity : FlutterFragmentActivity() {
                 while (cursor.moveToNext()) {
                     val contact = contacts[cursor.getLong(0)] ?: continue
                     val mimeType = cursor.getString(1) ?: continue
+                    if (mimeType == ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE) {
+                        // DATA14: full-size photo file id, DATA15: thumbnail bytes.
+                        if (!cursor.isNull(7) || !cursor.isNull(8)) contact["hasPhoto"] = true
+                        continue
+                    }
                     val data1 = cursor.getString(2)?.trim().orEmpty()
                     applyDataRow(contact, mimeType, data1, cursor, groupTitles)
                 }
@@ -543,6 +608,37 @@ class MainActivity : FlutterFragmentActivity() {
         }
         return titles
     }
+
+    /**
+     * One raw contact's photo as a JPEG of at most [maxPhotoSide] px: the
+     * full-size display photo when there is one, else the thumbnail. Read
+     * from the phone's contacts database; nothing goes to Google.
+     */
+    private fun readRawContactPhoto(rawId: Long): ByteArray? {
+        ensureContactsPermission()
+        val rawUri = ContentUris.withAppendedId(ContactsContract.RawContacts.CONTENT_URI, rawId)
+        val displayUri = Uri.withAppendedPath(
+            rawUri,
+            ContactsContract.RawContacts.DisplayPhoto.CONTENT_DIRECTORY,
+        )
+        val full = try {
+            contentResolver.openAssetFileDescriptor(displayUri, "r")?.use { fd ->
+                fd.createInputStream().use { it.readBytes() }
+            }
+        } catch (error: Exception) {
+            null
+        }
+        val original = full ?: contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            arrayOf(ContactsContract.CommonDataKinds.Photo.PHOTO),
+            "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+            arrayOf(rawId.toString(), ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE),
+            null,
+        )?.use { cursor -> if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getBlob(0) else null }
+        return original?.let { PhotoScaling.toJpeg(it, maxPhotoSide) }
+    }
+
+    private val maxPhotoSide = 800
 
     private fun ensureContactsPermission() {
         if (!hasReadContactsPermission()) {

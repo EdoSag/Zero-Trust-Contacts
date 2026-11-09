@@ -9,6 +9,7 @@ import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/pages/create_contact_page.dart';
 import 'package:zerotrust_contacts/pages/google_import_page.dart';
 import 'package:zerotrust_contacts/pages/settings_page.dart';
+import 'package:zerotrust_contacts/pages/trash_page.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
@@ -526,6 +527,17 @@ class _HomePageState extends ConsumerState<HomePage> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Trash'),
+              subtitle: const Text('Deleted contacts, kept for 30 days'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const TrashPage())),
+            ),
+          ),
+          const SizedBox(height: 12),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(12),

@@ -8,6 +8,9 @@ import 'package:zerotrust_contacts/legacy/legacy_import_banner.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
 import 'package:zerotrust_contacts/pages/google_import_page.dart';
 import 'package:zerotrust_contacts/pages/merge_conflicts_page.dart';
+import 'package:zerotrust_contacts/pages/trash_page.dart';
+import 'package:zerotrust_contacts/phone_sync/phone_sync_controller.dart';
+import 'package:zerotrust_contacts/phone_sync/phone_sync_page.dart';
 import 'package:zerotrust_contacts/pages/vault_history_page.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 
@@ -22,6 +25,10 @@ class ContactsSettingsPage extends ConsumerWidget {
         ztSyncControllerProvider.select((SyncStatus s) => s.conflicts.length));
     final bool legacyPending =
         ref.watch(legacyImportProvider) == LegacyImportStatus.needsPassword;
+
+    final PhoneSyncStatus phoneSync = ref.watch(phoneSyncProvider);
+    final bool phoneSyncSupported =
+        ref.watch(phoneContactsBridgeProvider).isSupported;
 
     void push(Widget page) => Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => page));
@@ -40,11 +47,26 @@ class ContactsSettingsPage extends ConsumerWidget {
             subtitle: const Text('Needs your password from before, once'),
             onTap: () => showLegacyImportDialog(context),
           ),
+        if (phoneSyncSupported)
+          ListTile(
+            leading: const Icon(Icons.phone_in_talk_outlined),
+            title: const Text('Show in Phone and Messages'),
+            subtitle: Text(phoneSync.enabled
+                ? 'On: caller ID and the dialer show your contacts'
+                : 'Off: calls from contacts show only the number'),
+            onTap: () => push(const PhoneSyncPage()),
+          ),
         ListTile(
           leading: const Icon(Icons.download_outlined),
           title: const Text('Import from Google'),
           subtitle: const Text('Accounts on this phone, or a Google export'),
           onTap: () => push(const GoogleImportPage()),
+        ),
+        ListTile(
+          leading: const Icon(Icons.delete_outline),
+          title: const Text('Trash'),
+          subtitle: const Text('Deleted contacts, kept for 30 days'),
+          onTap: () => push(const TrashPage()),
         ),
         ListTile(
           leading: const Icon(Icons.restore_outlined),

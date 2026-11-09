@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No edit schema: contacts apps show ZT Contacts read-only, since the
+     vault is where they are edited. -->
+<ContactsAccountType xmlns:android="http://schemas.android.com/apk/res/android" />

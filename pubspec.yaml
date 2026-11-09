@@ -1,7 +1,7 @@
 name: zerotrust_contacts
 description: "Zero-Trust Contacts: an end-to-end encrypted address book."
 publish_to: none
-version: 1.1.1+2
+version: 1.2.0+3
 
 environment:
   sdk: ^3.9.0
@@ -32,6 +32,8 @@ dependencies:
   image_picker: ^1.1.2
   file_picker: ^13.3.2
   url_launcher: ^6.3.1
+  share_plus: ^13.3.1
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

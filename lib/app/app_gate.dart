@@ -5,6 +5,8 @@ import 'package:zerotrust_contacts/app/auth_providers.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
 import 'package:zerotrust_contacts/pages/home_page.dart';
+import 'package:zerotrust_contacts/phone_sync/phone_sync_controller.dart';
+import 'package:zerotrust_contacts/services/vault_repository.dart';
 
 /// Routes between the shared account screens and the address book.
 ///
@@ -77,6 +79,8 @@ class _AppGateState extends ConsumerState<AppGate> with WidgetsBindingObserver {
     });
     ref.listen(currentUserProvider, (_, user) {
       if (user == null) {
+        // The copy in the phone's contacts goes with the account.
+        ref.read(phoneSyncProvider.notifier).signedOut().ignore();
         ref.read(vaultControllerProvider.notifier).lock();
         setState(() => _signingIn = true);
       }
@@ -138,16 +142,20 @@ class _ContactsHomeState extends ConsumerState<_ContactsHome> {
   void initState() {
     super.initState();
     ref.listenManual(vaultRepositoryProvider, (_, next) {
-      if (next is AsyncData) {
+      if (next case AsyncData(:final VaultRepository value)) {
         ref.read(legacyImportProvider.notifier).runQuietly();
+        // Contacts in the trash for 30 days are deleted for good.
+        value.purgeExpiredTrash().ignore();
       }
     }, fireImmediately: true);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Keeps sync running while the app is open.
+    // Keeps sync running while the app is open, and the phone's copy of
+    // contacts (if turned on) up to date.
     ref.watch(ztSyncControllerProvider);
+    ref.watch(phoneSyncProvider);
 
     return switch (ref.watch(vaultRepositoryProvider)) {
       AsyncData() => const HomePage(),

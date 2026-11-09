@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/import/android_account_contacts.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
+import 'package:zerotrust_contacts/import/photo_downloader.dart';
 import 'package:zerotrust_contacts/import/vcard_parser.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
@@ -66,8 +68,8 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
         }
         return;
       }
-      final List<ImportAccount> accounts =
-          await _deviceService.loadImportAccounts();
+      final List<ImportAccount> accounts = await _deviceService
+          .loadImportAccounts();
       if (mounted) {
         setState(() {
           _accounts = accounts;
@@ -84,11 +86,16 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
 
   Future<void> _previewAccount(ImportAccount account) async {
     await _withBusy('Reading ${account.name}…', () async {
-      final List<Map<String, dynamic>> rows =
-          await _deviceService.loadAccountContacts(account.name);
+      final List<Map<String, dynamic>> rows = await _deviceService
+          .loadAccountContacts(account.name);
+      final AccountImport read = accountImportFromFields(rows);
       await _preparePreview(
         sourceLabel: account.name,
-        incoming: vaultContactsFromAccountFields(rows),
+        incoming: read.contacts,
+        photos: <String, PhotoLoader>{
+          for (final MapEntry<String, int> e in read.photoRawIds.entries)
+            e.key: () => _deviceService.loadRawContactPhoto(e.value),
+        },
       );
     });
   }
@@ -110,9 +117,19 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
           'Export, then "vCard (for iOS Contacts)".',
         );
       }
+      final VCardImport parsed = const VCardParser().parseWithPhotos(text);
       await _preparePreview(
         sourceLabel: file.name,
-        incoming: const VCardParser().parse(text),
+        incoming: parsed.contacts,
+        photos: <String, PhotoLoader>{
+          for (final MapEntry<String, VCardPhoto> e in parsed.photos.entries)
+            if (e.value.bytes case final Uint8List bytes)
+              e.key: () async => bytes,
+        },
+        linkedPhotos: <String, Uri>{
+          for (final MapEntry<String, VCardPhoto> e in parsed.photos.entries)
+            if (e.value.url case final Uri url) e.key: url,
+        },
       );
     });
   }
@@ -120,49 +137,89 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
   Future<void> _preparePreview({
     required String sourceLabel,
     required List<VaultContact> incoming,
+    Map<String, PhotoLoader> photos = const <String, PhotoLoader>{},
+    Map<String, Uri> linkedPhotos = const <String, Uri>{},
   }) async {
     if (incoming.isEmpty) {
       throw StateError('No contacts found in $sourceLabel.');
     }
     final ContactImportPlan plan = await _vaultRepository.planImport(incoming);
+    final int newPhotos = await _vaultRepository.countPhotosToAdd(
+      plan,
+      photos.keys,
+    );
+    final int newLinkedPhotos = await _vaultRepository.countPhotosToAdd(
+      plan,
+      linkedPhotos.keys.where((String id) => !photos.containsKey(id)),
+    );
     if (mounted) {
       setState(() {
+        _downloadLinkedPhotos = false;
         _pending = _PendingImport(
           sourceLabel: sourceLabel,
           incoming: incoming,
           plan: plan,
+          photos: photos,
+          linkedPhotos: linkedPhotos,
+          newPhotos: newPhotos,
+          newLinkedPhotos: newLinkedPhotos,
         );
       });
     }
   }
+
+  /// Whether to fetch photos a Google export only links to. Off unless the
+  /// user turns it on, since it connects to Google's photo server.
+  bool _downloadLinkedPhotos = false;
 
   Future<void> _confirmImport() async {
     final _PendingImport? pending = _pending;
     if (pending == null) {
       return;
     }
+    final PhotoDownloader? downloader =
+        _downloadLinkedPhotos && pending.linkedPhotos.isNotEmpty
+        ? PhotoDownloader()
+        : null;
+    final Map<String, PhotoLoader> photos = <String, PhotoLoader>{
+      if (downloader != null)
+        for (final MapEntry<String, Uri> e in pending.linkedPhotos.entries)
+          e.key: () => downloader.download(e.value),
+      ...pending.photos,
+    };
     await _withBusy('Encrypting and saving…', () async {
       final ContactImportPlan done = await _vaultRepository.importContacts(
         pending.incoming,
         sourceLabel: 'Google (${pending.sourceLabel})',
+        photos: photos,
+        onPhotoProgress: (int doneCount, int total) {
+          if (mounted && total > 0) {
+            setState(
+              () => _busyText = 'Encrypting photos… $doneCount of $total',
+            );
+          }
+        },
       );
+      downloader?.close();
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_summary(done))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_summary(done))));
       Navigator.of(context).pop(true);
     });
   }
 
   String _summary(ContactImportPlan plan) {
-    if (plan.isEmpty) {
+    if (plan.isEmpty && plan.photosAdded == 0) {
       return 'Everything was already in your vault.';
     }
     final List<String> parts = <String>[
       if (plan.toAdd.isNotEmpty) '${plan.toAdd.length} added',
       if (plan.toUpdate.isNotEmpty) '${plan.toUpdate.length} updated',
+      if (plan.photosAdded > 0)
+        '${plan.photosAdded} ${plan.photosAdded == 1 ? 'photo' : 'photos'}',
     ];
     return 'Imported from Google: ${parts.join(', ')}.';
   }
@@ -183,8 +240,9 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
             .toString()
             .replaceFirst('Bad state: ', '')
             .replaceFirst('Exception: ', '');
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) {
@@ -230,8 +288,10 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
         _PrivacyNote(colors: colors),
         const SizedBox(height: 16),
         if (_isAndroid) ...[
-          Text('Google accounts on this phone',
-              style: theme.textTheme.titleMedium),
+          Text(
+            'Google accounts on this phone',
+            style: theme.textTheme.titleMedium,
+          ),
           const SizedBox(height: 8),
           if (_loadingAccounts)
             const Padding(
@@ -269,8 +329,10 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: colors.primaryContainer,
-                    child: Icon(Icons.account_circle_outlined,
-                        color: colors.onPrimaryContainer),
+                    child: Icon(
+                      Icons.account_circle_outlined,
+                      color: colors.onPrimaryContainer,
+                    ),
                   ),
                   title: Text(account.name),
                   subtitle: Text('${account.contactCount} contacts'),
@@ -297,10 +359,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                   number: 2,
                   text: 'Choose "vCard (for iOS Contacts)" and save the file.',
                 ),
-                const _Step(
-                  number: 3,
-                  text: 'Pick that file here.',
-                ),
+                const _Step(number: 3, text: 'Pick that file here.'),
                 const SizedBox(height: 8),
                 FilledButton.tonalIcon(
                   onPressed: _busy ? null : _pickExportFile,
@@ -314,13 +373,20 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
         if (_busyText != null)
           Padding(
             padding: const EdgeInsets.only(top: 16),
-            child: Text(_busyText!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: colors.onSurfaceVariant)),
+            child: Text(
+              _busyText!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colors.onSurfaceVariant),
+            ),
           ),
       ],
     );
   }
+
+  bool _hasWork(_PendingImport pending) =>
+      !pending.plan.isEmpty ||
+      pending.newPhotos > 0 ||
+      (_downloadLinkedPhotos && pending.newLinkedPhotos > 0);
 
   Widget _buildPreview(BuildContext context, _PendingImport pending) {
     final ThemeData theme = Theme.of(context);
@@ -346,17 +412,22 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
               Row(
                 children: [
                   _CountTile(
-                      label: 'New', count: plan.toAdd.length, colors: colors),
+                    label: 'New',
+                    count: plan.toAdd.length,
+                    colors: colors,
+                  ),
                   const SizedBox(width: 8),
                   _CountTile(
-                      label: 'Updated',
-                      count: plan.toUpdate.length,
-                      colors: colors),
+                    label: 'Updated',
+                    count: plan.toUpdate.length,
+                    colors: colors,
+                  ),
                   const SizedBox(width: 8),
                   _CountTile(
-                      label: 'Already here',
-                      count: plan.unchangedCount,
-                      colors: colors),
+                    label: 'Already here',
+                    count: plan.unchangedCount,
+                    colors: colors,
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -364,11 +435,48 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                 plan.isEmpty
                     ? 'Everything in this source is already in your vault.'
                     : 'Matching contacts get the missing phones, emails and '
-                        'details added. Nothing you already have is changed or '
-                        'removed, and a restore point is saved first so you can '
-                        'undo the import from Account & Vault.',
+                          'details added. Nothing you already have is changed or '
+                          'removed, and a restore point is saved first so you can '
+                          'undo the import from Account & Vault.',
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
+              if (pending.newPhotos > 0) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.photo_outlined, color: colors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${pending.newPhotos} '
+                        '${pending.newPhotos == 1 ? 'photo' : 'photos'} '
+                        'added too, encrypted on this phone.',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (pending.newLinkedPhotos > 0) ...[
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _downloadLinkedPhotos,
+                  onChanged: _busy
+                      ? null
+                      : (bool on) => setState(() => _downloadLinkedPhotos = on),
+                  title: Text(
+                    'Download ${pending.newLinkedPhotos} '
+                    '${pending.newLinkedPhotos == 1 ? 'photo' : 'photos'} '
+                    'from Google',
+                  ),
+                  subtitle: const Text(
+                    'This export links to photos instead of including them. '
+                    'Downloading connects to Google\'s photo server, which '
+                    'sees this phone\'s address. Photos are then encrypted '
+                    'like everything else.',
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               ...sample.map((VaultContact contact) {
                 final bool isNew = plan.toAdd.contains(contact);
@@ -385,8 +493,10 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                   ),
                   title: Text(contact.displayName),
                   subtitle: detail.isEmpty ? null : Text(detail),
-                  trailing: Text(isNew ? 'New' : 'Update',
-                      style: theme.textTheme.labelSmall),
+                  trailing: Text(
+                    isNew ? 'New' : 'Update',
+                    style: theme.textTheme.labelSmall,
+                  ),
                 );
               }),
               if (plan.changeCount > sample.length)
@@ -408,8 +518,9 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed:
-                        _busy ? null : () => setState(() => _pending = null),
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() => _pending = null),
                     child: const Text('Back'),
                   ),
                 ),
@@ -417,10 +528,16 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                 Expanded(
                   flex: 2,
                   child: FilledButton(
-                    onPressed: _busy || plan.isEmpty ? null : _confirmImport,
-                    child: Text(plan.isEmpty
-                        ? 'Nothing to import'
-                        : 'Import ${plan.changeCount} contacts'),
+                    onPressed: _busy || !_hasWork(pending)
+                        ? null
+                        : _confirmImport,
+                    child: Text(
+                      !_hasWork(pending)
+                          ? 'Nothing to import'
+                          : plan.isEmpty
+                          ? 'Import photos'
+                          : 'Import ${plan.changeCount} contacts',
+                    ),
                   ),
                 ),
               ],
@@ -437,11 +554,25 @@ class _PendingImport {
     required this.sourceLabel,
     required this.incoming,
     required this.plan,
+    required this.photos,
+    required this.linkedPhotos,
+    required this.newPhotos,
+    required this.newLinkedPhotos,
   });
 
   final String sourceLabel;
   final List<VaultContact> incoming;
   final ContactImportPlan plan;
+
+  /// Photos read on the phone (account photos, or embedded in the file).
+  final Map<String, PhotoLoader> photos;
+
+  /// Photos the file only links to, fetched only if the user agrees.
+  final Map<String, Uri> linkedPhotos;
+
+  /// How many contacts would get a photo they don't have yet.
+  final int newPhotos;
+  final int newLinkedPhotos;
 }
 
 class _PrivacyNote extends StatelessWidget {
@@ -523,8 +654,10 @@ class _CountTile extends StatelessWidget {
         child: Column(
           children: [
             Text('$count', style: Theme.of(context).textTheme.titleLarge),
-            Text(label,
-                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12)),
+            Text(
+              label,
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+            ),
           ],
         ),
       ),

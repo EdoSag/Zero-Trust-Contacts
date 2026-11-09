@@ -395,6 +395,31 @@ class VaultContact {
     )._withDefaultFieldTimestamps();
   }
 
+  /// This contact saved as a brand-new edit of every field, so it wins over
+  /// the current version on every device (used to undo changes).
+  VaultContact asNewEdit() {
+    final DateTime now = DateTime.now().toUtc();
+    return copyWith(
+      updatedAt: now,
+      fieldUpdatedAt: <String, DateTime>{
+        for (final String field in mergeableFields) field: now,
+      },
+    );
+  }
+
+  /// Whether [other] holds the same details as this contact, ignoring edit
+  /// times, interaction counts and the photo.
+  bool sameDetailsAs(VaultContact other) {
+    Map<String, dynamic> details(VaultContact c) => c.toJson()
+      ..remove('updatedAt')
+      ..remove('fieldUpdatedAt')
+      ..remove('interactionCount')
+      ..remove('lastContactedAt')
+      ..remove('photo')
+      ..remove('photoPath');
+    return jsonEncode(details(this)) == jsonEncode(details(other));
+  }
+
   VaultContact registerInteraction() {
     final DateTime now = DateTime.now().toUtc();
     final Map<String, DateTime> updates =

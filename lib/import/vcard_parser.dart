@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 
@@ -25,8 +26,13 @@ class VCardParser {
     'imported on',
   };
 
-  List<VaultContact> parse(String raw) {
+  List<VaultContact> parse(String raw) => parseWithPhotos(raw).contacts;
+
+  /// Like [parse], plus each card's photo: embedded image bytes, or a link
+  /// (Google's exports link to the photo instead of embedding it).
+  VCardImport parseWithPhotos(String raw) {
     final List<VaultContact> contacts = <VaultContact>[];
+    final Map<String, VCardPhoto> photos = <String, VCardPhoto>{};
     _CardBuilder? card;
     for (final _VCardLine line in _logicalLines(raw)) {
       final String name = line.name;
@@ -38,6 +44,10 @@ class VCardParser {
         final VaultContact? contact = card?.build(source);
         if (contact != null) {
           contacts.add(contact);
+          final VCardPhoto? photo = card?.photo;
+          if (photo != null) {
+            photos[contact.id] = photo;
+          }
         }
         card = null;
         continue;
@@ -47,7 +57,7 @@ class VCardParser {
       }
       _apply(card, line);
     }
-    return contacts;
+    return VCardImport(contacts: contacts, photos: photos);
   }
 
   void _apply(_CardBuilder card, _VCardLine line) {
@@ -65,15 +75,17 @@ class VCardParser {
         card.firstName = given.join(' ');
         break;
       case 'TEL':
-        card.phones.add(_unescape(line.value).replaceFirst(RegExp(r'^tel:'), ''));
+        card.phones.add(
+          _unescape(line.value).replaceFirst(RegExp(r'^tel:'), ''),
+        );
         break;
       case 'EMAIL':
         card.emails.add(_unescape(line.value));
         break;
       case 'ORG':
-        card.company = _splitComponents(line.value)
-            .where((String e) => e.isNotEmpty)
-            .join(', ');
+        card.company = _splitComponents(
+          line.value,
+        ).where((String e) => e.isNotEmpty).join(', ');
         break;
       case 'TITLE':
         card.title = _unescape(line.value);
@@ -110,6 +122,9 @@ class VCardParser {
       case 'URL':
         card.other.add(_unescape(line.value));
         break;
+      case 'PHOTO':
+        card.photo ??= VCardPhoto.tryParse(line.value, line.params);
+        break;
       case 'NICKNAME':
         final String nickname = _unescape(line.value);
         if (nickname.isNotEmpty) {
@@ -132,13 +147,15 @@ class VCardParser {
     if (value.isEmpty) {
       return null;
     }
-    final RegExpMatch? noYear =
-        RegExp(r'^--(\d{2})-?(\d{2})$').firstMatch(value);
+    final RegExpMatch? noYear = RegExp(
+      r'^--(\d{2})-?(\d{2})$',
+    ).firstMatch(value);
     if (noYear != null) {
       return '--${noYear.group(1)}-${noYear.group(2)}';
     }
-    final RegExpMatch? full =
-        RegExp(r'^(\d{4})-?(\d{2})-?(\d{2})').firstMatch(value);
+    final RegExpMatch? full = RegExp(
+      r'^(\d{4})-?(\d{2})-?(\d{2})',
+    ).firstMatch(value);
     if (full != null) {
       return '${full.group(1)}-${full.group(2)}-${full.group(3)}';
     }
@@ -181,10 +198,7 @@ class VCardParser {
     if (colon == -1) {
       return false;
     }
-    return line
-        .substring(0, colon)
-        .toUpperCase()
-        .contains('QUOTED-PRINTABLE');
+    return line.substring(0, colon).toUpperCase().contains('QUOTED-PRINTABLE');
   }
 
   /// Splits on unescaped `;` (structured values such as N, ADR, ORG).
@@ -238,6 +252,62 @@ class VCardParser {
   }
 }
 
+/// Contacts read from a vCard file, with the photos found in it.
+class VCardImport {
+  VCardImport({required this.contacts, required this.photos});
+
+  final List<VaultContact> contacts;
+
+  /// Photos by contact id.
+  final Map<String, VCardPhoto> photos;
+
+  int get embeddedPhotoCount =>
+      photos.values.where((VCardPhoto p) => p.bytes != null).length;
+  int get linkedPhotoCount =>
+      photos.values.where((VCardPhoto p) => p.url != null).length;
+}
+
+/// A card's PHOTO: either the image itself or an https link to it.
+class VCardPhoto {
+  VCardPhoto.bytes(Uint8List this.bytes) : url = null;
+  VCardPhoto.link(Uri this.url) : bytes = null;
+
+  final Uint8List? bytes;
+  final Uri? url;
+
+  /// Reads `PHOTO;ENCODING=b:...`, `PHOTO;BASE64:...` (2.1),
+  /// `PHOTO:data:image/jpeg;base64,...` (4.0) and `PHOTO:https://...`.
+  static VCardPhoto? tryParse(String value, Map<String, String> params) {
+    final String trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+    final String encoding = (params['ENCODING'] ?? '').toUpperCase();
+    String? base64Text;
+    if (encoding == 'B' || encoding == 'BASE64') {
+      base64Text = trimmed;
+    } else if (trimmed.startsWith('data:')) {
+      final int comma = trimmed.indexOf(',');
+      if (comma == -1 || !trimmed.substring(0, comma).contains('base64')) {
+        return null;
+      }
+      base64Text = trimmed.substring(comma + 1);
+    }
+    if (base64Text != null) {
+      try {
+        final Uint8List bytes = base64Decode(
+          base64.normalize(base64Text.replaceAll(RegExp(r'\s'), '')),
+        );
+        return bytes.isEmpty ? null : VCardPhoto.bytes(bytes);
+      } on FormatException {
+        return null;
+      }
+    }
+    final Uri? url = Uri.tryParse(trimmed);
+    return url != null && url.scheme == 'https' && url.host.isNotEmpty
+        ? VCardPhoto.link(url)
+        : null;
+  }
+}
+
 class _VCardLine {
   _VCardLine(this.name, this.params, this.value);
 
@@ -282,8 +352,10 @@ class _VCardLine {
           params['TYPE'] = upper;
         }
       } else {
-        params[param.substring(0, eq).trim().toUpperCase()] =
-            param.substring(eq + 1).trim().replaceAll('"', '');
+        params[param.substring(0, eq).trim().toUpperCase()] = param
+            .substring(eq + 1)
+            .trim()
+            .replaceAll('"', '');
       }
     }
     String value = line.substring(colon + 1);
@@ -298,7 +370,10 @@ class _VCardLine {
     for (int i = 0; i < value.length; i += 1) {
       final String char = value[i];
       if (char == '=' && i + 2 < value.length) {
-        final int? byte = int.tryParse(value.substring(i + 1, i + 3), radix: 16);
+        final int? byte = int.tryParse(
+          value.substring(i + 1, i + 3),
+          radix: 16,
+        );
         if (byte != null) {
           bytes.add(byte);
           i += 2;
@@ -322,6 +397,7 @@ class _CardBuilder {
   String company = '';
   String title = '';
   bool isFavorite = false;
+  VCardPhoto? photo;
   final List<String> notes = <String>[];
   final List<String> phones = <String>[];
   final List<String> emails = <String>[];
@@ -331,13 +407,20 @@ class _CardBuilder {
   final List<String> other = <String>[];
 
   VaultContact? build(String source) {
-    final List<String> cleanPhones = _unique(phones, VaultContact.normalizedPhone);
-    final List<String> cleanEmails = _unique(emails, VaultContact.normalizedEmail);
+    final List<String> cleanPhones = _unique(
+      phones,
+      VaultContact.normalizedPhone,
+    );
+    final List<String> cleanEmails = _unique(
+      emails,
+      VaultContact.normalizedEmail,
+    );
     final String fullCompany = <String>[
       if (title.isNotEmpty) title,
       if (company.isNotEmpty) company,
     ].join(company.isNotEmpty && title.isNotEmpty ? ', ' : '');
-    final bool hasAnything = displayName.isNotEmpty ||
+    final bool hasAnything =
+        displayName.isNotEmpty ||
         firstName.isNotEmpty ||
         lastName.isNotEmpty ||
         fullCompany.isNotEmpty ||
@@ -365,7 +448,9 @@ class _CardBuilder {
   }
 
   static List<String> _unique(
-      List<String> values, String Function(String) normalize) {
+    List<String> values,
+    String Function(String) normalize,
+  ) {
     final Set<String> seen = <String>{};
     final List<String> out = <String>[];
     for (final String raw in values) {

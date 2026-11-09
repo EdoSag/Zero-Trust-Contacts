@@ -8,4 +8,5 @@
     <string name="contact_widget_status_loading">Loading contacts...</string>
     <string name="contact_widget_save">Save Widget</string>
     <string name="contact_widget_cancel">Cancel</string>
+    <string name="zt_account_label">ZT Contacts</string>
 </resources>
