@@ -1,7 +1,7 @@
 name: zerotrust_contacts
 description: "Zero-Trust Contacts: an end-to-end encrypted address book."
 publish_to: none
-version: 1.1.1+2
+version: 1.2.0+3
 
 environment:
   sdk: ^3.9.0

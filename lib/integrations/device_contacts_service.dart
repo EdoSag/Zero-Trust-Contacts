@@ -193,6 +193,19 @@ class DeviceContactsService {
         .toList();
   }
 
+  /// The photo of one raw contact (from [loadAccountContacts]' `rawId`),
+  /// as a JPEG scaled down to at most 800 px, or null when it has none.
+  /// Read from the phone's contacts database, not from Google.
+  Future<Uint8List?> loadRawContactPhoto(int rawContactId) async {
+    if (!Platform.isAndroid) {
+      return null;
+    }
+    return _channel.invokeMethod<Uint8List>(
+      'getRawContactPhoto',
+      <String, dynamic>{'rawContactId': rawContactId},
+    );
+  }
+
   Future<void> launchDialer(String phoneNumber) async {
     if (phoneNumber.trim().isEmpty) {
       return;

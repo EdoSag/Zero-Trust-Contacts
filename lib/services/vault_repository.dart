@@ -115,6 +115,9 @@ class ContactVersion {
   final DateTime savedAt;
 }
 
+/// Loads one contact photo during an import (JPEG/PNG bytes), or null.
+typedef PhotoLoader = Future<Uint8List?> Function();
+
 class SecureSharePackage {
   SecureSharePackage({
     required this.payload,
@@ -769,9 +772,15 @@ class VaultRepository {
       const VCardWriter().writeAll(contacts);
 
   Future<int> importVCard(String rawVCard) async {
+    final VCardImport parsed = const VCardParser().parseWithPhotos(rawVCard);
     final ContactImportPlan plan = await importContacts(
-      const VCardParser().parse(rawVCard),
+      parsed.contacts,
       sourceLabel: 'vCard',
+      photos: <String, PhotoLoader>{
+        for (final MapEntry<String, VCardPhoto> e in parsed.photos.entries)
+          if (e.value.bytes case final Uint8List bytes)
+            e.key: () async => bytes,
+      },
     );
     return plan.changeCount;
   }
@@ -789,28 +798,113 @@ class VaultRepository {
   /// Adds [incoming] to the vault, merging matches into existing contacts so
   /// nothing is duplicated. A restore point is taken first, so the whole
   /// import can be undone from Account & Vault.
+  ///
+  /// [photos] loads a photo for an incoming contact (by its id). A photo is
+  /// only added to a contact that has none yet; each is encrypted on the
+  /// phone before upload. [onPhotoProgress] reports (done, total).
   Future<ContactImportPlan> importContacts(
     List<VaultContact> incoming, {
     required String sourceLabel,
+    Map<String, PhotoLoader> photos = const <String, PhotoLoader>{},
+    void Function(int done, int total)? onPhotoProgress,
   }) async {
     final List<VaultContact> local = await loadSavedContacts();
     const ContactImportPlanner planner = ContactImportPlanner();
-    final ContactImportPlan plan =
-        planner.plan(existing: local, incoming: incoming);
-    if (plan.isEmpty) {
+    final ContactImportPlan plan = planner.plan(
+      existing: local,
+      incoming: incoming,
+    );
+    final Map<String, VaultContact> result = <String, VaultContact>{
+      for (final VaultContact c in planner.apply(local, plan)) c.id: c,
+    };
+    final int photosAdded = await _addImportPhotos(
+      result,
+      plan,
+      photos,
+      onPhotoProgress,
+    );
+    if (plan.isEmpty && photosAdded == 0) {
       return plan;
     }
     await _replaceSavedContacts(
-      planner.apply(local, plan),
+      result.values.toList(),
       shouldCreateSnapshot: true,
       snapshotReason: 'Before import from $sourceLabel',
     );
     await logActivity(
       'contacts_import',
-      details: 'Imported from $sourceLabel: ${plan.toAdd.length} new, '
-          '${plan.toUpdate.length} updated',
+      details:
+          'Imported from $sourceLabel: ${plan.toAdd.length} new, '
+          '${plan.toUpdate.length} updated, $photosAdded photos',
     );
-    return plan;
+    return plan.withPhotosAdded(photosAdded);
+  }
+
+  /// How many of [photoIds] (incoming contact ids with a photo) would give
+  /// a contact a photo it doesn't have yet.
+  Future<int> countPhotosToAdd(
+    ContactImportPlan plan,
+    Iterable<String> photoIds,
+  ) async {
+    const ContactImportPlanner planner = ContactImportPlanner();
+    final Map<String, VaultContact> result = <String, VaultContact>{
+      for (final VaultContact c in planner.apply(
+        await loadSavedContacts(),
+        plan,
+      ))
+        c.id: c,
+    };
+    return <String>{
+      for (final String id in photoIds)
+        if (plan.targetIdOf[id] case final String target
+            when result[target]?.hasPhoto == false)
+          target,
+    }.length;
+  }
+
+  /// Largest photo an import stores; bigger files are skipped.
+  static const int maxImportPhotoBytes = 3 * 1024 * 1024;
+
+  Future<int> _addImportPhotos(
+    Map<String, VaultContact> contacts,
+    ContactImportPlan plan,
+    Map<String, PhotoLoader> loaders,
+    void Function(int done, int total)? onProgress,
+  ) async {
+    final ContactPhotos? photos = _photos;
+    if (photos == null || loaders.isEmpty) {
+      return 0;
+    }
+    // One photo per target contact, and only where there's none yet.
+    final Map<String, PhotoLoader> byTarget = <String, PhotoLoader>{};
+    for (final MapEntry<String, PhotoLoader> entry in loaders.entries) {
+      final String? target = plan.targetIdOf[entry.key];
+      final VaultContact? contact = target == null ? null : contacts[target];
+      if (contact != null && !contact.hasPhoto) {
+        byTarget.putIfAbsent(target!, () => entry.value);
+      }
+    }
+    int done = 0;
+    int added = 0;
+    for (final MapEntry<String, PhotoLoader> entry in byTarget.entries) {
+      onProgress?.call(done, byTarget.length);
+      done += 1;
+      try {
+        final Uint8List? bytes = await entry.value();
+        if (bytes == null ||
+            bytes.isEmpty ||
+            bytes.length > maxImportPhotoBytes) {
+          continue;
+        }
+        final Map<String, Object?> ref = await photos.store(bytes);
+        contacts[entry.key] = contacts[entry.key]!.applyEdits(photo: ref);
+        added += 1;
+      } on Object {
+        // One unreadable photo doesn't stop the import.
+      }
+    }
+    onProgress?.call(done, byTarget.length);
+    return added;
   }
 
   Future<SecureSharePackage> createSecureSharePackage({

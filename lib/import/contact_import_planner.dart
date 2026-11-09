@@ -7,6 +7,8 @@ class ContactImportPlan {
     required this.toAdd,
     required this.toUpdate,
     required this.unchangedCount,
+    this.targetIdOf = const <String, String>{},
+    this.photosAdded = 0,
   });
 
   /// Contacts that are not in the vault yet.
@@ -17,6 +19,21 @@ class ContactImportPlan {
 
   /// Incoming contacts that are already in the vault with nothing new.
   final int unchangedCount;
+
+  /// For each incoming contact's id, the id of the contact it ends up in
+  /// (itself when added, the matching vault contact when merged).
+  final Map<String, String> targetIdOf;
+
+  /// Photos the import added (set once the import has run).
+  final int photosAdded;
+
+  ContactImportPlan withPhotosAdded(int count) => ContactImportPlan(
+        toAdd: toAdd,
+        toUpdate: toUpdate,
+        unchangedCount: unchangedCount,
+        targetIdOf: targetIdOf,
+        photosAdded: count,
+      );
 
   int get changeCount => toAdd.length + toUpdate.length;
   bool get isEmpty => changeCount == 0;
@@ -43,6 +60,7 @@ class ContactImportPlanner {
     final Map<String, String> index = <String, String>{};
     final Set<String> updatedIds = <String>{};
     final List<VaultContact> added = <VaultContact>[];
+    final Map<String, String> targetIdOf = <String, String>{};
     int unchanged = 0;
 
     void indexContact(VaultContact contact) {
@@ -62,6 +80,7 @@ class ContactImportPlanner {
         }
       }
 
+      targetIdOf[candidate.id] = matchId ?? candidate.id;
       if (matchId == null) {
         working[candidate.id] = candidate;
         added.add(candidate);
@@ -91,6 +110,7 @@ class ContactImportPlanner {
       toAdd: added,
       toUpdate: updatedIds.map((String id) => working[id]!).toList(),
       unchangedCount: unchanged,
+      targetIdOf: targetIdOf,
     );
   }
 
