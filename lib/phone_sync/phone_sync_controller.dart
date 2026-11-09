@@ -69,6 +69,24 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
   Timer? _debounce;
   bool _rerun = false;
 
+  /// Bumped when the phone's copy is removed; a run started before that
+  /// stops before its next write.
+  int _epoch = 0;
+
+  /// Completes when the run in progress ends. Removal waits for it, so no
+  /// write can land after the copy has been removed.
+  Future<void>? _inFlight;
+
+  Future<void> _stopRuns() async {
+    _debounce?.cancel();
+    _epoch++;
+    try {
+      await _inFlight;
+    } on Object {
+      // The run's own error is already in state.
+    }
+  }
+
   PhoneContactsBridge get _bridge => ref.read(phoneContactsBridgeProvider);
 
   @override
@@ -157,8 +175,8 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
 
   /// Turns it off and removes every contact it put on the phone.
   Future<void> disable() async {
-    _debounce?.cancel();
     state = state.copyWith(enabled: false, onPhone: 0, clearError: true);
+    await _stopRuns();
     await _save();
     if (isSupported) await _bridge.disable();
   }
@@ -166,9 +184,9 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
   /// On sign-out the phone's copy goes too, and the setting is reset so the
   /// next account on this phone starts with it off.
   Future<void> signedOut() async {
-    _debounce?.cancel();
     final bool wasEnabled = state.enabled;
     state = state.copyWith(enabled: false, onPhone: 0);
+    await _stopRuns();
     if (!isSupported) return;
     try {
       if (wasEnabled || (await _bridge.state()).accountExists) {
@@ -193,22 +211,27 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
     };
     if (repo == null) return; // Locked: updated on the next unlock.
     state = state.copyWith(running: true, clearError: true);
+    final Completer<void> done = Completer<void>();
+    _inFlight = done.future;
+    final int epoch = _epoch;
     try {
       do {
         _rerun = false;
-        await _runOnce(repo);
-      } while (_rerun && state.enabled && ref.mounted);
+        await _runOnce(repo, epoch);
+      } while (_rerun && state.enabled && ref.mounted && epoch == _epoch);
     } on Object catch (error) {
       if (ref.mounted) {
         state = state.copyWith(
             error: 'Couldn\'t update the phone\'s contacts: $error');
       }
     } finally {
+      done.complete();
       if (ref.mounted) state = state.copyWith(running: false);
     }
   }
 
-  Future<void> _runOnce(VaultRepository repo) async {
+  Future<void> _runOnce(VaultRepository repo, int epoch) async {
+    bool cancelled() => epoch != _epoch || !state.enabled || !ref.mounted;
     final List<VaultContact> contacts = await repo.loadSavedContacts();
     final PhoneContactsState onPhone = await _bridge.state();
     final PhoneSyncFields fields = state.fields;
@@ -224,20 +247,25 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
       };
       // In chunks, so a big address book's photos aren't all in memory.
       for (int i = 0; i < plan.upserts.length || i == 0; i += 50) {
-        if (!state.enabled || !ref.mounted) return;
+        if (cancelled()) return;
         final List<Map<String, Object?>> chunk = <Map<String, Object?>>[];
         for (final PhoneSyncEntry entry in plan.upserts.skip(i).take(50)) {
           Uint8List? photo;
           if (entry.photoId != null && photos != null) {
             photo = await photos.read(byId[entry.id]!);
           }
+          // A photo that couldn't be read (offline, say) is written without
+          // it under a hash that won't match, so the next run tries again.
+          final bool photoMissing = entry.photoId != null && photo == null;
           chunk.add(<String, Object?>{
             ...entry.fields,
             'id': entry.id,
-            'hash': entry.hash,
+            'hash': photoMissing ? '${entry.hash}:no-photo' : entry.hash,
             if (photo != null) 'photo': photo,
           });
         }
+        // Photo reads take time: removal may have started meanwhile.
+        if (cancelled()) return;
         await _bridge.apply(chunk, i == 0 ? plan.deletes : const <String>[]);
       }
     }
