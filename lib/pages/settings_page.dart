@@ -8,6 +8,7 @@ import 'package:zerotrust_contacts/legacy/legacy_import_banner.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
 import 'package:zerotrust_contacts/pages/google_import_page.dart';
 import 'package:zerotrust_contacts/pages/merge_conflicts_page.dart';
+import 'package:zerotrust_contacts/pages/trash_page.dart';
 import 'package:zerotrust_contacts/pages/vault_history_page.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 
@@ -45,6 +46,12 @@ class ContactsSettingsPage extends ConsumerWidget {
           title: const Text('Import from Google'),
           subtitle: const Text('Accounts on this phone, or a Google export'),
           onTap: () => push(const GoogleImportPage()),
+        ),
+        ListTile(
+          leading: const Icon(Icons.delete_outline),
+          title: const Text('Trash'),
+          subtitle: const Text('Deleted contacts, kept for 30 days'),
+          onTap: () => push(const TrashPage()),
         ),
         ListTile(
           leading: const Icon(Icons.restore_outlined),

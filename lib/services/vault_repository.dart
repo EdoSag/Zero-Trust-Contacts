@@ -7,6 +7,7 @@ import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/app/contacts_collection.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
 import 'package:zerotrust_contacts/import/vcard_parser.dart';
+import 'package:zerotrust_contacts/import/vcard_writer.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/services/contact_photo_service.dart';
 import 'package:zerotrust_contacts/services/local_vault_file.dart';
@@ -104,6 +105,16 @@ class VaultSnapshot {
   }
 }
 
+/// A contact as it was in one restore point.
+class ContactVersion {
+  ContactVersion({required this.contact, required this.savedAt});
+
+  final VaultContact contact;
+
+  /// When the restore point holding this version was taken.
+  final DateTime savedAt;
+}
+
 class SecureSharePackage {
   SecureSharePackage({
     required this.payload,
@@ -187,17 +198,112 @@ class VaultRepository {
     );
   }
 
+  /// Moves a contact to the trash, where it stays for
+  /// [TrashedContact.keepFor] before it is deleted for good. Its photo is
+  /// kept until then, so restoring brings it back as it was.
   Future<bool> deleteSavedContact(String contactId) async {
     final VaultContact? target = await findSavedContactById(contactId);
     if (target == null) {
       return false;
     }
-    await createSnapshot(reason: 'Before deleting ${target.displayName}');
-    await contactsCollection.delete(_sync, contactId);
-    await _photos?.deletePhotoOf(target);
-    await logActivity('contact_delete',
-        details: 'Deleted ${target.displayName}');
+    await trashCollection.save(
+      _sync,
+      _store,
+      TrashedContact(contact: target, deletedAt: DateTime.now().toUtc()),
+    );
+    await logActivity('contact_trash',
+        details: 'Moved ${target.displayName} to the trash');
     return true;
+  }
+
+  /// Contacts in the trash, most recently deleted first.
+  Future<List<TrashedContact>> loadTrash() async =>
+      await trashCollection.list(_store)
+        ..sort((TrashedContact a, TrashedContact b) =>
+            b.deletedAt.compareTo(a.deletedAt));
+
+  /// Puts a contact from the trash back in the address book, on every
+  /// device.
+  Future<VaultContact?> restoreFromTrash(String contactId) async {
+    final TrashedContact? item = await trashCollection.get(_store, contactId);
+    if (item == null) {
+      return null;
+    }
+    await contactsCollection.save(_sync, _store, item.contact);
+    await logActivity('contact_restore',
+        details: 'Restored ${item.contact.displayName} from the trash');
+    return item.contact;
+  }
+
+  /// Deletes a contact in the trash for good, with its photo.
+  Future<bool> deleteForever(String contactId) async {
+    final TrashedContact? item = await trashCollection.get(_store, contactId);
+    if (item == null) {
+      return false;
+    }
+    await trashCollection.delete(_sync, contactId);
+    await _photos?.deletePhotoOf(item.contact);
+    await logActivity('contact_delete',
+        details: 'Deleted ${item.contact.displayName} for good');
+    return true;
+  }
+
+  /// Deletes everything in the trash for good. Returns how many.
+  Future<int> emptyTrash() async {
+    int count = 0;
+    for (final TrashedContact item in await loadTrash()) {
+      if (await deleteForever(item.contact.id)) count += 1;
+    }
+    return count;
+  }
+
+  /// Deletes contacts that have been in the trash longer than
+  /// [TrashedContact.keepFor]. Run each time the address book opens.
+  Future<int> purgeExpiredTrash({DateTime? now}) async {
+    final DateTime at = now ?? DateTime.now().toUtc();
+    int count = 0;
+    for (final TrashedContact item in await loadTrash()) {
+      if (item.isExpired(at) && await deleteForever(item.contact.id)) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  /// Earlier versions of a contact, from the restore points on this device,
+  /// newest first. Versions identical to the current one, or to each other,
+  /// are left out.
+  Future<List<ContactVersion>> contactHistory(String contactId) async {
+    final VaultContact? current = await findSavedContactById(contactId);
+    final List<ContactVersion> versions = <ContactVersion>[];
+    for (final VaultSnapshot snapshot in await readSnapshots()) {
+      for (final VaultContact contact in snapshot.contacts) {
+        if (contact.id != contactId) continue;
+        final bool seen = (current != null && contact.sameDetailsAs(current)) ||
+            versions.any((ContactVersion v) => v.contact.sameDetailsAs(contact));
+        if (!seen) {
+          versions.add(ContactVersion(
+              contact: contact, savedAt: snapshot.createdAt));
+        }
+      }
+    }
+    return versions;
+  }
+
+  /// Brings a contact back to an earlier [version], on every device. The
+  /// current photo is kept (an older photo may no longer be stored).
+  Future<VaultContact> restoreVersion(VaultContact version) async {
+    final VaultContact? current = await findSavedContactById(version.id);
+    final VaultContact restored = version
+        .copyWith(
+          photo: current?.photo,
+          photoPath: current?.photoPath,
+          interactionCount: current?.interactionCount,
+          lastContactedAt: current?.lastContactedAt,
+        )
+        .asNewEdit();
+    await upsertSavedContact(restored, activity: 'contact_undo_changes');
+    return restored;
   }
 
   Future<void> toggleFavorite(String contactId) async {
@@ -659,34 +765,8 @@ class VaultRepository {
     return imported.length;
   }
 
-  String exportVCard(List<VaultContact> contacts) {
-    final StringBuffer buffer = StringBuffer();
-    for (final VaultContact contact in contacts) {
-      buffer.writeln('BEGIN:VCARD');
-      buffer.writeln('VERSION:3.0');
-      buffer.writeln('FN:${_escapeVCard(contact.displayName)}');
-      buffer.writeln(
-        'N:${_escapeVCard(contact.lastName)};${_escapeVCard(contact.firstName)};;;',
-      );
-      for (final String phone in contact.phones) {
-        buffer.writeln('TEL;TYPE=CELL:${_escapeVCard(phone)}');
-      }
-      for (final String email in contact.emails) {
-        buffer.writeln('EMAIL;TYPE=INTERNET:${_escapeVCard(email)}');
-      }
-      if (contact.company.trim().isNotEmpty) {
-        buffer.writeln('ORG:${_escapeVCard(contact.company)}');
-      }
-      if (contact.notes.trim().isNotEmpty) {
-        buffer.writeln('NOTE:${_escapeVCard(contact.notes)}');
-      }
-      if (contact.birthdays.isNotEmpty) {
-        buffer.writeln('BDAY:${_escapeVCard(contact.birthdays.first)}');
-      }
-      buffer.writeln('END:VCARD');
-    }
-    return buffer.toString();
-  }
+  String exportVCard(List<VaultContact> contacts) =>
+      const VCardWriter().writeAll(contacts);
 
   Future<int> importVCard(String rawVCard) async {
     final ContactImportPlan plan = await importContacts(
@@ -973,14 +1053,6 @@ class VaultRepository {
     } catch (_) {
       throw StateError('Invalid passphrase or corrupted encrypted payload.');
     }
-  }
-
-  String _escapeVCard(String value) {
-    return value
-        .replaceAll(r'\', r'\\')
-        .replaceAll(';', r'\;')
-        .replaceAll(',', r'\,')
-        .replaceAll('\n', r'\n');
   }
 
   String _generatePassphrase() {

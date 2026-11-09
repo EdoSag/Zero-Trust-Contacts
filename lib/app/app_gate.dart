@@ -5,6 +5,7 @@ import 'package:zerotrust_contacts/app/auth_providers.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
 import 'package:zerotrust_contacts/pages/home_page.dart';
+import 'package:zerotrust_contacts/services/vault_repository.dart';
 
 /// Routes between the shared account screens and the address book.
 ///
@@ -138,8 +139,10 @@ class _ContactsHomeState extends ConsumerState<_ContactsHome> {
   void initState() {
     super.initState();
     ref.listenManual(vaultRepositoryProvider, (_, next) {
-      if (next is AsyncData) {
+      if (next case AsyncData(:final VaultRepository value)) {
         ref.read(legacyImportProvider.notifier).runQuietly();
+        // Contacts in the trash for 30 days are deleted for good.
+        value.purgeExpiredTrash().ignore();
       }
     }, fireImmediately: true);
   }
