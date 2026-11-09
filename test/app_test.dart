@@ -11,6 +11,7 @@ import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/legacy/legacy_contacts_crypto.dart';
 import 'package:zerotrust_contacts/main.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zerotrust_contacts/pages/create_contact_page.dart';
 
 import 'legacy_import_test.dart' show contact, oldBlob;
 import 'support/contacts_overrides.dart';
@@ -146,6 +147,19 @@ void main() {
     await settle(tester);
     expect(find.text('Zero-Trust Contacts is locked'), findsOneWidget);
 
+    await tester.enterText(find.byType(TextField), password);
+    await tester.tap(find.widgetWithText(FilledButton, 'Unlock'));
+    await settle(tester);
+    expect(find.text('Ada'), findsWidgets);
+
+    // Auto-lock while the editor is open: back to the lock screen, cleanly.
+    await tester.tap(find.byType(FloatingActionButton));
+    await settle(tester);
+    expect(find.byType(CreateContactPage), findsOneWidget);
+    container.read(vaultControllerProvider.notifier).lock();
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+    expect(find.text('Zero-Trust Contacts is locked'), findsOneWidget);
     await tester.enterText(find.byType(TextField), password);
     await tester.tap(find.widgetWithText(FilledButton, 'Unlock'));
     await settle(tester);
