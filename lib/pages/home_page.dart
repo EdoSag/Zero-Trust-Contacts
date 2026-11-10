@@ -585,6 +585,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           Expanded(
             child: Align(
               alignment: AlignmentDirectional.centerStart,
+              // Only as tall as the text: without this it fills the row and
+              // the name and number are drawn over each other.
+              heightFactor: 1,
               child: Text(
                 name,
                 textDirection: directionOf(name),
@@ -599,6 +602,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
       subtitle: Align(
         alignment: AlignmentDirectional.centerStart,
+              // Only as tall as the text: without this it fills the row and
+              // the name and number are drawn over each other.
+              heightFactor: 1,
         child: Text(
           hasPhone ? contact.phones.first : contact.source,
           // A phone number always reads left-to-right.
@@ -934,7 +940,12 @@ class _HomePageState extends ConsumerState<HomePage> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(
-                child: Column(
+                // Room for the letter strip, so it doesn't sit on the
+                // settings and sort buttons.
+                child: Padding(
+                  padding:
+                      EdgeInsetsDirectional.only(end: showIndex ? 14 : 0),
+                  child: Column(
                   key: _listHeaderKey,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -964,6 +975,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 Text('No contacts match the current filters.')),
                       ),
                   ],
+                ),
                 ),
               ),
               SliverFixedExtentList(
