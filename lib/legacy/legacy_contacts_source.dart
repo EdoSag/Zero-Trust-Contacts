@@ -153,12 +153,17 @@ class DeviceLegacyContactsSource implements LegacyContactsSource {
 
   @override
   Future<String?> fetchCloudBlob() async {
-    final Map<String, dynamic>? row = await _client
-        .from('encrypted_contacts')
-        .select('data_blob')
-        .eq('user_id', userId)
-        .maybeSingle();
-    return row?['data_blob'] as String?;
+    try {
+      final Map<String, dynamic>? row = await _client
+          .from('encrypted_contacts')
+          .select('data_blob')
+          .eq('user_id', userId)
+          .maybeSingle();
+      return row?['data_blob'] as String?;
+    } on PostgrestException catch (e) {
+      if (isMissingLegacyTable(e)) return null;
+      rethrow;
+    }
   }
 
   @override
@@ -233,3 +238,8 @@ class DeviceLegacyContactsSource implements LegacyContactsSource {
     }
   }
 }
+
+/// The pre-core tables were dropped from the database on 2026-11-10. A
+/// missing table means there is nothing left to import.
+bool isMissingLegacyTable(PostgrestException e) =>
+    e.code == 'PGRST205' || e.code == '42P01';
