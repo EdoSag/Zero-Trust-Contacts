@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +10,9 @@ import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_banner.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
 import 'package:zerotrust_contacts/pages/google_import_page.dart';
+import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/pages/merge_conflicts_page.dart';
+import 'package:zerotrust_contacts/pages/qr_scan_page.dart';
 import 'package:zerotrust_contacts/pages/trash_page.dart';
 import 'package:zerotrust_contacts/phone_sync/phone_sync_controller.dart';
 import 'package:zerotrust_contacts/phone_sync/phone_sync_page.dart';
@@ -92,27 +97,56 @@ class ContactsSettingsPage extends ConsumerWidget {
       backupSection: <Widget>[
         ListTile(
           leading: const Icon(Icons.lock_outline),
-          title: const Text('Export encrypted backup'),
-          subtitle: const Text('Copied to the clipboard, sealed with a '
-              'passphrase you choose'),
-          onTap: () => _exportEncrypted(context, ref),
+          title: const Text('Save an encrypted backup'),
+          subtitle: const Text('A file sealed with a passphrase you choose'),
+          onTap: () => _exportEncrypted(context, ref, toFile: true),
+          trailing: IconButton(
+            tooltip: 'Copy to the clipboard instead',
+            icon: const Icon(Icons.copy_outlined),
+            onPressed: () => _exportEncrypted(context, ref, toFile: false),
+          ),
         ),
         ListTile(
           leading: const Icon(Icons.lock_open_outlined),
-          title: const Text('Import encrypted backup'),
-          onTap: () => _importEncrypted(context, ref),
+          title: const Text('Restore an encrypted backup'),
+          subtitle: const Text('From a backup file'),
+          onTap: () => _importEncrypted(context, ref, fromFile: true),
+          trailing: IconButton(
+            tooltip: 'Paste the backup text instead',
+            icon: const Icon(Icons.paste_outlined),
+            onPressed: () => _importEncrypted(context, ref, fromFile: false),
+          ),
         ),
         ListTile(
           leading: const Icon(Icons.contact_page_outlined),
-          title: const Text('Export as vCard'),
-          subtitle: const Text('Unencrypted, copied to the clipboard'),
-          onTap: () => _exportVCard(context, ref),
+          title: const Text('Export contacts as a vCard file'),
+          subtitle: const Text(
+              'Not encrypted. Works with Google, Apple and other apps'),
+          onTap: () => _exportVCard(context, ref, toFile: true),
+          trailing: IconButton(
+            tooltip: 'Copy to the clipboard instead',
+            icon: const Icon(Icons.copy_outlined),
+            onPressed: () => _exportVCard(context, ref, toFile: false),
+          ),
         ),
         ListTile(
           leading: const Icon(Icons.contact_mail_outlined),
-          title: const Text('Import vCard text'),
-          onTap: () => _importVCard(context, ref),
+          title: const Text('Import a vCard file'),
+          subtitle: const Text('A .vcf file from any contacts app'),
+          onTap: () => _importVCardFile(context, ref),
+          trailing: IconButton(
+            tooltip: 'Paste vCard text instead',
+            icon: const Icon(Icons.paste_outlined),
+            onPressed: () => _importVCard(context, ref),
+          ),
         ),
+        if (QrScanPage.isSupported)
+          ListTile(
+            leading: const Icon(Icons.qr_code_scanner),
+            title: const Text('Scan a contact QR code'),
+            subtitle: const Text('Add a contact someone shows you'),
+            onTap: () => QrScanPage.scanAndImport(context),
+          ),
       ],
     );
   }
@@ -136,7 +170,43 @@ class ContactsSettingsPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _exportEncrypted(BuildContext context, WidgetRef ref) async {
+  static String _today() {
+    final DateTime now = DateTime.now();
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${now.year}-${two(now.month)}-${two(now.day)}';
+  }
+
+  /// Asks where to save [text] as a file. False when cancelled.
+  static Future<bool> _saveFile(
+    WidgetRef ref, {
+    required String name,
+    required String mimeType,
+    required String text,
+  }) async {
+    final Uri? saved = await ref
+        .read(vaultControllerProvider.notifier)
+        .whileShowingSystemUi(() => FilePicker.saveFile(
+              fileName: name,
+              mimeType: mimeType,
+              bytes: Uint8List.fromList(utf8.encode(text)),
+            ));
+    return saved != null;
+  }
+
+  /// Lets the user pick a file and returns its name and text.
+  static Future<(String, String)?> _pickTextFile(WidgetRef ref) async {
+    final PlatformFile? file = await ref
+        .read(vaultControllerProvider.notifier)
+        .whileShowingSystemUi(() => FilePicker.pickFile(type: FileType.any));
+    if (file == null) {
+      return null;
+    }
+    final Uint8List bytes = await file.xFile.readAsBytes();
+    return (file.name, utf8.decode(bytes, allowMalformed: true));
+  }
+
+  Future<void> _exportEncrypted(BuildContext context, WidgetRef ref,
+      {required bool toFile}) async {
     final List<String>? values = await showTextInputsDialog(
       context,
       title: 'Export encrypted backup',
@@ -152,37 +222,94 @@ class ContactsSettingsPage extends ConsumerWidget {
       final VaultRepository repo = requireRepository(ref);
       final String package =
           await repo.exportEncryptedJson(passphrase: values[0]);
-      await Clipboard.setData(ClipboardData(text: package));
-      return 'Encrypted backup copied to the clipboard.';
+      if (!toFile) {
+        await Clipboard.setData(ClipboardData(text: package));
+        return 'Encrypted backup copied to the clipboard.';
+      }
+      final bool saved = await _saveFile(
+        ref,
+        name: 'zt-contacts-backup-${_today()}.ztbackup',
+        mimeType: 'application/octet-stream',
+        text: package,
+      );
+      return saved ? 'Encrypted backup saved.' : 'Nothing was saved.';
     });
   }
 
-  Future<void> _importEncrypted(BuildContext context, WidgetRef ref) async {
+  Future<void> _importEncrypted(BuildContext context, WidgetRef ref,
+      {required bool fromFile}) async {
+    String? backup;
+    if (fromFile) {
+      try {
+        backup = (await _pickTextFile(ref))?.$2.trim();
+      } on Object catch (error) {
+        if (context.mounted) _snack(context, 'Couldn\'t read that file: $error');
+        return;
+      }
+      if (backup == null || !context.mounted) return;
+    }
     final List<String>? values = await showTextInputsDialog(
       context,
-      title: 'Import encrypted backup',
-      labels: const <String>['Backup text', 'Passphrase'],
-      multilineFirst: true,
+      title: 'Restore encrypted backup',
+      labels: <String>[if (!fromFile) 'Backup text', 'Passphrase'],
+      multilineFirst: !fromFile,
+      obscure: fromFile,
     );
     if (values == null || !context.mounted) return;
-    if (values[0].isEmpty || values[1].isEmpty) {
-      _snack(context, 'Paste the backup and enter its passphrase.');
+    final String text = backup ?? values.first;
+    final String passphrase = values.last;
+    if (text.isEmpty || passphrase.isEmpty) {
+      _snack(context, 'The backup and its passphrase are both needed.');
       return;
     }
     await _run(context, () async {
       final int count = await requireRepository(ref).importEncryptedJson(
-          encryptedPackage: values[0], passphrase: values[1]);
+          encryptedPackage: text, passphrase: passphrase);
       return 'Imported $count contacts.';
     });
   }
 
-  Future<void> _exportVCard(BuildContext context, WidgetRef ref) async {
+  Future<void> _exportVCard(BuildContext context, WidgetRef ref,
+      {required bool toFile}) async {
     await _run(context, () async {
       final VaultRepository repo = requireRepository(ref);
-      final String vcard = repo.exportVCard(await repo.loadSavedContacts());
-      await Clipboard.setData(ClipboardData(text: vcard));
-      return 'vCard copied to the clipboard.';
+      final List<VaultContact> contacts = await repo.loadSavedContacts();
+      if (contacts.isEmpty) {
+        return 'There are no contacts to export yet.';
+      }
+      final String vcard = repo.exportVCard(contacts);
+      if (!toFile) {
+        await Clipboard.setData(ClipboardData(text: vcard));
+        return 'vCard copied to the clipboard.';
+      }
+      final bool saved = await _saveFile(
+        ref,
+        name: 'zt-contacts-${_today()}.vcf',
+        mimeType: 'text/x-vcard',
+        text: vcard,
+      );
+      if (saved) {
+        await repo.logActivity('contacts_export_vcard',
+            details: 'Exported ${contacts.length} contacts as a vCard file');
+      }
+      return saved
+          ? '${contacts.length} contacts saved as a vCard file.'
+          : 'Nothing was saved.';
     });
+  }
+
+  /// Picks a .vcf file and shows what importing it would do first.
+  Future<void> _importVCardFile(BuildContext context, WidgetRef ref) async {
+    try {
+      final (String, String)? file = await _pickTextFile(ref);
+      if (file == null || !context.mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute<bool>(
+        builder: (_) =>
+            GoogleImportPage(vCardText: file.$2, vCardName: file.$1),
+      ));
+    } on Object catch (error) {
+      if (context.mounted) _snack(context, 'Couldn\'t read that file: $error');
+    }
   }
 
   Future<void> _importVCard(BuildContext context, WidgetRef ref) async {

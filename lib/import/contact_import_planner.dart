@@ -126,6 +126,44 @@ class ContactImportPlanner {
     ];
   }
 
+  /// Vault contacts that look like the same person as [candidate]: a shared
+  /// phone number or email address, or the same full name. Used to warn
+  /// before a duplicate is created by hand.
+  List<VaultContact> matchesFor(
+    VaultContact candidate,
+    List<VaultContact> existing,
+  ) {
+    final Set<String> keys = <String>{
+      ..._keys(candidate),
+      ..._nameKey(candidate),
+    };
+    if (keys.isEmpty) {
+      return const <VaultContact>[];
+    }
+    return existing
+        .where(
+          (VaultContact c) =>
+              c.id != candidate.id &&
+              (_keys(c).any(keys.contains) ||
+                  _nameKey(c).any(keys.contains)),
+        )
+        .toList();
+  }
+
+  /// [current] with everything new from [incoming] added (nothing removed
+  /// or overwritten). Returns [current] itself when there is nothing new.
+  VaultContact merge(VaultContact current, VaultContact incoming) =>
+      _mergeInto(current, incoming);
+
+  Iterable<String> _nameKey(VaultContact contact) sync* {
+    final String name = VaultContact.normalizedName(
+      '${contact.firstName} ${contact.lastName}',
+    );
+    if (name.isNotEmpty) {
+      yield 'name:$name';
+    }
+  }
+
   Iterable<String> _keys(VaultContact contact) sync* {
     bool hasStrongKey = false;
     for (final String phone in contact.phones) {
@@ -197,7 +235,25 @@ class ContactImportPlanner {
     final bool? favorite =
         incoming.isFavorite && !current.isFavorite ? true : null;
 
+    final Set<String> validTypeKeys = <String>{
+      for (final String v in phones ?? current.phones)
+        VaultContact.typeKey('phone', v),
+      for (final String v in emails ?? current.emails)
+        VaultContact.typeKey('email', v),
+      for (final String v in addresses ?? current.addresses)
+        VaultContact.typeKey('address', v),
+    };
+    // Kinds (Mobile, Work…) the vault contact doesn't have yet.
+    final Map<String, String> newTypes = <String, String>{
+      for (final MapEntry<String, String> e in incoming.valueTypes.entries)
+        if (!current.valueTypes.containsKey(e.key) &&
+            validTypeKeys.contains(e.key))
+          e.key: e.value,
+    };
+    final Map<String, String>? types = newTypes.isEmpty ? null : newTypes;
+
     final bool changed = <Object?>[
+      types,
       phones,
       emails,
       addresses,
@@ -225,6 +281,7 @@ class ContactImportPlanner {
       company: company,
       notes: notes,
       isFavorite: favorite,
+      valueTypes: types,
     );
   }
 }

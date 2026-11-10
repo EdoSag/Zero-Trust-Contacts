@@ -75,12 +75,16 @@ class VCardParser {
         card.firstName = given.join(' ');
         break;
       case 'TEL':
-        card.phones.add(
-          _unescape(line.value).replaceFirst(RegExp(r'^tel:'), ''),
-        );
+        final String phone = _unescape(
+          line.value,
+        ).replaceFirst(RegExp(r'^tel:'), '');
+        card.phones.add(phone);
+        card.setType('phone', phone, line.types, VaultContact.phoneTypes);
         break;
       case 'EMAIL':
-        card.emails.add(_unescape(line.value));
+        final String email = _unescape(line.value);
+        card.emails.add(email);
+        card.setType('email', email, line.types, VaultContact.emailTypes);
         break;
       case 'ORG':
         card.company = _splitComponents(
@@ -106,6 +110,12 @@ class VCardParser {
             .join(', ');
         if (address.isNotEmpty) {
           card.addresses.add(address);
+          card.setType(
+            'address',
+            address,
+            line.types,
+            VaultContact.addressTypes,
+          );
         }
         break;
       case 'CATEGORIES':
@@ -316,6 +326,10 @@ class _VCardLine {
   final Map<String, String> params;
   final String value;
 
+  /// Every TYPE value, lower case (`TYPE=CELL,VOICE`, `;TYPE=WORK;TYPE=pref`
+  /// and vCard 2.1's bare `;CELL` all end up here).
+  final Set<String> types = <String>{};
+
   static _VCardLine? tryParse(String line) {
     if (line.trim().isEmpty) {
       return null;
@@ -341,6 +355,7 @@ class _VCardLine {
       name = name.substring(dot + 1);
     }
     final Map<String, String> params = <String, String>{};
+    final Set<String> allTypes = <String>{};
     for (final String param in head.skip(1)) {
       final int eq = param.indexOf('=');
       if (eq == -1) {
@@ -350,19 +365,30 @@ class _VCardLine {
           params['ENCODING'] = upper;
         } else {
           params['TYPE'] = upper;
+          allTypes.add(upper.toLowerCase());
         }
       } else {
-        params[param.substring(0, eq).trim().toUpperCase()] = param
+        final String key = param.substring(0, eq).trim().toUpperCase();
+        final String paramValue = param
             .substring(eq + 1)
             .trim()
             .replaceAll('"', '');
+        params[key] = paramValue;
+        if (key == 'TYPE') {
+          allTypes.addAll(
+            paramValue
+                .split(',')
+                .map((String t) => t.trim().toLowerCase())
+                .where((String t) => t.isNotEmpty),
+          );
+        }
       }
     }
     String value = line.substring(colon + 1);
     if ((params['ENCODING'] ?? '').toUpperCase() == 'QUOTED-PRINTABLE') {
       value = _decodeQuotedPrintable(value, params['CHARSET']);
     }
-    return _VCardLine(name, params, value);
+    return _VCardLine(name, params, value)..types.addAll(allTypes);
   }
 
   static String _decodeQuotedPrintable(String value, String? charset) {
@@ -398,6 +424,29 @@ class _CardBuilder {
   String title = '';
   bool isFavorite = false;
   VCardPhoto? photo;
+  final Map<String, String> valueTypes = <String, String>{};
+
+  /// Remembers the kind of [value] from a line's TYPE values, when one of
+  /// them is a kind the vault knows ([allowed]).
+  void setType(
+    String field,
+    String value,
+    Set<String> types,
+    List<String> allowed,
+  ) {
+    const Map<String, String> aliases = <String, String>{
+      'cell': 'mobile',
+      'iphone': 'mobile',
+    };
+    for (final String raw in types) {
+      final String type = aliases[raw] ?? raw;
+      if (allowed.contains(type)) {
+        valueTypes.putIfAbsent(VaultContact.typeKey(field, value), () => type);
+        return;
+      }
+    }
+  }
+
   final List<String> notes = <String>[];
   final List<String> phones = <String>[];
   final List<String> emails = <String>[];
@@ -444,6 +493,7 @@ class _CardBuilder {
       'other': _unique(other, (String e) => e.toLowerCase()),
       'isFavorite': isFavorite,
       'source': source,
+      'valueTypes': valueTypes,
     });
   }
 

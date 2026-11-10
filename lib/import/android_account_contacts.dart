@@ -60,6 +60,14 @@ VaultContact _contactFromRow(Map<String, dynamic> row) {
     'birthdays': birthdays,
     'other': strings(row['other']).toSet().toList(),
     'isFavorite': row['isFavorite'] == true,
+    'valueTypes': <String, String>{
+      // Kinds (mobile, work…) arrive keyed "phone\n<number>".
+      if (row['types'] case final Map<dynamic, dynamic> types)
+        for (final MapEntry<dynamic, dynamic> e in types.entries)
+          if ('${e.key}'.split('\n') case [final String field, final String value]
+              when '${e.value}'.isNotEmpty)
+            VaultContact.typeKey(field, value): '${e.value}',
+    },
     'source': 'Saved',
   });
 }

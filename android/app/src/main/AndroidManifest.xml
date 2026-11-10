@@ -47,6 +47,39 @@
                 <data android:scheme="content" android:host="com.android.contacts"/>
                 <data android:scheme="content" android:host="contacts"/>
             </intent-filter>
+            <!-- "Create new contact" / "Add to contacts" from the dialer,
+                 messaging and other apps: opens the editor filled in. -->
+            <intent-filter android:label="Save to ZT Contacts">
+                <action android:name="android.intent.action.INSERT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="vnd.android.cursor.dir/contact"/>
+                <data android:mimeType="vnd.android.cursor.dir/raw_contact"/>
+                <data android:mimeType="vnd.android.cursor.dir/person"/>
+            </intent-filter>
+            <intent-filter android:label="Save to ZT Contacts">
+                <action android:name="android.intent.action.INSERT_OR_EDIT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="vnd.android.cursor.item/contact"/>
+                <data android:mimeType="vnd.android.cursor.item/raw_contact"/>
+                <data android:mimeType="vnd.android.cursor.item/person"/>
+            </intent-filter>
+            <!-- A .vcf file opened with, or shared to, the app. -->
+            <intent-filter android:label="Import to ZT Contacts">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="content"/>
+                <data android:scheme="file"/>
+                <data android:mimeType="text/x-vcard"/>
+                <data android:mimeType="text/vcard"/>
+                <data android:mimeType="text/directory"/>
+            </intent-filter>
+            <intent-filter android:label="Import to ZT Contacts">
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/x-vcard"/>
+                <data android:mimeType="text/vcard"/>
+            </intent-filter>
         </activity>
         <activity
             android:name=".ContactWidgetConfigureActivity"

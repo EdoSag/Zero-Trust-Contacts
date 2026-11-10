@@ -12,9 +12,10 @@ import android.os.IBinder
 
 /**
  * Declares the ZT Contacts account to the contacts system (with
- * res/xml/zt_contacts.xml), so contacts apps show its contacts read-only.
- * It never syncs anything itself: the app writes the contacts while it's
- * unlocked, because only then can it decrypt them.
+ * res/xml/zt_contacts.xml, which says what contacts apps may edit). It
+ * never syncs anything itself: the app writes the contacts, and takes in
+ * changes made in contacts apps, while it's unlocked, because only then
+ * can it decrypt and encrypt them.
  */
 class ZtContactsSyncService : Service() {
     private lateinit var adapter: Adapter

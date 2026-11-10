@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:zero_trust_core/zero_trust_core.dart';
+import 'package:zerotrust_contacts/app/contact_sorting.dart';
 import 'package:zerotrust_contacts/app/contacts_collection.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
 import 'package:zerotrust_contacts/import/vcard_parser.dart';
@@ -13,7 +14,11 @@ import 'package:zerotrust_contacts/services/contact_photo_service.dart';
 import 'package:zerotrust_contacts/services/local_vault_file.dart';
 
 enum ContactSortMode {
+  /// A to Z by the name as shown (first name first).
   alphabetical,
+
+  /// A to Z by last name.
+  lastName,
   recent,
   source,
 }
@@ -406,12 +411,10 @@ class VaultRepository {
       List<VaultContact> contacts, ContactSortMode sortMode) {
     switch (sortMode) {
       case ContactSortMode.alphabetical:
-        contacts.sort(
-          (VaultContact a, VaultContact b) =>
-              a.displayName.toLowerCase().compareTo(
-                    b.displayName.toLowerCase(),
-                  ),
-        );
+        contacts.sort(ContactSorting.compare);
+      case ContactSortMode.lastName:
+        contacts.sort((VaultContact a, VaultContact b) =>
+            ContactSorting.compare(a, b, byLastName: true));
       case ContactSortMode.recent:
         contacts.sort((VaultContact a, VaultContact b) =>
             b.updatedAt.compareTo(a.updatedAt));
@@ -422,11 +425,50 @@ class VaultRepository {
           if (sourceCompare != 0) {
             return sourceCompare;
           }
-          return a.displayName
-              .toLowerCase()
-              .compareTo(b.displayName.toLowerCase());
+          return ContactSorting.compare(a, b);
         });
     }
+  }
+
+  /// Moves several contacts to the trash; returns how many were moved.
+  Future<int> deleteSavedContacts(Iterable<String> ids) async {
+    int moved = 0;
+    for (final String id in ids) {
+      if (await deleteSavedContact(id)) {
+        moved += 1;
+      }
+    }
+    return moved;
+  }
+
+  /// Adds [label] to each of the contacts [ids]; returns how many gained it.
+  Future<int> addLabel(Iterable<String> ids, String label) async {
+    final String clean = label.trim();
+    if (clean.isEmpty) {
+      return 0;
+    }
+    int changed = 0;
+    for (final String id in ids) {
+      final VaultContact? contact = await findSavedContactById(id);
+      if (contact == null ||
+          contact.labels.any(
+              (String l) => l.toLowerCase() == clean.toLowerCase())) {
+        continue;
+      }
+      await contactsCollection.save(
+        _sync,
+        _store,
+        contact.applyEdits(labels: <String>[...contact.labels, clean]),
+      );
+      changed += 1;
+    }
+    if (changed > 0) {
+      await logActivity(
+        'contacts_labelled',
+        details: 'Added the label $clean to $changed contacts',
+      );
+    }
+    return changed;
   }
 
   Future<List<ContactDuplicateGroup>> findDuplicateGroups(

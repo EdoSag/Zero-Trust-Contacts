@@ -2,12 +2,21 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:share_plus/share_plus.dart';
+import 'package:zerotrust_contacts/app/contact_sorting.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
+import 'package:zerotrust_contacts/app/text_direction.dart';
+import 'package:zerotrust_contacts/widgets/alphabet_index.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_banner.dart';
 import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/pages/create_contact_page.dart';
+import 'package:zerotrust_contacts/import/contact_import_planner.dart';
 import 'package:zerotrust_contacts/pages/google_import_page.dart';
+import 'package:zerotrust_contacts/pages/qr_scan_page.dart';
 import 'package:zerotrust_contacts/pages/settings_page.dart';
 import 'package:zerotrust_contacts/pages/trash_page.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
@@ -38,8 +47,20 @@ class _HomePageState extends ConsumerState<HomePage> {
   String _query = '';
   String _sourceFilter = 'all';
   String _activeLabelFilter = '';
-  ContactSortMode _sortMode = ContactSortMode.recent;
+  ContactSortMode _sortMode = ContactSortMode.alphabetical;
+  static const String _sortKey = 'contacts_list_sort';
+
+  /// Saved contacts ticked in the list (long-press to start).
+  final Set<String> _selected = <String>{};
+  bool _bulkBusy = false;
+
+  static const double _rowExtent = 72;
+  final ScrollController _listScroll = ScrollController();
+  final GlobalKey _listHeaderKey = GlobalKey();
+  double _listHeaderHeight = 0;
   StreamSubscription<VaultContact>? _openedContactSubscription;
+  StreamSubscription<void>? _incomingSubscription;
+  bool _handlingIncoming = false;
 
   List<VaultContact> _savedContacts = <VaultContact>[];
   List<VaultContact> _deviceContacts = <VaultContact>[];
@@ -101,6 +122,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     });
     _openedContactSubscription =
         _deviceContactsService.openedContacts.listen(_handleOpenedContact);
+    _incomingSubscription =
+        _deviceContactsService.incoming.listen((_) => _consumeIncoming());
     // Edits here and on other devices (synced live) refresh the list.
     _storeChanges = _vaultRepository.changes.listen((_) {
       _reloadDebounce?.cancel();
@@ -109,6 +132,30 @@ class _HomePageState extends ConsumerState<HomePage> {
       });
     });
     _loadContacts();
+    _loadSortMode();
+  }
+
+  Future<void> _loadSortMode() async {
+    try {
+      final String? saved =
+          await ref.read(ztPreferencesStoreProvider).read(_sortKey);
+      final ContactSortMode? mode = ContactSortMode.values
+          .where((ContactSortMode m) => m.name == saved)
+          .firstOrNull;
+      if (mode != null && mounted) {
+        setState(() => _sortMode = mode);
+      }
+    } on Object {
+      // No saved choice: A to Z.
+    }
+  }
+
+  void _setSortMode(ContactSortMode mode) {
+    setState(() => _sortMode = mode);
+    ref
+        .read(ztPreferencesStoreProvider)
+        .write(_sortKey, mode.name)
+        .catchError((Object _) {});
   }
 
   bool _askedPermission = false;
@@ -163,6 +210,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
       setState(() {
         _savedContacts = saved;
+        _selected.retainAll(saved.map((VaultContact c) => c.id));
         _deviceContacts = deviceContacts;
         _duplicateGroups = duplicates;
         _healthSummary = health;
@@ -170,6 +218,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         _loading = false;
       });
       await _consumePendingOpenedContact();
+      await _consumeIncoming();
     } catch (error) {
       if (!mounted) {
         return;
@@ -190,6 +239,139 @@ class _HomePageState extends ConsumerState<HomePage> {
     await _handleOpenedContact(contact);
   }
 
+  /// Handles what another app handed over: a .vcf file to import, or a
+  /// contact to save. Only reached once the vault is unlocked.
+  Future<void> _consumeIncoming() async {
+    if (_handlingIncoming || !mounted) {
+      return;
+    }
+    _handlingIncoming = true;
+    try {
+      final IncomingRequest? request =
+          await _deviceContactsService.consumePendingIncoming();
+      if (request == null || !mounted) {
+        return;
+      }
+      final NavigatorState navigator = Navigator.of(context);
+      switch (request) {
+        case IncomingVCard(:final String text, :final String name):
+          await navigator.push<bool>(MaterialPageRoute<bool>(
+            builder: (_) => GoogleImportPage(vCardText: text, vCardName: name),
+          ));
+        case IncomingNewContact(:final VaultContact contact):
+          VaultContact? target;
+          if (request.allowExisting && _savedContacts.isNotEmpty) {
+            final bool? addToExisting = await showDialog<bool>(
+              context: context,
+              builder: (BuildContext ctx) => SimpleDialog(
+                title: Text('Save ${contact.displayName}'),
+                children: [
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const ListTile(
+                      leading: Icon(Icons.person_add_alt),
+                      title: Text('Create a new contact'),
+                    ),
+                  ),
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const ListTile(
+                      leading: Icon(Icons.group_add_outlined),
+                      title: Text('Add to a contact I already have'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+            if (addToExisting == null || !mounted) {
+              return;
+            }
+            if (addToExisting) {
+              target = await _pickSavedContact();
+              if (target == null || !mounted) {
+                return;
+              }
+            }
+          }
+          await navigator.push<VaultContact>(MaterialPageRoute<VaultContact>(
+            builder: (_) => target == null
+                ? CreateContactPage(
+                    prefill: contact,
+                    createActivity: 'contact_saved_from_another_app',
+                  )
+                : CreateContactPage(
+                    existing:
+                        const ContactImportPlanner().merge(target, contact),
+                  ),
+          ));
+      }
+      if (mounted) {
+        await _loadContacts(quiet: true);
+      }
+    } on Object {
+      // Nothing usable was handed over.
+    } finally {
+      _handlingIncoming = false;
+    }
+  }
+
+  /// Lets the user pick one of their saved contacts.
+  Future<VaultContact?> _pickSavedContact() {
+    String query = '';
+    return showModalBottomSheet<VaultContact>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (BuildContext ctx) => StatefulBuilder(
+        builder: (BuildContext ctx, StateSetter setSheetState) {
+          final List<VaultContact> matches =
+              _vaultRepository.filterAndSortContacts(
+            contacts: _savedContacts,
+            query: query,
+            sourceFilter: 'all',
+            sortMode: ContactSortMode.alphabetical,
+          );
+          return Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: SizedBox(
+              height: MediaQuery.of(ctx).size.height * 0.7,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Search your contacts',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: (String value) =>
+                          setSheetState(() => query = value),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: matches.length,
+                      itemBuilder: (BuildContext ctx, int i) => ListTile(
+                        leading:
+                            ContactAvatar(contact: matches[i], radius: 20),
+                        title: Text(matches[i].displayName),
+                        subtitle: matches[i].phones.isEmpty
+                            ? null
+                            : Text(matches[i].phones.first),
+                        onTap: () => Navigator.of(ctx).pop(matches[i]),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _handleOpenedContact(VaultContact contact) async {
     if (!mounted) {
       return;
@@ -206,11 +388,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _openContact(VaultContact contact) async {
-    final bool? changed = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
           builder: (_) => ContactDetailPage(contact: contact)),
     );
-    if (changed == true && mounted) {
+    if (mounted) {
       await _loadContacts();
     }
   }
@@ -286,27 +468,27 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
           const SizedBox(height: 8),
           Align(
-            alignment: Alignment.centerRight,
+            alignment: AlignmentDirectional.centerEnd,
             child: PopupMenuButton<ContactSortMode>(
               tooltip: 'Sort',
-              onSelected: (ContactSortMode mode) {
-                setState(() {
-                  _sortMode = mode;
-                });
-              },
+              onSelected: _setSortMode,
               itemBuilder: (BuildContext context) {
                 return const [
                   PopupMenuItem(
                     value: ContactSortMode.alphabetical,
-                    child: Text('Sort A-Z'),
+                    child: Text('First name, A to Z'),
+                  ),
+                  PopupMenuItem(
+                    value: ContactSortMode.lastName,
+                    child: Text('Last name, A to Z'),
                   ),
                   PopupMenuItem(
                     value: ContactSortMode.recent,
-                    child: Text('Sort recent'),
+                    child: Text('Recently changed'),
                   ),
                   PopupMenuItem(
                     value: ContactSortMode.source,
-                    child: Text('Sort by source'),
+                    child: Text('By source'),
                   ),
                 ];
               },
@@ -339,7 +521,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _sourceChip(String value, String label) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsetsDirectional.only(end: 8),
       child: FilterChip(
         selected: _sourceFilter == value,
         label: Text(label),
@@ -355,7 +537,9 @@ class _HomePageState extends ConsumerState<HomePage> {
   String _sortLabel(ContactSortMode mode) {
     switch (mode) {
       case ContactSortMode.alphabetical:
-        return 'A-Z';
+        return 'First name';
+      case ContactSortMode.lastName:
+        return 'Last name';
       case ContactSortMode.recent:
         return 'Recent';
       case ContactSortMode.source:
@@ -363,22 +547,65 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Widget _buildContactTile(VaultContact contact) {
+  Widget _buildContactTile(
+    VaultContact contact, {
+    EdgeInsetsGeometry? contentPadding,
+  }) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final bool saved =
         _savedContacts.any((VaultContact item) => item.id == contact.id);
+    final bool selected = _selected.contains(contact.id);
+    final String name = _sortMode == ContactSortMode.lastName
+        ? ContactSorting.sortName(contact, byLastName: true)
+        : contact.displayName;
+    final bool hasPhone = contact.phones.isNotEmpty;
     return ListTile(
-      onTap: () => _openContact(contact),
-      leading: ContactAvatar(contact: contact, radius: 20),
+      contentPadding: contentPadding,
+      selected: selected,
+      selectedTileColor: colorScheme.secondaryContainer.withValues(alpha: 0.5),
+      onTap: () {
+        if (_selected.isEmpty) {
+          _openContact(contact);
+        } else if (saved) {
+          _toggleSelected(contact.id);
+        }
+      },
+      onLongPress: saved ? () => _toggleSelected(contact.id) : null,
+      leading: selected
+          ? CircleAvatar(
+              radius: 20,
+              backgroundColor: colorScheme.primary,
+              child: Icon(Icons.check, color: colorScheme.onPrimary),
+            )
+          : ContactAvatar(contact: contact, radius: 20),
       title: Row(
         children: [
-          Expanded(child: Text(contact.displayName)),
+          // The name reads in its own direction (Hebrew right-to-left,
+          // English left-to-right) but starts where the screen starts.
+          Expanded(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                name,
+                textDirection: directionOf(name),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
           if (contact.isPinned) const Icon(Icons.push_pin, size: 16),
           if (contact.isFavorite) const Icon(Icons.star, size: 16),
         ],
       ),
-      subtitle: Text(
-        contact.phones.isNotEmpty ? contact.phones.first : contact.source,
+      subtitle: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: Text(
+          hasPhone ? contact.phones.first : contact.source,
+          // A phone number always reads left-to-right.
+          textDirection: hasPhone ? TextDirection.ltr : null,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
       trailing: saved
           ? null
@@ -387,6 +614,249 @@ class _HomePageState extends ConsumerState<HomePage> {
               style:
                   TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
             ),
+    );
+  }
+
+  void _toggleSelected(String id) {
+    setState(() {
+      if (!_selected.remove(id)) {
+        _selected.add(id);
+      }
+    });
+  }
+
+  List<VaultContact> get _selectedContacts => _savedContacts
+      .where((VaultContact c) => _selected.contains(c.id))
+      .toList();
+
+  void _snack(String text, {SnackBarAction? action}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text), action: action));
+  }
+
+  /// Runs one action on the ticked contacts, then clears the ticks.
+  Future<void> _bulk(Future<void> Function(List<VaultContact>) action) async {
+    final List<VaultContact> contacts = _selectedContacts;
+    if (contacts.isEmpty || _bulkBusy) {
+      return;
+    }
+    setState(() => _bulkBusy = true);
+    try {
+      await action(contacts);
+    } on Object catch (error) {
+      _snack('That didn\'t work: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _bulkBusy = false);
+        await _loadContacts(quiet: true);
+      }
+    }
+  }
+
+  Future<void> _deleteSelected() => _bulk((List<VaultContact> contacts) async {
+        final VaultRepository repo = _vaultRepository;
+        final List<String> ids =
+            contacts.map((VaultContact c) => c.id).toList();
+        final int moved = await repo.deleteSavedContacts(ids);
+        if (mounted) setState(_selected.clear);
+        _snack(
+          moved == 1
+              ? '1 contact moved to the trash'
+              : '$moved contacts moved to the trash',
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () async {
+              for (final String id in ids) {
+                await repo.restoreFromTrash(id);
+              }
+            },
+          ),
+        );
+      });
+
+  Future<void> _labelSelected() async {
+    final TextEditingController controller = TextEditingController();
+    final String? label = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Add a label'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DirectionalTextField(
+                controller: controller,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'Label'),
+              ),
+              if (_labelCounts.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final String existing in _labelCounts.keys.take(12))
+                      ActionChip(
+                        label: Text(existing),
+                        onPressed: () => Navigator.of(ctx).pop(existing),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (label == null || label.isEmpty) {
+      return;
+    }
+    await _bulk((List<VaultContact> contacts) async {
+      final int changed = await _vaultRepository.addLabel(
+          contacts.map((VaultContact c) => c.id), label);
+      if (mounted) setState(_selected.clear);
+      _snack(changed == 1
+          ? 'Added "$label" to 1 contact'
+          : 'Added "$label" to $changed contacts');
+    });
+  }
+
+  /// Shares the ticked contacts as one .vcf file.
+  Future<void> _shareSelected() => _bulk((List<VaultContact> contacts) async {
+        final String cards = _vaultRepository.exportVCard(contacts);
+        const String name = 'contacts.vcf';
+        await ref.read(vaultControllerProvider.notifier).whileShowingSystemUi(
+              () => SharePlus.instance.share(ShareParams(
+                files: <XFile>[
+                  XFile.fromData(Uint8List.fromList(utf8.encode(cards)),
+                      mimeType: 'text/x-vcard', name: name),
+                ],
+                fileNameOverrides: const <String>[name],
+              )),
+            );
+        await _vaultRepository.logActivity('contact_share_vcard',
+            details: 'Shared ${contacts.length} contacts as a vCard file');
+        if (mounted) setState(_selected.clear);
+      });
+
+  Future<void> _mergeSelected() async {
+    final List<VaultContact> contacts = _selectedContacts;
+    if (contacts.length < 2) {
+      return;
+    }
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: Text('Merge ${contacts.length} contacts into one?'),
+        content: Text(
+          '${contacts.map((VaultContact c) => c.displayName).join(', ')}\n\n'
+          'Their phones, emails and other details are combined. A restore '
+          'point is saved first, so you can undo this from Settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Merge'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    await _bulk((List<VaultContact> contacts) async {
+      final VaultContact? merged =
+          await _vaultRepository.mergeDuplicateContacts(contacts);
+      if (mounted) setState(_selected.clear);
+      if (merged != null) {
+        _snack('Merged into ${merged.displayName}');
+      }
+    });
+  }
+
+  PreferredSizeWidget _buildSelectionBar() {
+    final List<String> selectable =
+        _filteredContacts.where((VaultContact c) => c.isSavedContact)
+            .map((VaultContact c) => c.id)
+            .toList();
+    final bool all = selectable.every(_selected.contains);
+    return AppBar(
+      leading: IconButton(
+        tooltip: 'Cancel selection',
+        icon: const Icon(Icons.close),
+        onPressed: () => setState(_selected.clear),
+      ),
+      title: Text('${_selected.length} selected'),
+      actions: [
+        IconButton(
+          tooltip: all ? 'Select none' : 'Select all',
+          icon: Icon(all ? Icons.deselect : Icons.select_all),
+          onPressed: () => setState(() {
+            if (all) {
+              _selected.clear();
+            } else {
+              _selected.addAll(selectable);
+            }
+          }),
+        ),
+        IconButton(
+          tooltip: 'Add a label',
+          icon: const Icon(Icons.label_outline),
+          onPressed: _bulkBusy ? null : _labelSelected,
+        ),
+        IconButton(
+          tooltip: 'Share',
+          icon: const Icon(Icons.share_outlined),
+          onPressed: _bulkBusy ? null : _shareSelected,
+        ),
+        if (_selected.length > 1)
+          IconButton(
+            tooltip: 'Merge',
+            icon: const Icon(Icons.merge_type_outlined),
+            onPressed: _bulkBusy ? null : _mergeSelected,
+          ),
+        IconButton(
+          tooltip: 'Move to trash',
+          icon: const Icon(Icons.delete_outline),
+          onPressed: _bulkBusy ? null : _deleteSelected,
+        ),
+      ],
+    );
+  }
+
+  /// Scrolls the list so the row at [index] is at the top.
+  void _jumpToRow(int index) {
+    if (!_listScroll.hasClients) {
+      return;
+    }
+    final RenderObject? header =
+        _listHeaderKey.currentContext?.findRenderObject();
+    if (header is RenderBox && header.hasSize) {
+      _listHeaderHeight = header.size.height;
+    }
+    final ScrollPosition position = _listScroll.position;
+    _listScroll.jumpTo(
+      (_listHeaderHeight + index * _rowExtent)
+          .clamp(position.minScrollExtent, position.maxScrollExtent),
     );
   }
 
@@ -433,37 +903,125 @@ class _HomePageState extends ConsumerState<HomePage> {
       return Center(child: Text(_error!));
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadContacts,
-      child: ListView(
-        children: [
-          _buildSearchHeader(),
-          const LegacyImportBanner(),
-          if (_savedContacts.isEmpty) _buildGoogleImportBanner(),
-          if (_permissionDenied)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Text(
-                'Contacts permission denied. Showing vault-only contacts.',
+    final List<VaultContact> contacts = _filteredContacts;
+    final bool byLastName = _sortMode == ContactSortMode.lastName;
+    final bool sectioned =
+        byLastName || _sortMode == ContactSortMode.alphabetical;
+    // For A to Z sorting: the letter each row is under, and the first row
+    // of each letter.
+    final List<String> sections = sectioned
+        ? <String>[
+            for (final VaultContact c in contacts)
+              ContactSorting.sectionOf(
+                  ContactSorting.sortName(c, byLastName: byLastName)),
+          ]
+        : const <String>[];
+    final Map<String, int> firstRow = <String, int>{};
+    for (int i = 0; i < sections.length; i += 1) {
+      firstRow.putIfAbsent(sections[i], () => i);
+    }
+    final bool showIndex = sectioned &&
+        _query.isEmpty &&
+        firstRow.length > 1 &&
+        contacts.length >= 15;
+
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: _loadContacts,
+          child: CustomScrollView(
+            controller: _listScroll,
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  key: _listHeaderKey,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildSearchHeader(),
+                    const LegacyImportBanner(),
+                    if (_savedContacts.isEmpty) _buildGoogleImportBanner(),
+                    if (_permissionDenied)
+                      const Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        child: Text(
+                          'Contacts permission denied. Showing vault-only contacts.',
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                      child: Text(
+                        'Contacts (${contacts.length})',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                    if (contacts.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(
+                            child:
+                                Text('No contacts match the current filters.')),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Text(
-              'Contacts (${_filteredContacts.length})',
-              style: Theme.of(context).textTheme.titleSmall,
+              SliverFixedExtentList(
+                itemExtent: _rowExtent,
+                delegate: SliverChildBuilderDelegate(
+                  (BuildContext context, int i) {
+                    if (!sectioned) {
+                      return _buildContactTile(contacts[i]);
+                    }
+                    // The letter sits beside the first contact under it.
+                    return Row(
+                      children: [
+                        SizedBox(
+                          width: 40,
+                          child: firstRow[sections[i]] == i
+                              ? Center(
+                                  child: Text(
+                                    sections[i],
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                        ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                        Expanded(
+                          child: _buildContactTile(
+                            contacts[i],
+                            contentPadding: EdgeInsetsDirectional.only(
+                                start: 4, end: showIndex ? 32 : 16),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                  childCount: contacts.length,
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 96)),
+            ],
+          ),
+        ),
+        if (showIndex)
+          PositionedDirectional(
+            end: 2,
+            top: 8,
+            bottom: 104,
+            child: AlphabetIndex(
+              letters: firstRow.keys.toList(),
+              onLetter: (String letter) => _jumpToRow(firstRow[letter]!),
             ),
           ),
-          if (_filteredContacts.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child:
-                  Center(child: Text('No contacts match the current filters.')),
-            ),
-          ..._filteredContacts.map(_buildContactTile),
-          const SizedBox(height: 80),
-        ],
-      ),
+      ],
     );
   }
 
@@ -537,6 +1095,22 @@ class _HomePageState extends ConsumerState<HomePage> {
                   MaterialPageRoute<void>(builder: (_) => const TrashPage())),
             ),
           ),
+          if (QrScanPage.isSupported) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.qr_code_scanner),
+                title: const Text('Scan a contact QR code'),
+                subtitle: const Text('Add a contact someone shows you'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  if (await QrScanPage.scanAndImport(context) && mounted) {
+                    await _loadContacts(quiet: true);
+                  }
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Card(
             child: Padding(
@@ -652,7 +1226,20 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool selecting = _selected.isNotEmpty && _tabIndex == 0;
+    return PopScope(
+      // Back clears the ticks before it leaves the app.
+      canPop: !selecting,
+      onPopInvokedWithResult: (bool didPop, Object? _) {
+        if (!didPop) setState(_selected.clear);
+      },
+      child: _buildScaffold(selecting),
+    );
+  }
+
+  Widget _buildScaffold(bool selecting) {
     return Scaffold(
+      appBar: selecting ? _buildSelectionBar() : null,
       body: SafeArea(
         child: IndexedStack(
           index: _tabIndex,
@@ -663,12 +1250,12 @@ class _HomePageState extends ConsumerState<HomePage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.large(
+      floatingActionButton: selecting ? null : FloatingActionButton.large(
         onPressed: () async {
-          final bool? created = await Navigator.of(context).push<bool>(
-              MaterialPageRoute<bool>(
+          final VaultContact? created = await Navigator.of(context)
+              .push<VaultContact>(MaterialPageRoute<VaultContact>(
                   builder: (_) => const CreateContactPage()));
-          if (created == true && mounted) {
+          if (created != null && mounted) {
             await _loadContacts();
           }
         },
@@ -679,6 +1266,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         onDestinationSelected: (int value) {
           setState(() {
             _tabIndex = value;
+            _selected.clear();
           });
         },
         destinations: const [
@@ -696,9 +1284,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void dispose() {
     _openedContactSubscription?.cancel();
+    _incomingSubscription?.cancel();
     _storeChanges?.cancel();
     _reloadDebounce?.cancel();
     _searchController.dispose();
+    _listScroll.dispose();
     super.dispose();
   }
 }

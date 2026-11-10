@@ -31,7 +31,7 @@ class _LegacyImportBannerState extends ConsumerState<LegacyImportBanner> {
       child: Card(
         color: colors.secondaryContainer,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 8, 4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[

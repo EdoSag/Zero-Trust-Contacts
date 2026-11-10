@@ -165,6 +165,69 @@ void main() {
     await settle(tester);
     expect(find.text('Ada'), findsWidgets);
 
+    // The editor: a typed number, and a warning before a duplicate.
+    await tester.tap(find.byType(FloatingActionButton));
+    await settle(tester);
+    await tester.enterText(
+        find.widgetWithText(TextField, 'First name'), 'Grace');
+    await tester.enterText(find.widgetWithText(TextField, 'Phone'), '+15550100');
+    await tester.tap(find.text('Mobile'));
+    await settle(tester);
+    await tester.tap(find.text('Work').last);
+    await settle(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await settle(tester);
+    expect(find.byType(CreateContactPage), findsNothing);
+    expect(find.text('Grace'), findsWidgets);
+    final List<VaultContact> afterCreate = await tester.runAsync(
+        () async => (await container.read(vaultRepositoryProvider.future))
+            .loadSavedContacts()) as List<VaultContact>;
+    final VaultContact grace =
+        afterCreate.singleWhere((VaultContact c) => c.firstName == 'Grace');
+    expect(grace.typeOf('phone', '+15550100'), 'work');
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await settle(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'First name'), 'G');
+    await tester.enterText(find.widgetWithText(TextField, 'Phone'), '+15550100');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await settle(tester);
+    expect(find.text('You may already have this contact'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Close'));
+    await settle(tester);
+
+    // Open it, then edit it in the same editor.
+    await tester.tap(find.text('Grace').first);
+    await settle(tester);
+    expect(find.text('Work'), findsOneWidget);
+    await tester.tap(find.byTooltip('Edit'));
+    await settle(tester);
+    expect(find.text('Edit contact'), findsOneWidget);
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Last name'), 'Hopper');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await settle(tester);
+    expect(find.text('Grace Hopper'), findsWidgets);
+    await tester.pageBack();
+    await settle(tester);
+
+    // Long-press starts a selection; the bar acts on the ticked contacts.
+    await tester.longPress(find.text('Grace Hopper').first);
+    await settle(tester);
+    expect(find.text('1 selected'), findsOneWidget);
+    await tester.tap(find.text('Ada').first);
+    await settle(tester);
+    expect(find.text('2 selected'), findsOneWidget);
+    await tester.tap(find.byTooltip('Move to trash'));
+    await settle(tester);
+    expect(find.text('2 contacts moved to the trash'), findsOneWidget);
+    await tester.tap(find.text('Undo'));
+    await settle(tester);
+    expect(find.text('Ada'), findsWidgets);
+    expect(find.text('Grace Hopper'), findsWidgets);
+
     await tester.tap(find.byTooltip('Settings'));
     await settle(tester);
     await tester.scrollUntilVisible(find.text('Restore points'), 200);

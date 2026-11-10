@@ -25,6 +25,9 @@ class MainActivity : FlutterFragmentActivity() {
     private var channel: MethodChannel? = null
     private var pendingOpenedContact: Map<String, Any?>? = null
 
+    /** A vCard file or an "add a contact" request from another app. */
+    private var pendingIncoming: Map<String, Any?>? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         cacheContactFromIntent(intent)
@@ -49,6 +52,10 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                         result.success(contact)
                         pendingOpenedContact = null
+                    }
+                    "consumePendingIncoming" -> {
+                        result.success(pendingIncoming)
+                        pendingIncoming = null
                     }
                     "launchDialer" -> {
                         val phoneNumber = call.argument<String>("phoneNumber")
@@ -482,6 +489,8 @@ class MainActivity : FlutterFragmentActivity() {
                     "labels" to mutableListOf<String>(),
                     "birthdays" to mutableListOf<String>(),
                     "other" to mutableListOf<String>(),
+                    // Kinds (mobile, work…), keyed "phone\n<number>".
+                    "types" to mutableMapOf<String, String>(),
                 )
             }
         }
@@ -543,6 +552,12 @@ class MainActivity : FlutterFragmentActivity() {
     ) {
         fun list(key: String) = contact[key] as MutableList<String>
         fun column(index: Int) = cursor.getString(index)?.trim().orEmpty()
+        fun remember(field: String, value: String, type: String) {
+            if (type.isNotEmpty()) {
+                (contact["types"] as MutableMap<String, String>)["$field\n$value"] = type
+            }
+        }
+        val typeCode = column(3).toIntOrNull()
 
         when (mimeType) {
             ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> {
@@ -553,11 +568,21 @@ class MainActivity : FlutterFragmentActivity() {
                 contact["lastName"] = column(4)
             }
             ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE ->
-                if (data1.isNotEmpty()) list("phones").add(data1)
+                if (data1.isNotEmpty()) {
+                    list("phones").add(data1)
+                    remember("phone", data1, PhoneContactsSync.phoneTypeName(typeCode))
+                }
             ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE ->
-                if (data1.isNotEmpty()) list("emails").add(data1)
+                if (data1.isNotEmpty()) {
+                    list("emails").add(data1)
+                    remember("email", data1, PhoneContactsSync.emailTypeName(typeCode))
+                }
             ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE ->
-                if (data1.isNotEmpty()) list("addresses").add(data1.replace("\n", ", "))
+                if (data1.isNotEmpty()) {
+                    val address = data1.replace("\n", ", ")
+                    list("addresses").add(address)
+                    remember("address", address, PhoneContactsSync.addressTypeName(typeCode))
+                }
             ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
                 val title = column(5)
                 contact["company"] = listOf(title, data1).filter { it.isNotEmpty() }.joinToString(", ")
@@ -647,10 +672,21 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun cacheContactFromIntent(intent: Intent?) {
+        val incoming = try {
+            IncomingIntents.read(this, intent)
+        } catch (error: Exception) {
+            null
+        }
+        if (incoming != null) {
+            pendingIncoming = incoming
+            return
+        }
         pendingOpenedContact = readContactFromIntent(intent) ?: pendingOpenedContact
     }
 
     private fun flushPendingOpenedContact() {
+        // Only a nudge: the Flutter side fetches it once the vault is open.
+        if (pendingIncoming != null) channel?.invokeMethod("incomingReceived", null)
         val contact = pendingOpenedContact ?: return
         channel?.invokeMethod("contactIntentReceived", contact)
     }
