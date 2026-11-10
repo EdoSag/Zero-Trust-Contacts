@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,7 +12,7 @@ import 'package:zerotrust_contacts/import/vcard_writer.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/pages/contact_history_page.dart';
 import 'package:zerotrust_contacts/services/contact_actions.dart';
-import 'package:zerotrust_contacts/services/contact_photo_service.dart';
+import 'package:zerotrust_contacts/pages/create_contact_page.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
 import 'package:zerotrust_contacts/widgets/compact_button_style.dart';
@@ -35,31 +34,13 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
 
   late VaultContact _contact;
 
-  late TextEditingController _firstNameController;
-  late TextEditingController _lastNameController;
-  late TextEditingController _companyController;
-  late TextEditingController _phonesController;
-  late TextEditingController _emailsController;
-  late TextEditingController _labelsController;
-  late TextEditingController _notesController;
-
-  bool _isEditing = false;
   bool _isSavedContact = false;
   bool _busy = false;
-  File? _pickedPhotoFile;
-  bool _photoCleared = false;
 
   @override
   void initState() {
     super.initState();
     _contact = widget.contact;
-    _firstNameController = TextEditingController(text: _contact.firstName);
-    _lastNameController = TextEditingController(text: _contact.lastName);
-    _companyController = TextEditingController(text: _contact.company);
-    _phonesController = TextEditingController(text: _contact.phones.join(', '));
-    _emailsController = TextEditingController(text: _contact.emails.join(', '));
-    _labelsController = TextEditingController(text: _contact.labels.join(', '));
-    _notesController = TextEditingController(text: _contact.notes);
     _refreshSavedState();
   }
 
@@ -81,135 +62,27 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
     }
   }
 
-  Future<void> _pickPhoto() async {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
-    final XFile? picked = await showModalBottomSheet<XFile?>(
-      context: context,
-      builder: (BuildContext ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.photo_library_outlined,
-                    color: colorScheme.primary),
-                title: const Text('Choose from gallery'),
-                onTap: () async {
-                  final XFile? f =
-                      await ref.read(vaultControllerProvider.notifier).whileShowingSystemUi(const PhotoPicker().pickFromGallery);
-                  if (ctx.mounted) Navigator.of(ctx).pop(f);
-                },
+  /// Opens the editor: changes to a saved contact, or a phone contact
+  /// saved into the vault as a new one.
+  Future<void> _edit() async {
+    final VaultContact? saved = await Navigator.of(context).push<VaultContact>(
+      MaterialPageRoute<VaultContact>(
+        builder: (_) => _isSavedContact
+            ? CreateContactPage(existing: _contact)
+            : CreateContactPage(
+                prefill: _contact,
+                createActivity: 'contact_saved_from_device',
               ),
-              ListTile(
-                leading: Icon(Icons.camera_alt_outlined,
-                    color: colorScheme.primary),
-                title: const Text('Take a photo'),
-                onTap: () async {
-                  final XFile? f =
-                      await ref.read(vaultControllerProvider.notifier).whileShowingSystemUi(const PhotoPicker().pickFromCamera);
-                  if (ctx.mounted) Navigator.of(ctx).pop(f);
-                },
-              ),
-              if (_contact.hasPhoto || _pickedPhotoFile != null)
-                ListTile(
-                  leading: Icon(Icons.delete_outline, color: colorScheme.error),
-                  title: const Text('Remove photo'),
-                  onTap: () => Navigator.of(ctx).pop(XFile('')),
-                ),
-            ],
-          ),
-        );
-      },
+      ),
     );
-    if (!mounted) return;
-    if (picked == null) return;
-    if (picked.path.isEmpty) {
-      // User chose "Remove photo".
-      setState(() {
-        _pickedPhotoFile = null;
-        _photoCleared = true;
-      });
-    } else {
-      setState(() {
-        _pickedPhotoFile = File(picked.path);
-        _photoCleared = false;
-      });
-    }
-  }
-
-  List<String> _splitValues(String value) {
-    return value
-        .split(',')
-        .map((String item) => item.trim())
-        .where((String item) => item.isNotEmpty)
-        .toList();
-  }
-
-  Future<void> _save() async {
-    if (_busy) {
+    if (saved == null || !mounted) {
       return;
     }
     setState(() {
-      _busy = true;
+      _contact = saved;
+      _isSavedContact = true;
     });
-    try {
-      final File? photoFile = _pickedPhotoFile;
-      final bool removingPhoto = _photoCleared && _contact.hasPhoto;
-      final Map<String, Object?>? newPhoto = photoFile == null
-          ? null
-          : await (await ref.read(contactPhotosProvider.future))
-              .storeFile(photoFile);
-
-      final VaultContact edited = _contact.applyEdits(
-        firstName: _firstNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        company: _companyController.text.trim(),
-        phones: _splitValues(_phonesController.text),
-        emails: _splitValues(_emailsController.text),
-        labels: _splitValues(_labelsController.text),
-        notes: _notesController.text.trim(),
-        source: 'Saved',
-        photo: newPhoto,
-        clearPhoto: removingPhoto && newPhoto == null,
-      );
-
-      final VaultContact toSave = _isSavedContact
-          ? edited
-          : edited.copyWith(
-              id: VaultContact.generateId(),
-              createdAt: DateTime.now().toUtc(),
-            );
-      await _vaultRepository.upsertSavedContact(
-        toSave,
-        activity:
-            _isSavedContact ? 'contact_edit' : 'contact_saved_from_device',
-      );
-
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _contact = toSave;
-        _isSavedContact = true;
-        _isEditing = false;
-        _pickedPhotoFile = null;
-        _photoCleared = false;
-      });
-      Navigator.of(context).pop(true);
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save contact: $error')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
-    }
+    await _refreshSavedState();
   }
 
   /// Moves the contact to the trash (kept 30 days), with an Undo.
@@ -255,21 +128,10 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
       return;
     }
     await _refreshSavedState();
-    _resetControllers();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Changes undone on every device.')));
     }
-  }
-
-  void _resetControllers() {
-    _firstNameController.text = _contact.firstName;
-    _lastNameController.text = _contact.lastName;
-    _companyController.text = _contact.company;
-    _phonesController.text = _contact.phones.join(', ');
-    _emailsController.text = _contact.emails.join(', ');
-    _labelsController.text = _contact.labels.join(', ');
-    _notesController.text = _contact.notes;
   }
 
   Future<void> _toggleFavorite() async {
@@ -608,7 +470,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
           ListTile(
             leading: const Icon(Icons.phone_outlined),
             title: Text(phone),
-            subtitle: const Text('Phone'),
+            subtitle: Text(_contact.typeLabel('phone', phone, fallback: 'Phone')),
             onTap: () => _open(ContactActions.call(phone)),
             onLongPress: () => _copy(phone),
             trailing: IconButton(
@@ -621,7 +483,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
           ListTile(
             leading: const Icon(Icons.email_outlined),
             title: Text(email),
-            subtitle: const Text('Email'),
+            subtitle: Text(_contact.typeLabel('email', email, fallback: 'Email')),
             onTap: () => _open(ContactActions.email(email)),
             onLongPress: () => _copy(email),
           ),
@@ -629,7 +491,8 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
           ListTile(
             leading: const Icon(Icons.place_outlined),
             title: Text(address),
-            subtitle: const Text('Address'),
+            subtitle:
+                Text(_contact.typeLabel('address', address, fallback: 'Address')),
             onTap: () => _open(
                 ContactActions.directions(address, isIOS: _isIOS),
                 interaction: false),
@@ -720,52 +583,6 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
     ];
   }
 
-  Widget _buildEditBody() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        TextField(
-          controller: _firstNameController,
-          decoration: const InputDecoration(labelText: 'First name'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _lastNameController,
-          decoration: const InputDecoration(labelText: 'Last name'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _companyController,
-          decoration: const InputDecoration(labelText: 'Company'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _phonesController,
-          decoration:
-              const InputDecoration(labelText: 'Phones (comma separated)'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _emailsController,
-          decoration:
-              const InputDecoration(labelText: 'Emails (comma separated)'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _labelsController,
-          decoration:
-              const InputDecoration(labelText: 'Labels (comma separated)'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _notesController,
-          maxLines: 4,
-          decoration: const InputDecoration(labelText: 'Notes'),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -806,16 +623,10 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
             ],
           ),
           IconButton(
-            onPressed: _busy
-                ? null
-                : () {
-                    setState(() {
-                      _isEditing = !_isEditing;
-                    });
-                  },
+            onPressed: _busy ? null : _edit,
             icon: Icon(
-                _isEditing ? Icons.visibility_outlined : Icons.edit_outlined),
-            tooltip: _isEditing ? 'View' : 'Edit',
+                _isSavedContact ? Icons.edit_outlined : Icons.person_add_alt),
+            tooltip: _isSavedContact ? 'Edit' : 'Save to the vault',
           ),
           if (_isSavedContact)
             PopupMenuButton<String>(
@@ -846,36 +657,9 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
       body: Column(
         children: [
           // ── Photo header ──────────────────────────────────────────────────
-          GestureDetector(
-            onTap: _isEditing ? _pickPhoto : null,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 16, bottom: 8),
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  ContactAvatar(
-                    contact: _contact,
-                    radius: 48,
-                    overridePhoto: _pickedPhotoFile,
-                  ),
-                  if (_isEditing)
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondaryContainer,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.edit,
-                        size: 16,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSecondaryContainer,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+          Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 8),
+            child: ContactAvatar(contact: _contact, radius: 48),
           ),
           if (_isSavedContact && _contact.isBlocked)
             Padding(
@@ -997,35 +781,10 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
             ),
           ),
           Expanded(
-            child: _isEditing ? _buildEditBody() : _buildReadOnlyBody(),
+            child: _buildReadOnlyBody(),
           ),
         ],
       ),
-      floatingActionButton: _isEditing
-          ? FloatingActionButton.extended(
-              onPressed: _busy ? null : _save,
-              icon: _busy
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: Text(_busy ? 'Saving...' : 'Save'),
-            )
-          : null,
     );
-  }
-
-  @override
-  void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _companyController.dispose();
-    _phonesController.dispose();
-    _emailsController.dispose();
-    _labelsController.dispose();
-    _notesController.dispose();
-    super.dispose();
   }
 }

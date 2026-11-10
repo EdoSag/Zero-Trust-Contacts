@@ -206,11 +206,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _openContact(VaultContact contact) async {
-    final bool? changed = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
           builder: (_) => ContactDetailPage(contact: contact)),
     );
-    if (changed == true && mounted) {
+    if (mounted) {
       await _loadContacts();
     }
   }
@@ -665,10 +665,10 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
       floatingActionButton: FloatingActionButton.large(
         onPressed: () async {
-          final bool? created = await Navigator.of(context).push<bool>(
-              MaterialPageRoute<bool>(
+          final VaultContact? created = await Navigator.of(context)
+              .push<VaultContact>(MaterialPageRoute<VaultContact>(
                   builder: (_) => const CreateContactPage()));
-          if (created == true && mounted) {
+          if (created != null && mounted) {
             await _loadContacts();
           }
         },

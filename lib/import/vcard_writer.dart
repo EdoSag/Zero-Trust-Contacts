@@ -27,14 +27,28 @@ class VCardWriter {
       line('ORG:${_escape(contact.company.trim())}');
     }
     for (final String phone in contact.phones) {
-      line('TEL;TYPE=CELL:${_escape(phone)}');
+      final String type = switch (contact.typeOf('phone', phone)) {
+        'home' => 'HOME',
+        'work' => 'WORK',
+        'main' => 'MAIN',
+        'other' => 'OTHER',
+        _ => 'CELL',
+      };
+      line('TEL;TYPE=$type:${_escape(phone)}');
     }
     for (final String email in contact.emails) {
-      line('EMAIL;TYPE=INTERNET:${_escape(email)}');
+      final String? type = contact.typeOf('email', email);
+      final String kind = type == 'home' || type == 'work'
+          ? ';TYPE=${type!.toUpperCase()}'
+          : '';
+      line('EMAIL;TYPE=INTERNET$kind:${_escape(email)}');
     }
     for (final String address in contact.addresses) {
       // The whole address in the street part: the vault keeps it as one line.
-      line('ADR;TYPE=HOME:;;${_escape(address)};;;;');
+      final String type = contact.typeOf('address', address) == 'work'
+          ? 'WORK'
+          : 'HOME';
+      line('ADR;TYPE=$type:;;${_escape(address)};;;;');
     }
     if (contact.birthdays.isNotEmpty) {
       line('BDAY:${_escape(contact.birthdays.first)}');

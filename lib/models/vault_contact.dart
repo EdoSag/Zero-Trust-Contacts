@@ -34,6 +34,7 @@ class VaultContact {
     this.lastContactedAt,
     this.photoPath,
     this.photo,
+    this.valueTypes = const <String, String>{},
   });
 
   final String id;
@@ -70,6 +71,51 @@ class VaultContact {
 
   bool get hasPhoto => photo != null || photoPath != null;
 
+  /// The kind of each phone, email and address (`mobile`, `work`, `home`…),
+  /// keyed by [typeKey]. Kept beside the plain value lists, so app versions
+  /// from before typed fields still read every value.
+  final Map<String, String> valueTypes;
+
+  static const List<String> phoneTypes = <String>[
+    'mobile', 'home', 'work', 'main', 'other', //
+  ];
+  static const List<String> emailTypes = <String>['home', 'work', 'other'];
+  static const List<String> addressTypes = <String>['home', 'work', 'other'];
+
+  /// The key of a value in [valueTypes]. [field] is `phone`, `email` or
+  /// `address`.
+  static String typeKey(String field, String value) => switch (field) {
+        'phone' => 'phone:${normalizedPhone(value)}',
+        'email' => 'email:${normalizedEmail(value)}',
+        _ => '$field:${value.trim().toLowerCase()}',
+      };
+
+  /// `mobile`, `work`…, or null when the value has no kind.
+  String? typeOf(String field, String value) =>
+      valueTypes[typeKey(field, value)];
+
+  /// "Mobile", "Work"… for showing, or [fallback].
+  String typeLabel(String field, String value, {required String fallback}) {
+    final String? type = typeOf(field, value);
+    return type == null || type.isEmpty
+        ? fallback
+        : '${type[0].toUpperCase()}${type.substring(1)}';
+  }
+
+  /// [valueTypes] without entries for values the contact no longer has.
+  Map<String, String> _prunedTypes(Map<String, String> types,
+      List<String> phones, List<String> emails, List<String> addresses) {
+    final Set<String> keep = <String>{
+      for (final String v in phones) typeKey('phone', v),
+      for (final String v in emails) typeKey('email', v),
+      for (final String v in addresses) typeKey('address', v),
+    };
+    return <String, String>{
+      for (final MapEntry<String, String> e in types.entries)
+        if (keep.contains(e.key) && e.value.isNotEmpty) e.key: e.value,
+    };
+  }
+
   static const List<String> mergeableFields = <String>[
     'displayName',
     'firstName',
@@ -91,6 +137,7 @@ class VaultContact {
     'lastContactedAt',
     'photoPath',
     'photo',
+    'valueTypes',
   ];
 
   static VaultContact fromJson(Map<String, dynamic> json) {
@@ -152,6 +199,7 @@ class VaultContact {
       fieldUpdatedAt: fieldUpdatedAt,
       photoPath: json['photoPath'] as String?,
       photo: _readMap(json['photo']),
+      valueTypes: _readTypes(json['valueTypes']),
     )._withDefaultFieldTimestamps();
   }
 
@@ -192,6 +240,7 @@ class VaultContact {
       fieldUpdatedAt: <String, DateTime>{},
       photoPath: payload['photoPath'] as String?,
       photo: _readMap(payload['photo']),
+      valueTypes: _readTypes(payload['valueTypes']),
     )._withDefaultFieldTimestamps();
   }
 
@@ -220,6 +269,7 @@ class VaultContact {
       'lastContactedAt': lastContactedAt?.toUtc().toIso8601String(),
       'photoPath': photoPath,
       'photo': photo,
+      'valueTypes': valueTypes,
       'fieldUpdatedAt': fieldUpdatedAt.map(
         (String key, DateTime value) => MapEntry<String, String>(
           key,
@@ -259,6 +309,7 @@ class VaultContact {
     // Use Object? + sentinel so callers can pass explicit null to clear photoPath.
     Object? photoPath = _absent,
     Object? photo = _absent,
+    Map<String, String>? valueTypes,
   }) {
     return VaultContact(
       id: id ?? this.id,
@@ -287,6 +338,7 @@ class VaultContact {
       photo: identical(photo, _absent)
           ? this.photo
           : photo as Map<String, Object?>?,
+      valueTypes: valueTypes ?? this.valueTypes,
     );
   }
 
@@ -313,6 +365,9 @@ class VaultContact {
     bool clearPhoto = false,
     /// A new photo (`ZtAttachmentRef` JSON). Replaces any earlier one.
     Map<String, Object?>? photo,
+    /// Kinds to set, by [typeKey]. Merged over the current ones; kinds of
+    /// values the contact no longer has are dropped.
+    Map<String, String>? valueTypes,
   }) {
     final DateTime now = DateTime.now().toUtc();
     final Map<String, DateTime> updates =
@@ -343,6 +398,14 @@ class VaultContact {
         : (photoPath ?? this.photoPath);
     final Map<String, Object?>? nextPhoto =
         clearPhoto ? null : (photo ?? this.photo);
+
+    final Map<String, String> nextTypes = _prunedTypes(
+      <String, String>{...this.valueTypes, ...?valueTypes},
+      nextPhones,
+      nextEmails,
+      nextAddresses,
+    );
+    if (!_equalMaps(nextTypes, this.valueTypes)) touch('valueTypes');
 
     if (nextDisplayName != this.displayName) touch('displayName');
     if (nextFirstName != this.firstName) touch('firstName');
@@ -392,6 +455,7 @@ class VaultContact {
       fieldUpdatedAt: updates,
       photoPath: nextPhotoPath,
       photo: nextPhoto,
+      valueTypes: nextTypes,
     )._withDefaultFieldTimestamps();
   }
 
@@ -491,6 +555,12 @@ class VaultContact {
 
       return merged;
     }
+
+    final DateTime myTypesTime = fieldUpdatedAt['valueTypes'] ?? updatedAt;
+    final DateTime otherTypesTime =
+        other.fieldUpdatedAt['valueTypes'] ?? other.updatedAt;
+    mergedFieldTimes['valueTypes'] =
+        myTypesTime.isAfter(otherTypesTime) ? myTypesTime : otherTypesTime;
 
     final DateTime mergedCreatedAt =
         createdAt.isBefore(other.createdAt) ? createdAt : other.createdAt;
@@ -605,6 +675,11 @@ class VaultContact {
         localValue: photo,
         remoteValue: other.photo,
       ),
+      // Both sides' kinds, the newer side winning where they differ.
+      valueTypes: (fieldUpdatedAt['valueTypes'] ?? updatedAt).isBefore(
+              other.fieldUpdatedAt['valueTypes'] ?? other.updatedAt)
+          ? <String, String>{...valueTypes, ...other.valueTypes}
+          : <String, String>{...other.valueTypes, ...valueTypes},
     )._withDefaultFieldTimestamps();
   }
 
@@ -726,6 +801,18 @@ class VaultContact {
 
   static Map<String, Object?>? _readMap(dynamic value) =>
       value is Map ? Map<String, Object?>.from(value) : null;
+
+  static Map<String, String> _readTypes(dynamic value) => value is Map
+      ? <String, String>{
+          for (final MapEntry<dynamic, dynamic> e in value.entries)
+            if (e.value != null && '${e.value}'.isNotEmpty)
+              '${e.key}': '${e.value}'.toLowerCase(),
+        }
+      : const <String, String>{};
+
+  static bool _equalMaps(Map<String, String> a, Map<String, String> b) =>
+      a.length == b.length &&
+      a.entries.every((MapEntry<String, String> e) => b[e.key] == e.value);
 
   static int _readInt(dynamic value) {
     if (value is int) {
