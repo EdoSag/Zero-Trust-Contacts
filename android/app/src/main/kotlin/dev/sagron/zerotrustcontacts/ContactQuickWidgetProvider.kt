@@ -139,15 +139,24 @@ class ContactQuickWidgetProvider : AppWidgetProvider() {
         /** From about two cells wide, the name sits beside the photo. */
         private const val WIDE_MIN_WIDTH_DP = 140
 
+        /**
+         * Below this height there is only room for the round photo (44dp plus
+         * padding), so the name is hidden and the initials identify the contact.
+         */
+        private const val LABEL_MIN_HEIGHT_DP = 64
+
         fun updateAppWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int,
         ) {
             val configuration = loadConfiguration(context, appWidgetId)
-            val width = appWidgetManager.getAppWidgetOptions(appWidgetId)
-                .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
-            val wide = width >= WIDE_MIN_WIDTH_DP
+            val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
+            val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
+            val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
+            // 0 means the launcher has not reported a size yet: assume it fits.
+            val tall = height == 0 || height >= LABEL_MIN_HEIGHT_DP
+            val wide = tall && width >= WIDE_MIN_WIDTH_DP
             val views = RemoteViews(
                 context.packageName,
                 if (wide) R.layout.contact_quick_widget_wide else R.layout.contact_quick_widget,
@@ -195,6 +204,9 @@ class ContactQuickWidgetProvider : AppWidgetProvider() {
                 views.setOnClickPendingIntent(R.id.widget_root, tapPendingIntent)
             }
 
+            if (!wide) {
+                views.setViewVisibility(R.id.widget_label, if (tall) View.VISIBLE else View.GONE)
+            }
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
 
