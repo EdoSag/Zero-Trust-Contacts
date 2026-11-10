@@ -5,9 +5,9 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>NSCameraUsageDescription</key>
-    <string>Take a photo for a contact.</string>
+    <string>Take a photo for a contact, scan a contact QR code or a business card. Pictures are read on the phone.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Choose a photo for a contact.</string>
+    <string>Choose a photo for a contact, or a picture of a business card to read.</string>
     <key>NSFaceIDUsageDescription</key>
     <string>Unlock your contacts with Face ID.</string>
     <key>CFBundleDisplayName</key>
@@ -52,7 +52,7 @@
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
     <key>NSContactsUsageDescription</key>
-    <string>This app needs access to your contacts to show your phone and SIM contact list.</string>
+    <string>ZT Contacts reads your iPhone contacts only when you choose to import them into your encrypted vault.</string>
     
 </dict>
 </plist>

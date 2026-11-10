@@ -471,6 +471,84 @@ class VaultRepository {
     return changed;
   }
 
+  /// Removes [label] from the contacts [ids], or from every contact when
+  /// [ids] is null (deleting the label). Returns how many contacts changed.
+  Future<int> removeLabel(String label, {Iterable<String>? ids}) async {
+    final String wanted = label.trim().toLowerCase();
+    if (wanted.isEmpty) {
+      return 0;
+    }
+    final Set<String>? only = ids?.toSet();
+    int changed = 0;
+    for (final VaultContact contact in await loadSavedContacts()) {
+      if (only != null && !only.contains(contact.id)) {
+        continue;
+      }
+      final List<String> kept = contact.labels
+          .where((String l) => l.trim().toLowerCase() != wanted)
+          .toList();
+      if (kept.length == contact.labels.length) {
+        continue;
+      }
+      await contactsCollection.save(
+        _sync,
+        _store,
+        contact.applyEdits(labels: kept),
+      );
+      changed += 1;
+    }
+    if (changed > 0) {
+      await logActivity(
+        'contacts_unlabelled',
+        details: 'Removed the label ${label.trim()} from $changed contacts',
+      );
+    }
+    return changed;
+  }
+
+  /// Renames [from] to [to] on every contact that has it. A contact that
+  /// already has [to] just loses [from], so renaming onto an existing label
+  /// joins the two. Returns how many contacts changed.
+  Future<int> renameLabel(String from, String to) async {
+    final String wanted = from.trim().toLowerCase();
+    final String clean = to.trim();
+    if (wanted.isEmpty || clean.isEmpty || from.trim() == clean) {
+      return 0;
+    }
+    int changed = 0;
+    for (final VaultContact contact in await loadSavedContacts()) {
+      if (!contact.labels.any((String l) => l.trim().toLowerCase() == wanted)) {
+        continue;
+      }
+      final List<String> next = <String>[];
+      bool placed = false;
+      for (final String l in contact.labels) {
+        final String lower = l.trim().toLowerCase();
+        if (lower == wanted || lower == clean.toLowerCase()) {
+          if (!placed) {
+            next.add(clean);
+            placed = true;
+          }
+        } else {
+          next.add(l);
+        }
+      }
+      await contactsCollection.save(
+        _sync,
+        _store,
+        contact.applyEdits(labels: next),
+      );
+      changed += 1;
+    }
+    if (changed > 0) {
+      await logActivity(
+        'label_renamed',
+        details: 'Renamed the label ${from.trim()} to $clean',
+      );
+    }
+    return changed;
+  }
+
   Future<List<ContactDuplicateGroup>> findDuplicateGroups(
       List<VaultContact> contacts) async {
     final List<ContactDuplicateGroup> groups = <ContactDuplicateGroup>[];
@@ -597,13 +675,18 @@ class VaultRepository {
 
   Map<String, int> labelCounts(List<VaultContact> contacts) {
     final Map<String, int> counts = <String, int>{};
+    // "Family" and "family" are one label, shown the way it was first spelt.
+    final Map<String, String> spelling = <String, String>{};
     for (final VaultContact contact in contacts) {
+      final Set<String> seen = <String>{};
       for (final String label in contact.labels) {
         final String normalized = label.trim();
-        if (normalized.isEmpty) {
+        if (normalized.isEmpty || !seen.add(normalized.toLowerCase())) {
           continue;
         }
-        counts[normalized] = (counts[normalized] ?? 0) + 1;
+        final String shown =
+            spelling.putIfAbsent(normalized.toLowerCase(), () => normalized);
+        counts[shown] = (counts[shown] ?? 0) + 1;
       }
     }
     final List<String> keys = counts.keys.toList()

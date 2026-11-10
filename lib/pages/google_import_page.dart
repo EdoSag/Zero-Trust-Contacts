@@ -9,6 +9,7 @@ import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/import/android_account_contacts.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
+import 'package:zerotrust_contacts/import/ios_address_book.dart';
 import 'package:zerotrust_contacts/import/photo_downloader.dart';
 import 'package:zerotrust_contacts/import/vcard_parser.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
@@ -22,7 +23,19 @@ import 'package:zerotrust_contacts/services/vault_repository.dart';
 /// or open the .vcf file Google Contacts exports. Contacts are parsed on the
 /// device and written straight into the encrypted vault.
 class GoogleImportPage extends ConsumerStatefulWidget {
-  const GoogleImportPage({super.key, this.vCardText, this.vCardName});
+  const GoogleImportPage({
+    super.key,
+    this.vCardText,
+    this.vCardName,
+    this.isIOS,
+    this.addressBook = const IosAddressBook(),
+  });
+
+  /// Whether to offer the iPhone address book. Null asks the platform.
+  final bool? isIOS;
+
+  /// Reads the iPhone address book; replaced in tests.
+  final IosAddressBook addressBook;
 
   /// A vCard to preview straight away (a .vcf file opened with or shared to
   /// the app, a scanned QR code, a file picked in Settings). The page then
@@ -51,6 +64,36 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
   _PendingImport? _pending;
 
   bool get _isAndroid => Platform.isAndroid;
+  bool get _isIOS => widget.isIOS ?? Platform.isIOS;
+
+  /// True after iOS refused access to the address book.
+  bool _addressBookDenied = false;
+
+  /// The source being previewed is this phone's own address book, not
+  /// Google, so the summary and the activity log say so.
+  bool _fromThisPhone = false;
+
+  Future<void> _previewAddressBook() async {
+    await _withBusy('Reading this iPhone\'s contacts…', () async {
+      final bool granted = await ref
+          .read(vaultControllerProvider.notifier)
+          .whileShowingSystemUi(widget.addressBook.requestPermission);
+      if (mounted) setState(() => _addressBookDenied = !granted);
+      if (!granted) {
+        return;
+      }
+      final AddressBookImport read = await widget.addressBook.read();
+      await _preparePreview(
+        sourceLabel: 'iPhone contacts',
+        incoming: read.contacts,
+        photos: <String, PhotoLoader>{
+          for (final MapEntry<String, String> e in read.photoIds.entries)
+            e.key: () => widget.addressBook.photo(e.value),
+        },
+      );
+      if (mounted) setState(() => _fromThisPhone = true);
+    });
+  }
 
   @override
   void initState() {
@@ -183,6 +226,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
     if (mounted) {
       setState(() {
         _downloadLinkedPhotos = false;
+        _fromThisPhone = false;
         _pending = _PendingImport(
           sourceLabel: sourceLabel,
           incoming: incoming,
@@ -218,7 +262,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
     await _withBusy('Encrypting and saving…', () async {
       final ContactImportPlan done = await _vaultRepository.importContacts(
         pending.incoming,
-        sourceLabel: _vCardOnly
+        sourceLabel: _vCardOnly || _fromThisPhone
             ? pending.sourceLabel
             : 'Google (${pending.sourceLabel})',
         photos: photos,
@@ -251,7 +295,11 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
       if (plan.photosAdded > 0)
         '${plan.photosAdded} ${plan.photosAdded == 1 ? 'photo' : 'photos'}',
     ];
-    return '${_vCardOnly ? 'Imported' : 'Imported from Google'}: '
+    return '${_vCardOnly
+        ? 'Imported'
+        : _fromThisPhone
+        ? 'Imported from this iPhone'
+        : 'Imported from Google'}: '
         '${parts.join(', ')}.';
   }
 
@@ -296,7 +344,9 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_vCardOnly ? 'Import contacts' : 'Import from Google'),
+          title: Text(
+            _vCardOnly || _isIOS ? 'Import contacts' : 'Import from Google',
+          ),
         ),
         body: Column(
           children: [
@@ -387,6 +437,38 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                 ),
               );
             }),
+          const SizedBox(height: 20),
+        ],
+        if (_isIOS) ...[
+          Text('Contacts on this iPhone', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _addressBookDenied
+                        ? 'ZT Contacts is not allowed to read your contacts. '
+                              'Turn it on in the iPhone Settings app under '
+                              'Privacy & Security, Contacts, then try again.'
+                        : 'Copies everything the iPhone Contacts app shows '
+                              '(iCloud and other accounts) into your vault. '
+                              'You see what will change before anything is '
+                              'saved, and people you already have are '
+                              'merged, not doubled.',
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: _busy ? null : _previewAddressBook,
+                    icon: const Icon(Icons.phone_iphone),
+                    label: const Text('Import from this iPhone'),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
         ],
         Text('Google Contacts export file', style: theme.textTheme.titleMedium),
