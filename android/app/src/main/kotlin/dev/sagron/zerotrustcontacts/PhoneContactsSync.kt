@@ -20,6 +20,11 @@ import io.flutter.plugin.common.MethodChannel
  * side just applies it. Turning it off removes the account, which removes
  * every contact it wrote.
  *
+ * Contacts apps may also edit, add and delete contacts in the account.
+ * Those changes are marked by Android (DIRTY, DELETED, or no SOURCE_ID for
+ * a new one); [changes] reports them so the Flutter side can put them in
+ * the vault, and [acknowledge] clears the marks.
+ *
  * Each written raw contact keeps the vault contact id in SOURCE_ID and a
  * hash of what was written in SYNC1, so only changed contacts are rewritten.
  */
@@ -43,6 +48,11 @@ object PhoneContactsSync {
                         call.argument<List<String>>("deletes").orEmpty(),
                     )
                     "phoneSync.disable" -> disable(context)
+                    "phoneSync.changes" -> changes(context)
+                    "phoneSync.acknowledge" -> acknowledge(
+                        context,
+                        call.argument<List<Map<String, Any?>>>("items").orEmpty(),
+                    )
                     else -> {
                         activity.runOnUiThread { result.notImplemented() }
                         return@Thread
@@ -196,21 +206,23 @@ object PhoneContactsSync {
                     CommonDataKinds.StructuredName.FAMILY_NAME to entry["lastName"],
                 ),
             )
-            strings(entry["phones"]).forEach {
+            val phoneTypes = typeNames(entry["phoneTypes"])
+            strings(entry["phones"]).forEachIndexed { i, number ->
                 data(
                     CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
                     mapOf(
-                        CommonDataKinds.Phone.NUMBER to it,
-                        CommonDataKinds.Phone.TYPE to CommonDataKinds.Phone.TYPE_MOBILE,
+                        CommonDataKinds.Phone.NUMBER to number,
+                        CommonDataKinds.Phone.TYPE to phoneTypeCode(phoneTypes.getOrNull(i)),
                     ),
                 )
             }
-            strings(entry["emails"]).forEach {
+            val emailTypes = typeNames(entry["emailTypes"])
+            strings(entry["emails"]).forEachIndexed { i, address ->
                 data(
                     CommonDataKinds.Email.CONTENT_ITEM_TYPE,
                     mapOf(
-                        CommonDataKinds.Email.ADDRESS to it,
-                        CommonDataKinds.Email.TYPE to CommonDataKinds.Email.TYPE_OTHER,
+                        CommonDataKinds.Email.ADDRESS to address,
+                        CommonDataKinds.Email.TYPE to emailTypeCode(emailTypes.getOrNull(i)),
                     ),
                 )
             }
@@ -223,12 +235,13 @@ object PhoneContactsSync {
                     ),
                 )
             }
-            strings(entry["addresses"]).forEach {
+            val addressTypes = typeNames(entry["addressTypes"])
+            strings(entry["addresses"]).forEachIndexed { i, address ->
                 data(
                     CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE,
                     mapOf(
-                        CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS to it,
-                        CommonDataKinds.StructuredPostal.TYPE to CommonDataKinds.StructuredPostal.TYPE_HOME,
+                        CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS to address,
+                        CommonDataKinds.StructuredPostal.TYPE to addressTypeCode(addressTypes.getOrNull(i)),
                     ),
                 )
             }
@@ -250,6 +263,186 @@ object PhoneContactsSync {
         }
         batch.flush()
         return upserts.size + deletes.size
+    }
+
+    /**
+     * Contacts in the account that a contacts app changed, added or
+     * deleted since the last [acknowledge].
+     */
+    private fun changes(context: Context): List<Map<String, Any?>> {
+        if (!hasAccount(context)) return emptyList()
+        val out = ArrayList<Map<String, Any?>>()
+        context.contentResolver.query(
+            ContactsContract.RawContacts.CONTENT_URI,
+            arrayOf(
+                ContactsContract.RawContacts._ID,
+                ContactsContract.RawContacts.SOURCE_ID,
+                ContactsContract.RawContacts.DELETED,
+                ContactsContract.RawContacts.STARRED,
+            ),
+            "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ? AND " +
+                "${ContactsContract.RawContacts.ACCOUNT_NAME} = ? AND (" +
+                "${ContactsContract.RawContacts.DIRTY} = 1 OR " +
+                "${ContactsContract.RawContacts.DELETED} = 1 OR " +
+                "${ContactsContract.RawContacts.SOURCE_ID} IS NULL)",
+            arrayOf(ACCOUNT_TYPE, ACCOUNT_NAME),
+            null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val rawId = cursor.getLong(0)
+                val deleted = cursor.getInt(2) == 1
+                val change = HashMap<String, Any?>()
+                change["rawId"] = rawId
+                change["sourceId"] = cursor.getString(1)
+                change["deleted"] = deleted
+                change["starred"] = cursor.getInt(3) == 1
+                if (!deleted) readData(context, rawId, change)
+                out.add(change)
+            }
+        }
+        return out
+    }
+
+    /** Adds the name, phones, emails and the rest of raw contact [rawId] to [into]. */
+    private fun readData(context: Context, rawId: Long, into: HashMap<String, Any?>) {
+        val phones = ArrayList<Map<String, String>>()
+        val emails = ArrayList<Map<String, String>>()
+        val addresses = ArrayList<Map<String, String>>()
+        val birthdays = ArrayList<String>()
+        context.contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            arrayOf(
+                ContactsContract.Data.MIMETYPE,
+                ContactsContract.Data.DATA1,
+                ContactsContract.Data.DATA2,
+                ContactsContract.Data.DATA3,
+            ),
+            "${ContactsContract.Data.RAW_CONTACT_ID} = ?",
+            arrayOf(rawId.toString()),
+            null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val mime = cursor.getString(0) ?: continue
+                // The photo row holds bytes in other columns; everything
+                // read here is text.
+                if (mime == CommonDataKinds.Photo.CONTENT_ITEM_TYPE) continue
+                val data1 = cursor.getString(1)?.trim().orEmpty()
+                val data2 = cursor.getString(2)
+                val type = data2?.toIntOrNull()
+                when (mime) {
+                    CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> {
+                        into["displayName"] = data1
+                        into["firstName"] = data2?.trim().orEmpty()
+                        into["lastName"] = cursor.getString(3)?.trim().orEmpty()
+                    }
+                    CommonDataKinds.Phone.CONTENT_ITEM_TYPE ->
+                        if (data1.isNotEmpty()) {
+                            phones.add(mapOf("value" to data1, "type" to phoneTypeName(type)))
+                        }
+                    CommonDataKinds.Email.CONTENT_ITEM_TYPE ->
+                        if (data1.isNotEmpty()) {
+                            emails.add(mapOf("value" to data1, "type" to emailTypeName(type)))
+                        }
+                    CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE ->
+                        if (data1.isNotEmpty()) {
+                            addresses.add(mapOf("value" to data1, "type" to addressTypeName(type)))
+                        }
+                    CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> into["company"] = data1
+                    CommonDataKinds.Note.CONTENT_ITEM_TYPE -> into["notes"] = data1
+                    CommonDataKinds.Event.CONTENT_ITEM_TYPE ->
+                        if (type == CommonDataKinds.Event.TYPE_BIRTHDAY && data1.isNotEmpty()) {
+                            birthdays.add(data1)
+                        }
+                }
+            }
+        }
+        into["phones"] = phones
+        into["emails"] = emails
+        into["addresses"] = addresses
+        into["birthdays"] = birthdays
+    }
+
+    /**
+     * Clears the marks on changes the vault has taken in. Each item has the
+     * `rawId`; `deleted` removes the row for good, otherwise it is tied to
+     * the vault contact `sourceId` and rewritten from the vault on the next
+     * [apply].
+     */
+    private fun acknowledge(context: Context, items: List<Map<String, Any?>>): Int {
+        val batch = Batch(context)
+        for (item in items) {
+            val rawId = (item["rawId"] as? Number)?.toLong() ?: continue
+            val selection = "${ContactsContract.RawContacts._ID} = ?"
+            val args = arrayOf(rawId.toString())
+            if (item["deleted"] == true) {
+                batch.add(
+                    ContentProviderOperation
+                        .newDelete(asSyncAdapter(ContactsContract.RawContacts.CONTENT_URI))
+                        .withSelection(selection, args)
+                        .build(),
+                )
+            } else {
+                val sourceId = item["sourceId"] as? String ?: continue
+                batch.add(
+                    ContentProviderOperation
+                        .newUpdate(asSyncAdapter(ContactsContract.RawContacts.CONTENT_URI))
+                        .withSelection(selection, args)
+                        .withValue(ContactsContract.RawContacts.DIRTY, 0)
+                        .withValue(ContactsContract.RawContacts.SOURCE_ID, sourceId)
+                        // No hash: the next apply writes the vault's version.
+                        .withValue(ContactsContract.RawContacts.SYNC1, "")
+                        .build(),
+                )
+            }
+        }
+        batch.flush()
+        return items.size
+    }
+
+    private fun typeNames(value: Any?): List<String?> =
+        (value as? List<*>).orEmpty().map { it as? String }
+
+    private fun phoneTypeCode(name: String?): Int = when (name) {
+        "home" -> CommonDataKinds.Phone.TYPE_HOME
+        "work" -> CommonDataKinds.Phone.TYPE_WORK
+        "main" -> CommonDataKinds.Phone.TYPE_MAIN
+        "other" -> CommonDataKinds.Phone.TYPE_OTHER
+        else -> CommonDataKinds.Phone.TYPE_MOBILE
+    }
+
+    private fun phoneTypeName(code: Int?): String = when (code) {
+        CommonDataKinds.Phone.TYPE_MOBILE, CommonDataKinds.Phone.TYPE_WORK_MOBILE -> "mobile"
+        CommonDataKinds.Phone.TYPE_HOME -> "home"
+        CommonDataKinds.Phone.TYPE_WORK, CommonDataKinds.Phone.TYPE_COMPANY_MAIN -> "work"
+        CommonDataKinds.Phone.TYPE_MAIN -> "main"
+        null -> ""
+        else -> "other"
+    }
+
+    private fun emailTypeCode(name: String?): Int = when (name) {
+        "home" -> CommonDataKinds.Email.TYPE_HOME
+        "work" -> CommonDataKinds.Email.TYPE_WORK
+        else -> CommonDataKinds.Email.TYPE_OTHER
+    }
+
+    private fun emailTypeName(code: Int?): String = when (code) {
+        CommonDataKinds.Email.TYPE_HOME -> "home"
+        CommonDataKinds.Email.TYPE_WORK -> "work"
+        null -> ""
+        else -> "other"
+    }
+
+    private fun addressTypeCode(name: String?): Int = when (name) {
+        "work" -> CommonDataKinds.StructuredPostal.TYPE_WORK
+        "other" -> CommonDataKinds.StructuredPostal.TYPE_OTHER
+        else -> CommonDataKinds.StructuredPostal.TYPE_HOME
+    }
+
+    private fun addressTypeName(code: Int?): String = when (code) {
+        CommonDataKinds.StructuredPostal.TYPE_HOME -> "home"
+        CommonDataKinds.StructuredPostal.TYPE_WORK -> "work"
+        null -> ""
+        else -> "other"
     }
 
     private fun rawIdsBySourceId(context: Context): Map<String, Long> {

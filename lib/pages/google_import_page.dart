@@ -22,7 +22,15 @@ import 'package:zerotrust_contacts/services/vault_repository.dart';
 /// or open the .vcf file Google Contacts exports. Contacts are parsed on the
 /// device and written straight into the encrypted vault.
 class GoogleImportPage extends ConsumerStatefulWidget {
-  const GoogleImportPage({super.key});
+  const GoogleImportPage({super.key, this.vCardText, this.vCardName});
+
+  /// A vCard to preview straight away (a .vcf file opened with or shared to
+  /// the app, a scanned QR code, a file picked in Settings). The page then
+  /// only shows that preview.
+  final String? vCardText;
+
+  /// Where [vCardText] came from, for the preview and the activity log.
+  final String? vCardName;
 
   @override
   ConsumerState<GoogleImportPage> createState() => _GoogleImportPageState();
@@ -47,8 +55,21 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
   @override
   void initState() {
     super.initState();
-    _loadAccounts();
+    final String? text = widget.vCardText;
+    if (text == null) {
+      _loadAccounts();
+    } else {
+      _loadingAccounts = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _withBusy(
+          'Reading…',
+          () => _previewVCard(text, widget.vCardName ?? 'vCard'),
+        );
+      });
+    }
   }
+
+  bool get _vCardOnly => widget.vCardText != null;
 
   Future<void> _loadAccounts() async {
     if (!_isAndroid) {
@@ -117,21 +138,28 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
           'Export, then "vCard (for iOS Contacts)".',
         );
       }
-      final VCardImport parsed = const VCardParser().parseWithPhotos(text);
-      await _preparePreview(
-        sourceLabel: file.name,
-        incoming: parsed.contacts,
-        photos: <String, PhotoLoader>{
-          for (final MapEntry<String, VCardPhoto> e in parsed.photos.entries)
-            if (e.value.bytes case final Uint8List bytes)
-              e.key: () async => bytes,
-        },
-        linkedPhotos: <String, Uri>{
-          for (final MapEntry<String, VCardPhoto> e in parsed.photos.entries)
-            if (e.value.url case final Uri url) e.key: url,
-        },
-      );
+      await _previewVCard(text, file.name);
     });
+  }
+
+  Future<void> _previewVCard(String text, String name) async {
+    if (!text.toUpperCase().contains('BEGIN:VCARD')) {
+      throw StateError('$name has no contacts in it.');
+    }
+    final VCardImport parsed = const VCardParser().parseWithPhotos(text);
+    await _preparePreview(
+      sourceLabel: name,
+      incoming: parsed.contacts,
+      photos: <String, PhotoLoader>{
+        for (final MapEntry<String, VCardPhoto> e in parsed.photos.entries)
+          if (e.value.bytes case final Uint8List bytes)
+            e.key: () async => bytes,
+      },
+      linkedPhotos: <String, Uri>{
+        for (final MapEntry<String, VCardPhoto> e in parsed.photos.entries)
+          if (e.value.url case final Uri url) e.key: url,
+      },
+    );
   }
 
   Future<void> _preparePreview({
@@ -190,7 +218,9 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
     await _withBusy('Encrypting and saving…', () async {
       final ContactImportPlan done = await _vaultRepository.importContacts(
         pending.incoming,
-        sourceLabel: 'Google (${pending.sourceLabel})',
+        sourceLabel: _vCardOnly
+            ? pending.sourceLabel
+            : 'Google (${pending.sourceLabel})',
         photos: photos,
         onPhotoProgress: (int doneCount, int total) {
           if (mounted && total > 0) {
@@ -221,7 +251,8 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
       if (plan.photosAdded > 0)
         '${plan.photosAdded} ${plan.photosAdded == 1 ? 'photo' : 'photos'}',
     ];
-    return 'Imported from Google: ${parts.join(', ')}.';
+    return '${_vCardOnly ? 'Imported' : 'Imported from Google'}: '
+        '${parts.join(', ')}.';
   }
 
   Future<void> _withBusy(String text, Future<void> Function() action) async {
@@ -257,20 +288,35 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: _pending == null || _busy,
+      canPop: _pending == null || _busy || _vCardOnly,
       onPopInvokedWithResult: (bool didPop, Object? _) {
         if (!didPop && !_busy) {
           setState(() => _pending = null);
         }
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Import from Google')),
+        appBar: AppBar(
+          title: Text(_vCardOnly ? 'Import contacts' : 'Import from Google'),
+        ),
         body: Column(
           children: [
             if (_busy) const LinearProgressIndicator(),
             Expanded(
               child: _pending == null
-                  ? _buildSources(context)
+                  ? (_vCardOnly
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                _busy
+                                    ? 'Reading…'
+                                    : 'Nothing to import from '
+                                          '${widget.vCardName ?? 'this file'}.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          )
+                        : _buildSources(context))
                   : _buildPreview(context, _pending!),
             ),
           ],

@@ -53,6 +53,25 @@ class FakeBridge implements PhoneContactsBridge {
     account = false;
     written.clear();
   }
+
+  /// What a contacts app changed on the phone.
+  final List<PhoneChange> pending = <PhoneChange>[];
+  final List<(PhoneChange, String?)> acknowledged = <(PhoneChange, String?)>[];
+
+  @override
+  Future<List<PhoneChange>> changes() async => List<PhoneChange>.of(pending);
+
+  @override
+  Future<void> acknowledge(PhoneChange change, {String? vaultId}) async {
+    pending.remove(change);
+    acknowledged.add((change, vaultId));
+    if (change.deleted || vaultId == null) {
+      written.remove(change.sourceId);
+    } else {
+      // Rewritten from the vault on the next apply.
+      written[vaultId]?['hash'] = '';
+    }
+  }
 }
 
 void main() {
@@ -125,5 +144,68 @@ void main() {
     await sync.run();
     expect(bridge.written['1']!['hash'], first,
         reason: 'rewritten (still unreadable), not skipped as up to date');
+  });
+
+  test('edits, additions and deletions on the phone reach the vault',
+      () async {
+    await addContact('1');
+    await addContact('2');
+    final PhoneSyncController sync = container.read(phoneSyncProvider.notifier);
+    await sync.enable(const PhoneSyncFields());
+    expect(bridge.written.keys, unorderedEquals(<String>['1', '2']));
+
+    bridge.pending.addAll(<PhoneChange>[
+      // Contact 1 got a second number in the phone's contacts app.
+      const PhoneChange(
+        rawId: 11,
+        sourceId: '1',
+        deleted: false,
+        fields: <String, Object?>{
+          'displayName': 'Person 1',
+          'phones': <Object?>[
+            <Object?, Object?>{'value': '+44700000001', 'type': 'mobile'},
+            <Object?, Object?>{'value': '+44999', 'type': 'work'},
+          ],
+        },
+      ),
+      // Contact 2 was deleted there.
+      const PhoneChange(rawId: 12, sourceId: '2', deleted: true),
+      // And a new one was created there.
+      const PhoneChange(
+        rawId: 13,
+        sourceId: null,
+        deleted: false,
+        fields: <String, Object?>{
+          'displayName': 'New Person',
+          'phones': <Object?>[
+            <Object?, Object?>{'value': '+44123', 'type': 'home'},
+          ],
+        },
+      ),
+    ]);
+    await sync.run();
+
+    final List<VaultContact> saved = await repo.loadSavedContacts();
+    final VaultContact one = saved.singleWhere((VaultContact c) => c.id == '1');
+    expect(one.phones, <String>['+44700000001', '+44999']);
+    expect(one.typeOf('phone', '+44999'), 'work');
+    expect(saved.any((VaultContact c) => c.id == '2'), isFalse);
+    expect((await repo.loadTrash()).single.contact.id, '2');
+    final VaultContact created =
+        saved.singleWhere((VaultContact c) => c.displayName == 'New Person');
+    expect(created.typeOf('phone', '+44123'), 'home');
+
+    // Every change was acknowledged, and the phone now holds the vault's
+    // version of all three.
+    expect(bridge.pending, isEmpty);
+    expect(bridge.acknowledged.map(((PhoneChange, String?) a) => a.$2),
+        <String?>['1', null, created.id]);
+    expect(bridge.written.keys, unorderedEquals(<String>['1', created.id]));
+    expect(bridge.written['1']!['phones'], <String>['+44700000001', '+44999']);
+
+    // Nothing left to do: another run pulls nothing and saves nothing.
+    final int before = (await repo.loadSavedContacts()).length;
+    await sync.run();
+    expect((await repo.loadSavedContacts()).length, before);
   });
 }

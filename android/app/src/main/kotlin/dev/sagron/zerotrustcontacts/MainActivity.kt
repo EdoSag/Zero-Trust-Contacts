@@ -25,6 +25,9 @@ class MainActivity : FlutterFragmentActivity() {
     private var channel: MethodChannel? = null
     private var pendingOpenedContact: Map<String, Any?>? = null
 
+    /** A vCard file or an "add a contact" request from another app. */
+    private var pendingIncoming: Map<String, Any?>? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         cacheContactFromIntent(intent)
@@ -49,6 +52,10 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                         result.success(contact)
                         pendingOpenedContact = null
+                    }
+                    "consumePendingIncoming" -> {
+                        result.success(pendingIncoming)
+                        pendingIncoming = null
                     }
                     "launchDialer" -> {
                         val phoneNumber = call.argument<String>("phoneNumber")
@@ -647,10 +654,21 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun cacheContactFromIntent(intent: Intent?) {
+        val incoming = try {
+            IncomingIntents.read(this, intent)
+        } catch (error: Exception) {
+            null
+        }
+        if (incoming != null) {
+            pendingIncoming = incoming
+            return
+        }
         pendingOpenedContact = readContactFromIntent(intent) ?: pendingOpenedContact
     }
 
     private fun flushPendingOpenedContact() {
+        // Only a nudge: the Flutter side fetches it once the vault is open.
+        if (pendingIncoming != null) channel?.invokeMethod("incomingReceived", null)
         val contact = pendingOpenedContact ?: return
         channel?.invokeMethod("contactIntentReceived", contact)
     }

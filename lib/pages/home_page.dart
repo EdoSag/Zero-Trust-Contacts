@@ -14,7 +14,9 @@ import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_banner.dart';
 import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/pages/create_contact_page.dart';
+import 'package:zerotrust_contacts/import/contact_import_planner.dart';
 import 'package:zerotrust_contacts/pages/google_import_page.dart';
+import 'package:zerotrust_contacts/pages/qr_scan_page.dart';
 import 'package:zerotrust_contacts/pages/settings_page.dart';
 import 'package:zerotrust_contacts/pages/trash_page.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
@@ -57,6 +59,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   final GlobalKey _listHeaderKey = GlobalKey();
   double _listHeaderHeight = 0;
   StreamSubscription<VaultContact>? _openedContactSubscription;
+  StreamSubscription<void>? _incomingSubscription;
+  bool _handlingIncoming = false;
 
   List<VaultContact> _savedContacts = <VaultContact>[];
   List<VaultContact> _deviceContacts = <VaultContact>[];
@@ -118,6 +122,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     });
     _openedContactSubscription =
         _deviceContactsService.openedContacts.listen(_handleOpenedContact);
+    _incomingSubscription =
+        _deviceContactsService.incoming.listen((_) => _consumeIncoming());
     // Edits here and on other devices (synced live) refresh the list.
     _storeChanges = _vaultRepository.changes.listen((_) {
       _reloadDebounce?.cancel();
@@ -212,6 +218,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         _loading = false;
       });
       await _consumePendingOpenedContact();
+      await _consumeIncoming();
     } catch (error) {
       if (!mounted) {
         return;
@@ -230,6 +237,139 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
     await _handleOpenedContact(contact);
+  }
+
+  /// Handles what another app handed over: a .vcf file to import, or a
+  /// contact to save. Only reached once the vault is unlocked.
+  Future<void> _consumeIncoming() async {
+    if (_handlingIncoming || !mounted) {
+      return;
+    }
+    _handlingIncoming = true;
+    try {
+      final IncomingRequest? request =
+          await _deviceContactsService.consumePendingIncoming();
+      if (request == null || !mounted) {
+        return;
+      }
+      final NavigatorState navigator = Navigator.of(context);
+      switch (request) {
+        case IncomingVCard(:final String text, :final String name):
+          await navigator.push<bool>(MaterialPageRoute<bool>(
+            builder: (_) => GoogleImportPage(vCardText: text, vCardName: name),
+          ));
+        case IncomingNewContact(:final VaultContact contact):
+          VaultContact? target;
+          if (request.allowExisting && _savedContacts.isNotEmpty) {
+            final bool? addToExisting = await showDialog<bool>(
+              context: context,
+              builder: (BuildContext ctx) => SimpleDialog(
+                title: Text('Save ${contact.displayName}'),
+                children: [
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const ListTile(
+                      leading: Icon(Icons.person_add_alt),
+                      title: Text('Create a new contact'),
+                    ),
+                  ),
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const ListTile(
+                      leading: Icon(Icons.group_add_outlined),
+                      title: Text('Add to a contact I already have'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+            if (addToExisting == null || !mounted) {
+              return;
+            }
+            if (addToExisting) {
+              target = await _pickSavedContact();
+              if (target == null || !mounted) {
+                return;
+              }
+            }
+          }
+          await navigator.push<VaultContact>(MaterialPageRoute<VaultContact>(
+            builder: (_) => target == null
+                ? CreateContactPage(
+                    prefill: contact,
+                    createActivity: 'contact_saved_from_another_app',
+                  )
+                : CreateContactPage(
+                    existing:
+                        const ContactImportPlanner().merge(target, contact),
+                  ),
+          ));
+      }
+      if (mounted) {
+        await _loadContacts(quiet: true);
+      }
+    } on Object {
+      // Nothing usable was handed over.
+    } finally {
+      _handlingIncoming = false;
+    }
+  }
+
+  /// Lets the user pick one of their saved contacts.
+  Future<VaultContact?> _pickSavedContact() {
+    String query = '';
+    return showModalBottomSheet<VaultContact>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (BuildContext ctx) => StatefulBuilder(
+        builder: (BuildContext ctx, StateSetter setSheetState) {
+          final List<VaultContact> matches =
+              _vaultRepository.filterAndSortContacts(
+            contacts: _savedContacts,
+            query: query,
+            sourceFilter: 'all',
+            sortMode: ContactSortMode.alphabetical,
+          );
+          return Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: SizedBox(
+              height: MediaQuery.of(ctx).size.height * 0.7,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Search your contacts',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: (String value) =>
+                          setSheetState(() => query = value),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: matches.length,
+                      itemBuilder: (BuildContext ctx, int i) => ListTile(
+                        leading:
+                            ContactAvatar(contact: matches[i], radius: 20),
+                        title: Text(matches[i].displayName),
+                        subtitle: matches[i].phones.isEmpty
+                            ? null
+                            : Text(matches[i].phones.first),
+                        onTap: () => Navigator.of(ctx).pop(matches[i]),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _handleOpenedContact(VaultContact contact) async {
@@ -955,6 +1095,22 @@ class _HomePageState extends ConsumerState<HomePage> {
                   MaterialPageRoute<void>(builder: (_) => const TrashPage())),
             ),
           ),
+          if (QrScanPage.isSupported) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.qr_code_scanner),
+                title: const Text('Scan a contact QR code'),
+                subtitle: const Text('Add a contact someone shows you'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  if (await QrScanPage.scanAndImport(context) && mounted) {
+                    await _loadContacts(quiet: true);
+                  }
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Card(
             child: Padding(
@@ -1128,6 +1284,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void dispose() {
     _openedContactSubscription?.cancel();
+    _incomingSubscription?.cancel();
     _storeChanges?.cancel();
     _reloadDebounce?.cancel();
     _searchController.dispose();

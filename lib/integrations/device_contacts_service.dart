@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
 
@@ -75,6 +76,110 @@ class ImportAccount {
   final int contactCount;
 }
 
+/// Something another app handed to ZT Contacts.
+sealed class IncomingRequest {
+  const IncomingRequest();
+
+  static IncomingRequest? fromMap(Map<Object?, Object?> map) {
+    switch (map['kind']) {
+      case 'vcard':
+        final Object? bytes = map['bytes'];
+        if (bytes is! List<int>) {
+          return null;
+        }
+        return IncomingVCard(
+          text: utf8.decode(bytes, allowMalformed: true),
+          name: '${map['name'] ?? 'contacts.vcf'}',
+        );
+      case 'insert':
+        return IncomingNewContact(
+          contact: contactFromInsertRequest(map),
+          allowExisting: map['allowExisting'] == true,
+        );
+    }
+    return null;
+  }
+
+  /// The contact an "add a contact" request describes.
+  static VaultContact contactFromInsertRequest(Map<Object?, Object?> map) {
+    final Map<String, String> types = <String, String>{};
+    List<String> typed(String key, String field) {
+      final List<String> values = <String>[];
+      final Object? rows = map[key];
+      if (rows is List) {
+        for (final Object? row in rows) {
+          if (row is! Map) continue;
+          final String value = '${row['value'] ?? ''}'.trim();
+          if (value.isEmpty) continue;
+          values.add(value);
+          final String type = '${row['type'] ?? ''}';
+          if (type.isNotEmpty) {
+            types[VaultContact.typeKey(field, value)] = type;
+          }
+        }
+      }
+      return values;
+    }
+
+    List<String> plain(String key) => <String>[
+      if (map[key] case final List<Object?> rows)
+        for (final Object? row in rows)
+          if ('${row ?? ''}'.trim().isNotEmpty) '$row'.trim(),
+    ];
+
+    String text(String key) => '${map[key] ?? ''}'.trim();
+
+    String firstName = text('firstName');
+    String lastName = text('lastName');
+    final String displayName = text('displayName');
+    if (firstName.isEmpty && lastName.isEmpty && displayName.isNotEmpty) {
+      // Only a full name was given: the last word is the last name.
+      final List<String> words = displayName.split(RegExp(r'\s+'));
+      firstName = words.length == 1
+          ? displayName
+          : words.take(words.length - 1).join(' ');
+      lastName = words.length == 1 ? '' : words.last;
+    }
+    final DateTime now = DateTime.now().toUtc();
+    return VaultContact.fromLegacyPayload(<String, dynamic>{
+      'id': VaultContact.generateId(),
+      'displayName': displayName,
+      'firstName': firstName,
+      'lastName': lastName,
+      'company': text('company'),
+      'notes': text('notes'),
+      'phones': typed('phones', 'phone'),
+      'emails': typed('emails', 'email'),
+      'addresses': typed('addresses', 'address'),
+      'other': plain('other'),
+      'birthdays': plain('birthdays'),
+      'valueTypes': types,
+      'source': 'Saved',
+      'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    });
+  }
+}
+
+/// A .vcf file opened with, or shared to, the app.
+class IncomingVCard extends IncomingRequest {
+  const IncomingVCard({required this.text, required this.name});
+
+  final String text;
+  final String name;
+}
+
+/// "Create new contact" or "Add to contacts" from another app.
+class IncomingNewContact extends IncomingRequest {
+  const IncomingNewContact({required this.contact, required this.allowExisting});
+
+  /// The details the other app filled in.
+  final VaultContact contact;
+
+  /// Whether the user may add them to a contact they already have.
+  final bool allowExisting;
+}
+
 class DeviceContactsService {
   static const String googleAccountType = 'com.google';
 
@@ -91,11 +196,37 @@ class DeviceContactsService {
 
   Stream<VaultContact> get openedContacts => _openedContactsController.stream;
 
+  static final StreamController<void> _incomingController =
+      StreamController<void>.broadcast();
+
+  /// Fires when another app hands over something while the app is open
+  /// (see [consumePendingIncoming]).
+  Stream<void> get incoming => _incomingController.stream;
+
+  /// What another app handed over, if anything: a vCard file opened with
+  /// or shared to the app, or an "add a contact" request. Each is returned
+  /// once.
+  Future<IncomingRequest?> consumePendingIncoming() async {
+    if (!Platform.isAndroid) {
+      return null;
+    }
+    final Object? raw = await _channel.invokeMethod<Object?>(
+      'consumePendingIncoming',
+    );
+    return raw is Map ? IncomingRequest.fromMap(raw) : null;
+  }
+
   void _ensureHandlerRegistered() {
     if (_handlerRegistered) {
       return;
     }
     _channel.setMethodCallHandler((MethodCall call) async {
+      if (call.method == 'incomingReceived') {
+        if (!_incomingController.isClosed) {
+          _incomingController.add(null);
+        }
+        return;
+      }
       if (call.method != 'contactIntentReceived') {
         return;
       }

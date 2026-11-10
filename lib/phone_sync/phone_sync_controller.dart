@@ -232,6 +232,8 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
 
   Future<void> _runOnce(VaultRepository repo, int epoch) async {
     bool cancelled() => epoch != _epoch || !state.enabled || !ref.mounted;
+    await _pullPhoneChanges(repo, cancelled);
+    if (cancelled()) return;
     final List<VaultContact> contacts = await repo.loadSavedContacts();
     final PhoneContactsState onPhone = await _bridge.state();
     final PhoneSyncFields fields = state.fields;
@@ -272,6 +274,50 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
     if (ref.mounted) {
       state = state.copyWith(
           onPhone: contacts.length, lastUpdated: DateTime.now());
+    }
+  }
+
+  /// Takes changes made in the phone's contacts app (an edited, new or
+  /// deleted ZT Contacts contact) into the vault, before the vault is
+  /// written back out.
+  Future<void> _pullPhoneChanges(
+    VaultRepository repo,
+    bool Function() cancelled,
+  ) async {
+    final List<PhoneChange> changes = await _bridge.changes();
+    const PhoneSyncPlanner planner = PhoneSyncPlanner();
+    for (final PhoneChange change in changes) {
+      if (cancelled()) return;
+      final String? id = change.sourceId;
+      final VaultContact? current = id == null
+          ? null
+          : await repo.findSavedContactById(id);
+      if (change.deleted) {
+        // Deleted on the phone: to the trash here, where it can be restored.
+        if (current != null) await repo.deleteSavedContact(current.id);
+        await _bridge.acknowledge(change);
+        continue;
+      }
+      if (id != null && current == null) {
+        // Its vault contact is gone (deleted on another device): the copy
+        // goes too rather than coming back.
+        await _bridge.acknowledge(change);
+        continue;
+      }
+      final VaultContact merged = planner.mergePhoneEdit(
+        current,
+        change,
+        state.fields,
+      );
+      if (!identical(merged, current)) {
+        await repo.upsertSavedContact(
+          merged,
+          activity: current == null
+              ? 'contact_saved_from_phone'
+              : 'contact_edit_from_phone',
+        );
+      }
+      await _bridge.acknowledge(change, vaultId: merged.id);
     }
   }
 

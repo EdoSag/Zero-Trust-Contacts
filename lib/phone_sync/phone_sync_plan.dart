@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cryptography/dart.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zerotrust_contacts/phone_sync/phone_contacts_bridge.dart';
 
 /// Which details of each contact leave the vault for the phone's own
 /// contacts (where the dialer, caller ID and messaging apps can read them).
@@ -136,6 +137,19 @@ class PhoneSyncPlanner {
       'sendToVoicemail': f.blockedToVoicemail && f.phones && c.isBlocked,
       'photoId': photoId,
     };
+    // The kinds (Mobile, Work…) go along only for contacts that have some,
+    // so contacts without them keep the hash they were written with.
+    void addTypes(String key, String field, bool on, List<String> values) {
+      if (!on) return;
+      final List<String> types = <String>[
+        for (final String v in values) c.typeOf(field, v) ?? '',
+      ];
+      if (types.any((String t) => t.isNotEmpty)) fields[key] = types;
+    }
+
+    addTypes('phoneTypes', 'phone', f.phones, c.phones);
+    addTypes('emailTypes', 'email', f.emails, c.emails);
+    addTypes('addressTypes', 'address', f.addresses, c.addresses);
     final List<int> digest =
         const DartSha256().hashSync(utf8.encode(jsonEncode(fields))).bytes;
     final String hash = digest
@@ -164,6 +178,184 @@ class PhoneSyncPlanner {
         for (final String id in onPhone.keys)
           if (!keep.contains(id)) id,
       ],
+    );
+  }
+
+  /// The vault contact after a change made to its copy in the phone's
+  /// contacts ([change], from a contacts app), or a new vault contact when
+  /// [current] is null (it was created on the phone).
+  ///
+  /// Details that are shown on the phone ([f]) become what the phone has
+  /// now, so removing a number there removes it here. Details that are not
+  /// shown on the phone can only be added to, never removed, since the
+  /// phone never had them. Returns [current] itself when nothing changed.
+  VaultContact mergePhoneEdit(
+    VaultContact? current,
+    PhoneChange change,
+    PhoneSyncFields f,
+  ) {
+    final Map<String, Object?> p = change.fields;
+    final Map<String, String> types = <String, String>{};
+    List<String> typed(String key, String field) {
+      final List<String> values = <String>[];
+      final Object? rows = p[key];
+      if (rows is List) {
+        for (final Object? row in rows) {
+          if (row is! Map) continue;
+          final String value = '${row['value'] ?? ''}'.trim();
+          if (value.isEmpty || values.contains(value)) continue;
+          values.add(value);
+          types[VaultContact.typeKey(field, value)] = '${row['type'] ?? ''}';
+        }
+      }
+      return values;
+    }
+
+    String text(String key) => '${p[key] ?? ''}'.trim();
+    final List<String> phones = typed('phones', 'phone');
+    final List<String> emails = typed('emails', 'email');
+    final List<String> addresses = typed('addresses', 'address');
+    final List<String> birthdays = <String>[
+      if (p['birthdays'] case final List<Object?> rows)
+        for (final Object? row in rows)
+          if ('${row ?? ''}'.trim().isNotEmpty) '$row'.trim(),
+    ];
+    String firstName = text('firstName');
+    String lastName = text('lastName');
+    final String displayName = text('displayName');
+    if (firstName.isEmpty && lastName.isEmpty) {
+      firstName = displayName;
+    }
+
+    if (current == null) {
+      final DateTime now = DateTime.now().toUtc();
+      return VaultContact.fromLegacyPayload(<String, dynamic>{
+        'id': VaultContact.generateId(),
+        'displayName': displayName,
+        'firstName': firstName,
+        'lastName': lastName,
+        'company': text('company'),
+        'notes': text('notes'),
+        'phones': phones,
+        'emails': emails,
+        'addresses': addresses,
+        'birthdays': birthdays,
+        'isFavorite': p['starred'] == true,
+        'valueTypes': <String, String>{
+          for (final MapEntry<String, String> e in types.entries)
+            if (e.value.isNotEmpty) e.key: e.value,
+        },
+        'source': 'Saved',
+        'createdAt': now.toIso8601String(),
+        'updatedAt': now.toIso8601String(),
+      });
+    }
+
+    final Map<String, Object?> written = entryFor(current, f).fields;
+    bool same(List<String> a, Object? b) =>
+        b is List && a.length == b.length && a.join('\n') == b.join('\n');
+
+    /// The new list for a detail, or null to leave it alone.
+    List<String>? list(
+      bool shown,
+      List<String> onPhone,
+      List<String> inVault,
+      String writtenKey,
+    ) {
+      if (shown) {
+        return same(onPhone, written[writtenKey]) ? null : onPhone;
+      }
+      final Set<String> have = inVault
+          .map((String v) => v.trim().toLowerCase())
+          .toSet();
+      final List<String> extra = onPhone
+          .where((String v) => have.add(v.trim().toLowerCase()))
+          .toList();
+      return extra.isEmpty ? null : <String>[...inVault, ...extra];
+    }
+
+    String? single(bool shown, String onPhone, String inVault) {
+      if (shown) {
+        return onPhone == inVault ? null : onPhone;
+      }
+      return inVault.isEmpty && onPhone.isNotEmpty ? onPhone : null;
+    }
+
+    // Android fills in first and last name by splitting the full name, so
+    // only a different full name counts as a change made on the phone.
+    final String phoneName = VaultContact.normalizedName(
+      displayName.isNotEmpty ? displayName : '$firstName $lastName',
+    );
+    final bool nameChanged =
+        phoneName.isNotEmpty &&
+        phoneName != VaultContact.normalizedName(current.displayName);
+    final List<String>? newPhones = list(
+      f.phones,
+      phones,
+      current.phones,
+      'phones',
+    );
+    final List<String>? newEmails = list(
+      f.emails,
+      emails,
+      current.emails,
+      'emails',
+    );
+    final List<String>? newAddresses = list(
+      f.addresses,
+      addresses,
+      current.addresses,
+      'addresses',
+    );
+    final List<String>? newBirthdays = list(
+      f.birthdays,
+      birthdays,
+      current.birthdays,
+      'birthdays',
+    );
+    final String? company = single(f.company, text('company'), current.company);
+    final String? notes = single(f.notes, text('notes'), current.notes);
+    final bool? favourite =
+        f.favourites && (p['starred'] == true) != current.isFavorite
+        ? p['starred'] == true
+        : null;
+    // Kinds only for values the phone has; '' clears one removed there.
+    final Map<String, String> newTypes = <String, String>{
+      for (final MapEntry<String, String> e in types.entries)
+        if ((current.valueTypes[e.key] ?? '') != e.value) e.key: e.value,
+    };
+
+    final bool changed =
+        nameChanged ||
+        newTypes.isNotEmpty ||
+        <Object?>[
+          newPhones,
+          newEmails,
+          newAddresses,
+          newBirthdays,
+          company,
+          notes,
+          favourite,
+        ].any((Object? v) => v != null);
+    if (!changed) {
+      return current;
+    }
+    return current.applyEdits(
+      displayName: nameChanged
+          ? (displayName.isNotEmpty
+                ? displayName
+                : '$firstName $lastName'.trim())
+          : null,
+      firstName: nameChanged ? firstName : null,
+      lastName: nameChanged ? lastName : null,
+      phones: newPhones,
+      emails: newEmails,
+      addresses: newAddresses,
+      birthdays: newBirthdays,
+      company: company,
+      notes: notes,
+      isFavorite: favourite,
+      valueTypes: newTypes.isEmpty ? null : newTypes,
     );
   }
 
