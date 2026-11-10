@@ -401,16 +401,17 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                     tooltip: 'What to do with ${match.displayName}',
                     onSelected: (_DuplicateChoice c) =>
                         Navigator.of(ctx).pop((c, match)),
-                    itemBuilder: (_) => const <PopupMenuEntry<_DuplicateChoice>>[
-                      PopupMenuItem<_DuplicateChoice>(
-                        value: _DuplicateChoice.addTo,
-                        child: Text('Add the new details to this contact'),
-                      ),
-                      PopupMenuItem<_DuplicateChoice>(
-                        value: _DuplicateChoice.open,
-                        child: Text('Open this contact instead'),
-                      ),
-                    ],
+                    itemBuilder: (_) =>
+                        const <PopupMenuEntry<_DuplicateChoice>>[
+                          PopupMenuItem<_DuplicateChoice>(
+                            value: _DuplicateChoice.addTo,
+                            child: Text('Add the new details to this contact'),
+                          ),
+                          PopupMenuItem<_DuplicateChoice>(
+                            value: _DuplicateChoice.open,
+                            child: Text('Open this contact instead'),
+                          ),
+                        ],
                   ),
                   onTap: () =>
                       Navigator.of(ctx).pop((_DuplicateChoice.addTo, match)),
@@ -497,7 +498,10 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                     keyboardType: keyboardType,
                     forceLtr: forceLtr,
                     maxLines: maxLines,
-                    decoration: InputDecoration(labelText: title, hintText: hint),
+                    decoration: InputDecoration(
+                      labelText: title,
+                      hintText: hint,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -567,7 +571,10 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                     readOnly: birthday,
                     forceLtr: birthday,
                     onTap: birthday ? () => _pickBirthday(controller) : null,
-                    decoration: InputDecoration(labelText: title, hintText: hint),
+                    decoration: InputDecoration(
+                      labelText: title,
+                      hintText: hint,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -605,15 +612,19 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
           ),
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 12),
-            child: FilledButton(
-              onPressed: _isSaving ? null : _save,
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Save'),
+            child: Center(
+              child: FilledButton(
+                // The app theme makes filled buttons full width.
+                style: FilledButton.styleFrom(minimumSize: const Size(72, 40)),
+                onPressed: _isSaving ? null : _save,
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Save'),
+              ),
             ),
           ),
         ],
