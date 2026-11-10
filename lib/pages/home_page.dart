@@ -641,7 +641,12 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(text), action: action));
+      ..showSnackBar(SnackBar(
+        content: Text(text),
+        action: action,
+        // Flutter keeps a snackbar with an action open until it is tapped.
+        persist: false,
+      ));
   }
 
   /// Runs one action on the ticked contacts, then clears the ticks.
