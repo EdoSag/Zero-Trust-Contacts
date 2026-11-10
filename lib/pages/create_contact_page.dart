@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/app/text_direction.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
 import 'package:zerotrust_contacts/services/contact_photo_service.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
@@ -327,7 +329,14 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
           }
           switch (choice.$1) {
             case _DuplicateChoice.open:
-              Navigator.of(context).pop(choice.$2);
+              // Leave the editor for that contact's page.
+              unawaited(
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute<bool>(
+                    builder: (_) => ContactDetailPage(contact: choice.$2),
+                  ),
+                ),
+              );
               return;
             case _DuplicateChoice.addTo:
               contact = const ContactImportPlanner().merge(choice.$2, contact);

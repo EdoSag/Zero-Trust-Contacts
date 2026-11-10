@@ -208,4 +208,58 @@ void main() {
     await sync.run();
     expect((await repo.loadSavedContacts()).length, before);
   });
+
+  test('turning on a hidden detail does not erase it through a pending edit',
+      () async {
+    await repo.upsertSavedContact(VaultContact.fromJson(<String, dynamic>{
+      'id': '1',
+      'displayName': 'Person 1',
+      'phones': <String>['+44700000001'],
+      'emails': <String>['kept@example.com'],
+      'notes': 'Kept note',
+    }));
+    final PhoneSyncController sync = container.read(phoneSyncProvider.notifier);
+    await sync.enable(const PhoneSyncFields()); // emails and notes hidden
+
+    // Edited on the phone (which has no email or note), not yet pulled.
+    bridge.pending.add(const PhoneChange(
+      rawId: 11,
+      sourceId: '1',
+      deleted: false,
+      fields: <String, Object?>{
+        'displayName': 'Person 1',
+        'phones': <Object?>[
+          <Object?, Object?>{'value': '+44700000001', 'type': 'mobile'},
+          <Object?, Object?>{'value': '+44555', 'type': 'home'},
+        ],
+        'emails': <Object?>[],
+        'notes': '',
+      },
+    ));
+    await sync.setFields(const PhoneSyncFields(emails: true, notes: true));
+
+    final VaultContact one = (await repo.loadSavedContacts()).single;
+    expect(one.phones, <String>['+44700000001', '+44555']);
+    expect(one.emails, <String>['kept@example.com']);
+    expect(one.notes, 'Kept note');
+    expect(bridge.written['1']!['emails'], <String>['kept@example.com']);
+
+    // Once every copy is rewritten, an email removed on the phone counts.
+    bridge.pending.add(const PhoneChange(
+      rawId: 11,
+      sourceId: '1',
+      deleted: false,
+      fields: <String, Object?>{
+        'displayName': 'Person 1',
+        'phones': <Object?>[
+          <Object?, Object?>{'value': '+44700000001', 'type': 'mobile'},
+          <Object?, Object?>{'value': '+44555', 'type': 'home'},
+        ],
+        'emails': <Object?>[],
+        'notes': 'Kept note',
+      },
+    ));
+    await sync.run();
+    expect((await repo.loadSavedContacts()).single.emails, isEmpty);
+  });
 }

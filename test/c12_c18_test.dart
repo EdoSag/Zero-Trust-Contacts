@@ -97,6 +97,25 @@ void main() {
       expect(back.typeOf('address', '1 Main St'), 'work');
     });
 
+    test('Other and no kind survive a vCard round trip', () {
+      final VaultContact c = contact(<String, dynamic>{
+        'emails': <String>['o@example.com', 'n@example.com'],
+        'addresses': <String>['1 Other St', '2 Plain St'],
+        'valueTypes': <String, String>{
+          'email:o@example.com': 'other',
+          'address:1 other st': 'other',
+        },
+      });
+      final VaultContact back = const VCardParser()
+          .parseWithPhotos(const VCardWriter().write(c))
+          .contacts
+          .single;
+      expect(back.typeOf('email', 'o@example.com'), 'other');
+      expect(back.typeOf('email', 'n@example.com'), isNull);
+      expect(back.typeOf('address', '1 Other St'), 'other');
+      expect(back.typeOf('address', '2 Plain St'), isNull);
+    });
+
     test('Google and old-style vCard kinds are read', () {
       const String card = 'BEGIN:VCARD\r\nVERSION:2.1\r\nFN:Bo\r\n'
           'TEL;CELL;VOICE:111\r\n'

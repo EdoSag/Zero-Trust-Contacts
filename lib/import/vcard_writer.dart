@@ -38,17 +38,18 @@ class VCardWriter {
     }
     for (final String email in contact.emails) {
       final String? type = contact.typeOf('email', email);
-      final String kind = type == 'home' || type == 'work'
-          ? ';TYPE=${type!.toUpperCase()}'
-          : '';
+      final String kind = type == null || type.isEmpty
+          ? ''
+          : ';TYPE=${type.toUpperCase()}';
       line('EMAIL;TYPE=INTERNET$kind:${_escape(email)}');
     }
     for (final String address in contact.addresses) {
       // The whole address in the street part: the vault keeps it as one line.
-      final String type = contact.typeOf('address', address) == 'work'
-          ? 'WORK'
-          : 'HOME';
-      line('ADR;TYPE=$type:;;${_escape(address)};;;;');
+      final String? type = contact.typeOf('address', address);
+      final String kind = type == null || type.isEmpty
+          ? ''
+          : ';TYPE=${type.toUpperCase()}';
+      line('ADR$kind:;;${_escape(address)};;;;');
     }
     if (contact.birthdays.isNotEmpty) {
       line('BDAY:${_escape(contact.birthdays.first)}');

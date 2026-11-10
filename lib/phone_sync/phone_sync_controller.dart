@@ -77,6 +77,11 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
   /// write can land after the copy has been removed.
   Future<void>? _inFlight;
 
+  /// The choice of details the phone's copies were last fully written
+  /// with. It trails `state.fields` from the moment the choice changes
+  /// until the next run has rewritten every copy.
+  PhoneSyncFields? _written;
+
   Future<void> _stopRuns() async {
     _debounce?.cancel();
     _epoch++;
@@ -116,6 +121,11 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
           fields: PhoneSyncFields.fromJson(Map<String, Object?>.from(
               (json['fields'] as Map?) ?? const <String, Object?>{})),
         );
+        // Saved before this was tracked: the copies match the choice.
+        _written = json['written'] is Map
+            ? PhoneSyncFields.fromJson(
+                Map<String, Object?>.from(json['written']! as Map))
+            : loaded.fields;
       }
     } on Object {
       // Unreadable setting: stays off.
@@ -130,6 +140,7 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
       jsonEncode(<String, Object?>{
         'enabled': state.enabled,
         'fields': state.fields.toJson(),
+        if (_written != null) 'written': _written!.toJson(),
       }));
 
   void _attach(AsyncValue<VaultRepository> repo) {
@@ -162,6 +173,7 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
       return false;
     }
     state = state.copyWith(enabled: true, fields: fields, clearError: true);
+    _written = fields; // Nothing is on the phone yet.
     await _save();
     await run();
     return true;
@@ -177,6 +189,7 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
   Future<void> disable() async {
     state = state.copyWith(enabled: false, onPhone: 0, clearError: true);
     await _stopRuns();
+    _written = null;
     await _save();
     if (isSupported) await _bridge.disable();
   }
@@ -187,6 +200,7 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
     final bool wasEnabled = state.enabled;
     state = state.copyWith(enabled: false, onPhone: 0);
     await _stopRuns();
+    _written = null;
     if (!isSupported) return;
     try {
       if (wasEnabled || (await _bridge.state()).accountExists) {
@@ -271,6 +285,11 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
         await _bridge.apply(chunk, i == 0 ? plan.deletes : const <String>[]);
       }
     }
+    // Every copy now follows this choice of details.
+    if (jsonEncode(_written?.toJson()) != jsonEncode(fields.toJson())) {
+      _written = fields;
+      await _save();
+    }
     if (ref.mounted) {
       state = state.copyWith(
           onPhone: contacts.length, lastUpdated: DateTime.now());
@@ -286,6 +305,10 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
   ) async {
     final List<PhoneChange> changes = await _bridge.changes();
     const PhoneSyncPlanner planner = PhoneSyncPlanner();
+    // What the changed copies were written with, not what was just chosen:
+    // a detail that was never on the phone can't have been removed there.
+    final PhoneSyncFields onPhone =
+        state.fields.intersect(_written ?? state.fields);
     for (final PhoneChange change in changes) {
       if (cancelled()) return;
       final String? id = change.sourceId;
@@ -307,7 +330,7 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
       final VaultContact merged = planner.mergePhoneEdit(
         current,
         change,
-        state.fields,
+        onPhone,
       );
       if (!identical(merged, current)) {
         await repo.upsertSavedContact(

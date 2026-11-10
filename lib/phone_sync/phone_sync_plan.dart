@@ -57,6 +57,22 @@ class PhoneSyncFields {
         blockedToVoicemail: blockedToVoicemail ?? this.blockedToVoicemail,
       );
 
+  /// Only what both this and [other] show. A change made on the phone is
+  /// read with this while the choice of details is being switched, when
+  /// some copies were written the old way and some the new: a detail
+  /// counts as "on the phone" only if both ways put it there.
+  PhoneSyncFields intersect(PhoneSyncFields other) => PhoneSyncFields(
+        phones: phones && other.phones,
+        emails: emails && other.emails,
+        photos: photos && other.photos,
+        company: company && other.company,
+        addresses: addresses && other.addresses,
+        birthdays: birthdays && other.birthdays,
+        notes: notes && other.notes,
+        favourites: favourites && other.favourites,
+        blockedToVoicemail: blockedToVoicemail && other.blockedToVoicemail,
+      );
+
   Map<String, bool> toJson() => <String, bool>{
         'phones': phones,
         'emails': emails,
