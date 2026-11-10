@@ -489,6 +489,8 @@ class MainActivity : FlutterFragmentActivity() {
                     "labels" to mutableListOf<String>(),
                     "birthdays" to mutableListOf<String>(),
                     "other" to mutableListOf<String>(),
+                    // Kinds (mobile, work…), keyed "phone\n<number>".
+                    "types" to mutableMapOf<String, String>(),
                 )
             }
         }
@@ -550,6 +552,12 @@ class MainActivity : FlutterFragmentActivity() {
     ) {
         fun list(key: String) = contact[key] as MutableList<String>
         fun column(index: Int) = cursor.getString(index)?.trim().orEmpty()
+        fun remember(field: String, value: String, type: String) {
+            if (type.isNotEmpty()) {
+                (contact["types"] as MutableMap<String, String>)["$field\n$value"] = type
+            }
+        }
+        val typeCode = column(3).toIntOrNull()
 
         when (mimeType) {
             ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> {
@@ -560,11 +568,21 @@ class MainActivity : FlutterFragmentActivity() {
                 contact["lastName"] = column(4)
             }
             ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE ->
-                if (data1.isNotEmpty()) list("phones").add(data1)
+                if (data1.isNotEmpty()) {
+                    list("phones").add(data1)
+                    remember("phone", data1, PhoneContactsSync.phoneTypeName(typeCode))
+                }
             ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE ->
-                if (data1.isNotEmpty()) list("emails").add(data1)
+                if (data1.isNotEmpty()) {
+                    list("emails").add(data1)
+                    remember("email", data1, PhoneContactsSync.emailTypeName(typeCode))
+                }
             ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE ->
-                if (data1.isNotEmpty()) list("addresses").add(data1.replace("\n", ", "))
+                if (data1.isNotEmpty()) {
+                    val address = data1.replace("\n", ", ")
+                    list("addresses").add(address)
+                    remember("address", address, PhoneContactsSync.addressTypeName(typeCode))
+                }
             ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
                 val title = column(5)
                 contact["company"] = listOf(title, data1).filter { it.isNotEmpty() }.joinToString(", ")

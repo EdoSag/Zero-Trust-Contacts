@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
+import 'package:zerotrust_contacts/app/text_direction.dart';
 import 'package:zerotrust_contacts/import/vcard_writer.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/pages/contact_history_page.dart';
@@ -352,7 +353,10 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: Text(_contact.displayName),
+        title: Text(
+          _contact.displayName,
+          textDirection: directionOf(_contact.displayName),
+        ),
         content: SizedBox(
           width: 280,
           child: Column(
@@ -469,7 +473,11 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
         for (final String phone in _contact.phones)
           ListTile(
             leading: const Icon(Icons.phone_outlined),
-            title: Text(phone),
+            // A phone number reads left-to-right on any screen.
+            title: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(phone, textDirection: TextDirection.ltr),
+            ),
             subtitle: Text(_contact.typeLabel('phone', phone, fallback: 'Phone')),
             onTap: () => _open(ContactActions.call(phone)),
             onLongPress: () => _copy(phone),
@@ -482,7 +490,10 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
         for (final String email in _contact.emails)
           ListTile(
             leading: const Icon(Icons.email_outlined),
-            title: Text(email),
+            title: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(email, textDirection: TextDirection.ltr),
+            ),
             subtitle: Text(_contact.typeLabel('email', email, fallback: 'Email')),
             onTap: () => _open(ContactActions.email(email)),
             onLongPress: () => _copy(email),
@@ -528,6 +539,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
           const SizedBox(height: 6),
           SelectableText(
             _contact.notes,
+            textDirection: directionOf(_contact.notes),
             style: TextStyle(color: colorScheme.onSurfaceVariant),
           ),
         ],

@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zerotrust_contacts/app/contact_sorting.dart';
 import 'package:zerotrust_contacts/app/text_direction.dart';
+import 'package:zerotrust_contacts/import/android_account_contacts.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
 import 'package:zerotrust_contacts/import/mecard.dart';
 import 'package:zerotrust_contacts/import/vcard_parser.dart';
@@ -106,6 +107,23 @@ void main() {
           const VCardParser().parseWithPhotos(card).contacts.single;
       expect(c.typeOf('phone', '111'), 'mobile');
       expect(c.typeOf('phone', '222'), 'work');
+      expect(c.typeOf('email', 'bo@example.com'), 'home');
+    });
+
+    test('kinds come along from a Google account on the phone', () {
+      final VaultContact c = accountImportFromFields(<Map<String, dynamic>>[
+        <String, dynamic>{
+          'displayName': 'Bo',
+          'phones': <String>['111', '222'],
+          'emails': <String>['bo@example.com'],
+          'types': <String, String>{
+            'phone\n111': 'work',
+            'email\nbo@example.com': 'home',
+          },
+        },
+      ]).contacts.single;
+      expect(c.typeOf('phone', '111'), 'work');
+      expect(c.typeOf('phone', '222'), isNull);
       expect(c.typeOf('email', 'bo@example.com'), 'home');
     });
 

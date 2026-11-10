@@ -410,7 +410,7 @@ object PhoneContactsSync {
         else -> CommonDataKinds.Phone.TYPE_MOBILE
     }
 
-    private fun phoneTypeName(code: Int?): String = when (code) {
+    fun phoneTypeName(code: Int?): String = when (code) {
         CommonDataKinds.Phone.TYPE_MOBILE, CommonDataKinds.Phone.TYPE_WORK_MOBILE -> "mobile"
         CommonDataKinds.Phone.TYPE_HOME -> "home"
         CommonDataKinds.Phone.TYPE_WORK, CommonDataKinds.Phone.TYPE_COMPANY_MAIN -> "work"
@@ -425,7 +425,7 @@ object PhoneContactsSync {
         else -> CommonDataKinds.Email.TYPE_OTHER
     }
 
-    private fun emailTypeName(code: Int?): String = when (code) {
+    fun emailTypeName(code: Int?): String = when (code) {
         CommonDataKinds.Email.TYPE_HOME -> "home"
         CommonDataKinds.Email.TYPE_WORK -> "work"
         null -> ""
@@ -438,7 +438,7 @@ object PhoneContactsSync {
         else -> CommonDataKinds.StructuredPostal.TYPE_HOME
     }
 
-    private fun addressTypeName(code: Int?): String = when (code) {
+    fun addressTypeName(code: Int?): String = when (code) {
         CommonDataKinds.StructuredPostal.TYPE_HOME -> "home"
         CommonDataKinds.StructuredPostal.TYPE_WORK -> "work"
         null -> ""
