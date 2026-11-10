@@ -111,6 +111,8 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
         content: Text('${_contact.displayName} moved to the trash'),
+        // Flutter keeps a snackbar with an action open until it is tapped.
+        persist: false,
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () => repo.restoreFromTrash(id),
