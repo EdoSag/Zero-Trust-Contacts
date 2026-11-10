@@ -186,6 +186,18 @@ void main() {
         afterCreate.singleWhere((VaultContact c) => c.firstName == 'Grace');
     expect(grace.typeOf('phone', '+15550100'), 'work');
 
+    // In the list, the name sits above the number, both inside their row.
+    final Rect row = tester.getRect(find.ancestor(
+        of: find.text('+15550100'), matching: find.byType(ListTile)));
+    final Rect nameRect = tester.getRect(find.descendant(
+        of: find.ancestor(
+            of: find.text('+15550100'), matching: find.byType(ListTile)),
+        matching: find.text('Grace')));
+    final Rect numberRect = tester.getRect(find.text('+15550100'));
+    expect(nameRect.bottom, lessThanOrEqualTo(numberRect.top));
+    expect(nameRect.top, greaterThanOrEqualTo(row.top));
+    expect(numberRect.bottom, lessThanOrEqualTo(row.bottom));
+
     await tester.tap(find.byType(FloatingActionButton));
     await settle(tester);
     await tester.enterText(find.widgetWithText(TextField, 'First name'), 'G');
@@ -202,6 +214,9 @@ void main() {
     await tester.tap(find.text('Grace').first);
     await settle(tester);
     expect(find.text('Work'), findsOneWidget);
+    // On the contact page too, the number sits above its kind.
+    expect(tester.getRect(find.text('+15550100')).bottom,
+        lessThanOrEqualTo(tester.getRect(find.text('Work')).top));
     await tester.tap(find.byTooltip('Edit'));
     await settle(tester);
     expect(find.text('Edit contact'), findsOneWidget);

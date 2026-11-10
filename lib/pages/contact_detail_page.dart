@@ -476,6 +476,9 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
             // A phone number reads left-to-right on any screen.
             title: Align(
               alignment: AlignmentDirectional.centerStart,
+              // Only as tall as the text: without this it fills the row and
+              // the name and number are drawn over each other.
+              heightFactor: 1,
               child: Text(phone, textDirection: TextDirection.ltr),
             ),
             subtitle: Text(_contact.typeLabel('phone', phone, fallback: 'Phone')),
@@ -492,6 +495,9 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
             leading: const Icon(Icons.email_outlined),
             title: Align(
               alignment: AlignmentDirectional.centerStart,
+              // Only as tall as the text: without this it fills the row and
+              // the name and number are drawn over each other.
+              heightFactor: 1,
               child: Text(email, textDirection: TextDirection.ltr),
             ),
             subtitle: Text(_contact.typeLabel('email', email, fallback: 'Email')),
