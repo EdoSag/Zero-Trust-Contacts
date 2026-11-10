@@ -70,8 +70,14 @@ class FakeCardScanner extends CardScanner {
     return '/tmp/card.jpg';
   }
 
+  /// Runs while the card is being read, like a lock that happens then.
+  void Function()? whileReading;
+
   @override
-  Future<String> readText(String imagePath) async => text;
+  Future<String> readText(String imagePath) async {
+    whileReading?.call();
+    return text;
+  }
 
   @override
   Future<void> discard(String imagePath) async => discarded.add(imagePath);
@@ -427,6 +433,39 @@ void main() {
       expect(dana.phones, <String>['+972 54-123-4567']);
       expect(dana.typeOf('phone', '+972 54-123-4567'), 'mobile');
       expect(dana.emails, <String>['dana.levi@acme-solutions.com']);
+      await finish(tester);
+    });
+
+    testWidgets('a vault that locks during the scan opens nothing', (
+      WidgetTester tester,
+    ) async {
+      final FakeCardScanner scanner = FakeCardScanner(
+        'Dana Levi\n+972 54-123-4567\n',
+      );
+      await open(
+        tester,
+        Scaffold(
+          body: Consumer(
+            builder: (BuildContext context, WidgetRef ref, _) => TextButton(
+              onPressed: () => scanBusinessCard(context, ref),
+              child: const Text('scan'),
+            ),
+          ),
+        ),
+        scanner: scanner,
+      );
+      scanner.whileReading = () =>
+          container.read(vaultControllerProvider.notifier).lock();
+      await tester.tap(find.text('scan'));
+      await settle(tester);
+      await tester.tap(find.text('Choose a photo'));
+      await settle(tester);
+
+      expect(container.read(vaultControllerProvider), isA<VaultLocked>());
+      expect(scanner.discarded, <String>['/tmp/card.jpg']);
+      expect(find.byType(CreateContactPage), findsNothing);
+      expect(find.text('Reading the card…'), findsNothing);
+      expect(find.text('scan'), findsOneWidget);
       await finish(tester);
     });
 

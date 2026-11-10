@@ -122,6 +122,21 @@ maya@blueharbor.com
       expect(card.addresses, <String>['רחוב הרצל 15, תל אביב']);
     });
 
+    test('a fax stays a fax when the other reading has it unlabelled', () {
+      final ScannedCard card = parser.parse(
+        BusinessCardParser.mergeReadings(
+          hebrew: 'יעל כהן\nטל: 03-6123456\nפקס: 03-6123457\n',
+          english: 'v7: 03-6123456\nF: 03 6123457\n',
+        ),
+      );
+      expect(card.phones, <String>['03-6123456']);
+      expect(card.faxes, <String>['03-6123457']);
+      // Also when the unlabelled copy is met first.
+      final ScannedCard other = parser.parse('03-6123457\nFax: 03-6123457\n');
+      expect(other.phones, isEmpty);
+      expect(other.faxes, <String>['03-6123457']);
+    });
+
     test('an English card ignores the Hebrew reading', () {
       const String english =
           'ACME Solutions Ltd.\nDana Levi\nSenior Product Manager\n'

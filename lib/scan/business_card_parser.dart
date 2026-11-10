@@ -221,10 +221,19 @@ class BusinessCardParser {
           // What the card wrote just before this number says what it is.
           final int from = i == 0 ? 0 : found[i - 1].end;
           final String before = line.substring(from, m.start);
-          if (_fax.hasMatch(before)) {
-            _addUnique(faxes, number);
-          } else {
-            _addUnique(phones, number);
+          // The same number can turn up twice (two readings of one card,
+          // or printed twice). Once it is known to be a fax it stays one.
+          final String digits = _digits(number);
+          final bool knownFax = faxes.any((String f) => _digits(f) == digits);
+          if (_fax.hasMatch(before) || knownFax) {
+            if (!knownFax) faxes.add(number);
+            final List<String> same = phones
+                .where((String p) => _digits(p) == digits)
+                .toList();
+            phones.removeWhere(same.contains);
+            same.forEach(kinds.remove);
+          } else if (!phones.any((String p) => _digits(p) == digits)) {
+            phones.add(number);
             if (_mobile.hasMatch(before)) {
               kinds[number] = 'mobile';
             } else if (_office.hasMatch(before)) {
@@ -330,6 +339,8 @@ class BusinessCardParser {
 
   static int _wordCount(String s) =>
       s.split(RegExp(r'\s+')).where(_letters.hasMatch).length;
+
+  static String _digits(String phone) => phone.replaceAll(RegExp(r'\D'), '');
 
   static void _addUnique(List<String> list, String value) {
     if (value.isNotEmpty && !list.contains(value)) list.add(value);

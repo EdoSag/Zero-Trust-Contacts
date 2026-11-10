@@ -74,6 +74,8 @@ Future<VaultContact?> scanBusinessCard(
 ) async {
   final CardScanner scanner = ref.read(cardScannerProvider);
   final NavigatorState navigator = Navigator.of(context);
+  // Outlives the screen that started the scan, which a lock takes away.
+  final ProviderContainer container = ProviderScope.containerOf(context);
   final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
 
   final bool? fromCamera = await showModalBottomSheet<bool>(
@@ -111,7 +113,7 @@ Future<VaultContact?> scanBusinessCard(
       .whileShowingSystemUi(() => scanner.takePicture(fromCamera: fromCamera));
   if (path == null || !navigator.mounted) return null;
 
-  showDialog<void>(
+  final DialogRoute<void> reading = DialogRoute<void>(
     context: navigator.context,
     barrierDismissible: false,
     builder: (_) => const PopScope(
@@ -126,7 +128,8 @@ Future<VaultContact?> scanBusinessCard(
         ),
       ),
     ),
-  ).ignore();
+  );
+  navigator.push(reading).ignore();
 
   ScannedCard? card;
   String? problem;
@@ -140,7 +143,14 @@ Future<VaultContact?> scanBusinessCard(
     await scanner.discard(path);
   }
   if (!navigator.mounted) return null;
-  navigator.pop(); // the "Reading" dialog
+  // The vault can lock while the card is being read (the app went to the
+  // background, the auto-lock ran out). The lock screen has then already
+  // cleared the pages above it, and nothing may open over it.
+  final bool stillOpen = reading.isActive;
+  if (stillOpen) navigator.removeRoute(reading);
+  if (!stillOpen || container.read(vaultControllerProvider) is! VaultUnlocked) {
+    return null;
+  }
 
   if (card == null || card.isEmpty) {
     messenger
