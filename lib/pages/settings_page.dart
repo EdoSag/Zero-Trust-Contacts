@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,8 +64,12 @@ class ContactsSettingsPage extends ConsumerWidget {
           ),
         ListTile(
           leading: const Icon(Icons.download_outlined),
-          title: const Text('Import from Google'),
-          subtitle: const Text('Accounts on this phone, or a Google export'),
+          title: Text(defaultTargetPlatform == TargetPlatform.iOS
+              ? 'Import contacts'
+              : 'Import from Google'),
+          subtitle: Text(defaultTargetPlatform == TargetPlatform.iOS
+              ? 'From this iPhone, or a Google export'
+              : 'Accounts on this phone, or a Google export'),
           onTap: () => push(const GoogleImportPage()),
         ),
         ListTile(

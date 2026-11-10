@@ -1,9 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:share_plus/share_plus.dart';
 import 'package:zerotrust_contacts/app/contact_sorting.dart';
@@ -16,9 +16,11 @@ import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/pages/create_contact_page.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
 import 'package:zerotrust_contacts/pages/google_import_page.dart';
+import 'package:zerotrust_contacts/pages/labels_page.dart';
 import 'package:zerotrust_contacts/pages/qr_scan_page.dart';
 import 'package:zerotrust_contacts/pages/settings_page.dart';
 import 'package:zerotrust_contacts/pages/trash_page.dart';
+import 'package:zerotrust_contacts/scan/card_scanner.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
@@ -884,7 +886,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           leading: Icon(Icons.download_outlined,
               color: colorScheme.onPrimaryContainer),
           title: Text(
-            'Bring your Google contacts',
+            defaultTargetPlatform == TargetPlatform.iOS
+                ? 'Bring your iPhone contacts'
+                : 'Bring your Google contacts',
             style: TextStyle(color: colorScheme.onPrimaryContainer),
           ),
           subtitle: Text(
@@ -1123,6 +1127,25 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ),
           ],
+          if (ref.watch(cardScannerProvider).isSupported) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.document_scanner_outlined),
+                title: const Text('Scan a business card'),
+                subtitle: const Text(
+                    'Read on this phone, the picture is never uploaded'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  final VaultContact? saved =
+                      await scanBusinessCard(context, ref);
+                  if (saved != null && mounted) {
+                    await _loadContacts(quiet: true);
+                  }
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Card(
             child: Padding(
@@ -1130,8 +1153,27 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Labels',
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text('Labels',
+                            style: Theme.of(context).textTheme.titleMedium),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const LabelsPage(),
+                            ),
+                          );
+                          if (mounted) {
+                            await _loadContacts(quiet: true);
+                          }
+                        },
+                        child: const Text('Manage labels'),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   if (_labelCounts.isEmpty)
                     const Text('No labels yet')

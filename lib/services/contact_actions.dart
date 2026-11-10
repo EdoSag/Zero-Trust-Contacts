@@ -35,6 +35,32 @@ class ContactActions {
     return trimmed.contains('@') ? Uri(scheme: 'mailto', path: trimmed) : null;
   }
 
+  /// One message to everyone in a label. Addresses go in Bcc so the people
+  /// in the label don't get each other's addresses unless the user moves
+  /// them. Null when nobody has an email.
+  static Uri? emailGroup(Iterable<String> addresses) {
+    final List<String> clean = <String>{
+      for (final String a in addresses)
+        if (a.trim().contains('@')) a.trim(),
+    }.toList();
+    if (clean.isEmpty) return null;
+    return Uri.parse(
+      'mailto:?bcc=${clean.map(Uri.encodeComponent).join(',')}',
+    );
+  }
+
+  /// One group text to everyone in a label. Android takes a comma list;
+  /// iOS needs its own `addresses` form. Null when nobody has a number.
+  static Uri? textGroup(Iterable<String> phones, {required bool isIOS}) {
+    final List<String> clean = <String>{
+      for (final String p in phones)
+        if (dialable(p).replaceAll('+', '').isNotEmpty) dialable(p),
+    }.toList();
+    if (clean.isEmpty) return null;
+    final String list = clean.map(Uri.encodeComponent).join(',');
+    return Uri.parse(isIOS ? 'sms:/open?addresses=$list' : 'sms:$list');
+  }
+
   /// WhatsApp needs the number in international form; a local number is
   /// passed as is and WhatsApp says if it can't find it.
   static Uri? whatsApp(String phone) {
