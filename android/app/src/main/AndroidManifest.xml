@@ -91,6 +91,7 @@
         </activity>
         <receiver
             android:name=".ContactQuickWidgetProvider"
+            android:label="@string/contact_quick_widget_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

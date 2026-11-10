@@ -1,30 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  One contact, 1x1, in the shared Zero-Trust widget look
+  (Zero-Trust-Core/android-widget-kit): photo or initials, a call badge in
+  call mode, the name below. Made wider it switches to
+  contact_quick_widget_wide. Uses the phone's address book entry, not the
+  vault, so it shows nothing that isn't already on the phone.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
+    style="@style/ZtWidget.Root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/contact_quick_widget_background"
+    android:padding="6dp"
     android:gravity="center"
-    android:orientation="vertical"
-    android:padding="4dp">
-
-    <ImageView
-        android:id="@+id/widget_icon"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:contentDescription="@string/contact_quick_widget_label"
-        android:src="@android:drawable/ic_menu_info_details"
-        android:tint="#5A4CB6" />
-
+    android:orientation="vertical">
+        <FrameLayout
+            android:layout_width="44dp"
+            android:layout_height="44dp">
+            <TextView
+                android:id="@+id/widget_initials"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/zt_widget_accent_circle"
+                android:gravity="center"
+                android:textColor="@color/zt_widget_on_accent"
+                android:textSize="17sp"
+                android:fontFamily="sans-serif-medium"/>
+            <ImageView
+                android:id="@+id/widget_photo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                android:importantForAccessibility="no"/>
+            <ImageView
+                android:id="@+id/widget_icon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="bottom|end"
+                android:background="@drawable/zt_widget_tile_circle"
+                android:padding="4dp"
+                android:src="@drawable/ic_zt_widget_call"
+                android:tint="@color/zt_widget_on_surface"
+                android:importantForAccessibility="no"/>
+        </FrameLayout>
     <TextView
         android:id="@+id/widget_label"
+        style="@style/ZtWidget.Caption"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:ellipsize="end"
         android:gravity="center"
-        android:maxLines="2"
-        android:textColor="#1F1B2C"
-        android:textSize="12sp"
-        android:textStyle="bold" />
+        android:textColor="@color/zt_widget_on_surface"/>
 </LinearLayout>
