@@ -140,6 +140,58 @@ void main() {
     });
   });
 
+  test('a Western Windows-1252 file keeps its accents', () {
+    const String text =
+        'First Name,Last Name,Company,Notes\n'
+        'René,Müller,Crédit Agricole,déjà vu\n'
+        'Élodie,Škoda,Œuvres,“créée”\n'
+        'François,Åström,,\n';
+    // Encode to Windows-1252 the way Excel/Outlook on Windows would.
+    const Map<int, int> c1 = <int, int>{
+      0x0160: 0x8A, 0x0152: 0x8C, 0x201C: 0x93, 0x201D: 0x94, //
+    };
+    final List<int> bytes = <int>[
+      for (final int unit in text.codeUnits) c1[unit] ?? unit,
+    ];
+    expect(() => utf8.decode(bytes), throwsFormatException);
+    expect(decodeContactFile(bytes), text);
+    // One accented name is enough to tell.
+    expect(decodeContactFile(latin1.encode('Name\nRené\n')), 'Name\nRené\n');
+  });
+
+  test('Hebrew with vowel points and Latin words stays Hebrew', () {
+    const String text = 'שם,חברה\nדָּנָה לֵוִי,Acme בע"מ\nו,iPhone של דנה\n';
+    final List<int> bytes = <int>[
+      for (final int unit in text.codeUnits)
+        unit >= 0x05D0 && unit <= 0x05EA
+            ? 0xE0 + unit - 0x05D0
+            : unit >= 0x05B0 && unit <= 0x05BF
+            ? 0xC0 + unit - 0x05B0
+            : unit,
+    ];
+    expect(decodeContactFile(bytes), text);
+  });
+
+  test('Hebrew punctuation at the start of a word stays Hebrew', () {
+    // Gershayim and geresh open a word; maqaf joins two.
+    const String text = 'שם,כינוי\n״דנה״,׳דני׳\nבית־ספר,ג׳ורג׳\n';
+    const Map<int, int> marks = <int, int>{
+      0x05BE: 0xCE, 0x05F3: 0xD7, 0x05F4: 0xD8, //
+    };
+    final List<int> bytes = <int>[
+      for (final int unit in text.codeUnits)
+        unit >= 0x05D0 && unit <= 0x05EA
+            ? 0xE0 + unit - 0x05D0
+            : marks[unit] ?? unit,
+    ];
+    expect(decodeContactFile(bytes), text);
+    // The same bytes are letters in Western names.
+    expect(
+      decodeContactFile(latin1.encode('Name\nØrsted\nÖzil\nÎle\n')),
+      'Name\nØrsted\nÖzil\nÎle\n',
+    );
+  });
+
   test('two Hebrew addresses stay two addresses', () {
     const String csv =
         'שם,רחוב בבית,עיר בבית,רחוב בעבודה,עיר בעבודה\n'
