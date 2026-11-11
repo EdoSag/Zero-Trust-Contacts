@@ -56,6 +56,11 @@ bool _isLatinLetter(int b) =>
 /// A Hebrew letter in Windows-1255, an accented small letter in 1252.
 bool _isHighLetter(int b) => b >= 0xE0 && b <= 0xFA;
 
+/// A Hebrew vowel point in Windows-1255 (a capital like É in 1252). It
+/// always follows a letter or another point.
+bool _isHebrewPoint(int b) =>
+    (b >= 0xC0 && b <= 0xCD) || b == 0xCF || b == 0xD1 || b == 0xD2;
+
 /// Whether an "ANSI" file is Windows-1252 (Western) and not Windows-1255
 /// (Hebrew). The file doesn't say, so this goes by its letters: a byte
 /// that means nothing in 1255, a capital like É with no Hebrew letter in
@@ -71,8 +76,16 @@ bool _looksWestern(Uint8List bytes) {
     if (_cp1255High[b - 0x80] == 0xFFFD) return true;
     final int before = i > 0 ? bytes[i - 1] : 0x20;
     final int after = i + 1 < bytes.length ? bytes[i + 1] : 0x20;
-    if (b >= 0xC0 && b <= 0xD8) {
+    if (_isHebrewPoint(b)) {
       if (!(before >= 0xC0 && before <= 0xFA)) return true;
+    } else if (b >= 0xC0 && b <= 0xD8) {
+      // Hebrew punctuation and Yiddish letters (maqaf, geresh, gershayim
+      // as in ״דנה״) can start a word, so they are weighed like letters.
+      if (_isLatinLetter(before) || _isLatinLetter(after)) {
+        inLatinWord++;
+      } else if (_isHighLetter(before) || _isHighLetter(after)) {
+        inHighWord++;
+      }
     } else if (_isHighLetter(b)) {
       if (_isLatinLetter(before) || _isLatinLetter(after)) {
         inLatinWord++;
