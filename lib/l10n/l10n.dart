@@ -24,7 +24,7 @@ AppL10n get currentL10n {
 }
 
 /// Keeps [text] left-to-right inside Hebrew (numbers with units, emails).
-String ltr(String text) => text.isEmpty ? text : '⁦$text⁩';
+String ltr(String text) => text.isEmpty ? text : '\u2066$text\u2069';
 
 
 /// A phone, email or address type ('mobile', 'work', ...) in the app's
