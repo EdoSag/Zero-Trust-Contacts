@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -8,26 +7,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/import/android_account_contacts.dart';
+import 'package:zerotrust_contacts/import/contact_file_text.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
+import 'package:zerotrust_contacts/import/csv_contacts.dart';
 import 'package:zerotrust_contacts/import/ios_address_book.dart';
 import 'package:zerotrust_contacts/import/photo_downloader.dart';
+import 'package:zerotrust_contacts/import/sim_contacts.dart';
 import 'package:zerotrust_contacts/import/vcard_parser.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/l10n/l10n.dart';
 
-/// "Import from Google" in a few taps.
+/// "Import contacts" in a few taps.
 ///
-/// Two ways in, neither of which signs in to Google or sends contacts
-/// anywhere: read the Google account already synced to this phone (Android),
-/// or open the .vcf file Google Contacts exports. Contacts are parsed on the
+/// None of the ways in signs in to Google, Apple or Microsoft or sends
+/// contacts anywhere: read an account already on this phone (Google,
+/// Samsung, Outlook/Exchange, the phone itself), the SIM card, the iPhone
+/// address book, or an export file (vCard from Google, iCloud or Outlook;
+/// CSV from Google, Outlook or a spreadsheet). Contacts are parsed on the
 /// device and written straight into the encrypted vault.
-class GoogleImportPage extends ConsumerStatefulWidget {
-  const GoogleImportPage({
+class ImportContactsPage extends ConsumerStatefulWidget {
+  const ImportContactsPage({
     super.key,
-    this.vCardText,
-    this.vCardName,
+    this.fileText,
+    this.fileName,
     this.isIOS,
     this.addressBook = const IosAddressBook(),
   });
@@ -38,19 +42,19 @@ class GoogleImportPage extends ConsumerStatefulWidget {
   /// Reads the iPhone address book; replaced in tests.
   final IosAddressBook addressBook;
 
-  /// A vCard to preview straight away (a .vcf file opened with or shared to
-  /// the app, a scanned QR code, a file picked in Settings). The page then
-  /// only shows that preview.
-  final String? vCardText;
+  /// A vCard or CSV file to preview straight away (a .vcf file opened with
+  /// or shared to the app, a scanned QR code, a file picked in Settings).
+  /// The page then only shows that preview.
+  final String? fileText;
 
-  /// Where [vCardText] came from, for the preview and the activity log.
-  final String? vCardName;
+  /// Where [fileText] came from, for the preview and the activity log.
+  final String? fileName;
 
   @override
-  ConsumerState<GoogleImportPage> createState() => _GoogleImportPageState();
+  ConsumerState<ImportContactsPage> createState() => _ImportContactsPageState();
 }
 
-class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
+class _ImportContactsPageState extends ConsumerState<ImportContactsPage> {
   final DeviceContactsService _deviceService = DeviceContactsService();
   late final VaultRepository _vaultRepository = requireRepository(ref);
 
@@ -99,7 +103,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
   @override
   void initState() {
     super.initState();
-    final String? text = widget.vCardText;
+    final String? text = widget.fileText;
     if (text == null) {
       _loadAccounts();
     } else {
@@ -107,13 +111,13 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _withBusy(
           context.l10n.reading,
-          () => _previewVCard(text, widget.vCardName ?? 'vCard'),
+          () => _previewFile(text, widget.fileName ?? 'vCard'),
         );
       });
     }
   }
 
-  bool get _vCardOnly => widget.vCardText != null;
+  bool get _fileOnly => widget.fileText != null;
 
   Future<void> _loadAccounts() async {
     if (!_isAndroid) {
@@ -134,7 +138,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
         return;
       }
       final List<ImportAccount> accounts = await _deviceService
-          .loadImportAccounts();
+          .loadAllImportAccounts();
       if (mounted) {
         setState(() {
           _accounts = accounts;
@@ -150,12 +154,19 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
   }
 
   Future<void> _previewAccount(ImportAccount account) async {
-    await _withBusy(context.l10n.readingName(account.name), () async {
+    final String title = _accountTitle(account);
+    await _withBusy(context.l10n.readingName(title), () async {
       final List<Map<String, dynamic>> rows = await _deviceService
-          .loadAccountContacts(account.name);
+          .loadAccountContacts(account.name, accountType: account.type);
       final AccountImport read = accountImportFromFields(rows);
       await _preparePreview(
-        sourceLabel: account.name,
+        sourceLabel: title,
+        logLabel: account.kind == ImportAccountKind.google
+            ? 'Google (${account.name})'
+            : account.name.isEmpty
+            ? _kindLabel(account.kind)
+            : '${_kindLabel(account.kind)} (${account.name})',
+        fromGoogle: account.kind == ImportAccountKind.google,
         incoming: read.contacts,
         photos: <String, PhotoLoader>{
           for (final MapEntry<String, int> e in read.photoRawIds.entries)
@@ -164,6 +175,50 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
       );
     });
   }
+
+  /// Reads the contacts saved on the SIM card itself (Android).
+  Future<void> _previewSim() async {
+    await _withBusy(context.l10n.readingSimCard, () async {
+      final bool granted = await ref
+          .read(vaultControllerProvider.notifier)
+          .whileShowingSystemUi(_deviceService.requestPermission);
+      if (!granted) {
+        if (mounted) setState(() => _permissionDenied = true);
+        return;
+      }
+      final List<VaultContact> contacts = vaultContactsFromSim(
+        await _deviceService.loadSimContacts(),
+      );
+      if (contacts.isEmpty) {
+        throw StateError(currentL10n.noContactsOnSim);
+      }
+      await _preparePreview(
+        sourceLabel: currentL10n.simCard,
+        logLabel: 'SIM card',
+        incoming: contacts,
+      );
+    });
+  }
+
+  String _kindLabel(ImportAccountKind kind) => switch (kind) {
+    ImportAccountKind.google => context.l10n.accountKindGoogle,
+    ImportAccountKind.sim => context.l10n.simCard,
+    ImportAccountKind.exchange => context.l10n.accountKindExchange,
+    ImportAccountKind.samsung => context.l10n.accountKindSamsung,
+    ImportAccountKind.phone => context.l10n.accountKindPhone,
+    ImportAccountKind.other => context.l10n.accountKindOther,
+  };
+
+  /// The account's name, or what kind it is when it has none.
+  String _accountTitle(ImportAccount account) =>
+      account.name.isEmpty ? _kindLabel(account.kind) : account.name;
+
+  IconData _kindIcon(ImportAccountKind kind) => switch (kind) {
+    ImportAccountKind.sim => Icons.sim_card_outlined,
+    ImportAccountKind.exchange => Icons.business_outlined,
+    ImportAccountKind.phone => Icons.smartphone,
+    _ => Icons.account_circle_outlined,
+  };
 
   Future<void> _pickExportFile() async {
     final List<PlatformFile> picked = await ref
@@ -175,20 +230,36 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
     }
     await _withBusy(currentL10n.readingName(file.name), () async {
       final List<int> bytes = await file.xFile.readAsBytes();
-      final String text = utf8.decode(bytes, allowMalformed: true);
-      if (!text.toUpperCase().contains('BEGIN:VCARD')) {
-        throw StateError(
-          currentL10n.thatFileIsNotA,
-        );
-      }
-      await _previewVCard(text, file.name);
+      await _previewFile(decodeContactFile(bytes), file.name);
     });
   }
 
-  Future<void> _previewVCard(String text, String name) async {
-    if (!text.toUpperCase().contains('BEGIN:VCARD')) {
-      throw StateError('$name has no contacts in it.');
+  /// Previews a vCard (.vcf) or spreadsheet (.csv) file, whichever [text]
+  /// turns out to be.
+  Future<void> _previewFile(String text, String name) async {
+    switch (detectContactFileKind(text)) {
+      case ContactFileKind.vCard:
+        await _previewVCard(text, name);
+      case ContactFileKind.csv:
+        final CsvContactsImport parsed = const CsvContactsParser().parse(text);
+        if (parsed.contacts.isEmpty) {
+          throw StateError(currentL10n.thatFileIsNotA);
+        }
+        final String format = switch (parsed.format) {
+          CsvContactFormat.google => 'Google CSV',
+          CsvContactFormat.outlook => 'Outlook CSV',
+          CsvContactFormat.generic => 'CSV',
+        };
+        await _preparePreview(
+          sourceLabel: '$name ($format)',
+          incoming: parsed.contacts,
+        );
+      case ContactFileKind.unknown:
+        throw StateError(currentL10n.thatFileIsNotA);
     }
+  }
+
+  Future<void> _previewVCard(String text, String name) async {
     final VCardImport parsed = const VCardParser().parseWithPhotos(text);
     await _preparePreview(
       sourceLabel: name,
@@ -207,12 +278,14 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
 
   Future<void> _preparePreview({
     required String sourceLabel,
+    String? logLabel,
+    bool fromGoogle = false,
     required List<VaultContact> incoming,
     Map<String, PhotoLoader> photos = const <String, PhotoLoader>{},
     Map<String, Uri> linkedPhotos = const <String, Uri>{},
   }) async {
     if (incoming.isEmpty) {
-      throw StateError('No contacts found in $sourceLabel.');
+      throw StateError(currentL10n.noContactsFoundIn(sourceLabel));
     }
     final ContactImportPlan plan = await _vaultRepository.planImport(incoming);
     final int newPhotos = await _vaultRepository.countPhotosToAdd(
@@ -229,6 +302,8 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
         _fromThisPhone = false;
         _pending = _PendingImport(
           sourceLabel: sourceLabel,
+          logLabel: logLabel ?? sourceLabel,
+          fromGoogle: fromGoogle,
           incoming: incoming,
           plan: plan,
           photos: photos,
@@ -262,9 +337,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
     await _withBusy(context.l10n.encryptingAndSaving, () async {
       final ContactImportPlan done = await _vaultRepository.importContacts(
         pending.incoming,
-        sourceLabel: _vCardOnly || _fromThisPhone
-            ? pending.sourceLabel
-            : 'Google (${pending.sourceLabel})',
+        sourceLabel: pending.logLabel,
         photos: photos,
         onPhotoProgress: (int doneCount, int total) {
           if (mounted && total > 0) {
@@ -280,12 +353,12 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(_summary(done))));
+      ).showSnackBar(SnackBar(content: Text(_summary(done, pending))));
       Navigator.of(context).pop(true);
     });
   }
 
-  String _summary(ContactImportPlan plan) {
+  String _summary(ContactImportPlan plan, _PendingImport pending) {
     if (plan.isEmpty && plan.photosAdded == 0) {
       return context.l10n.everythingWasAlreadyInYour;
     }
@@ -296,11 +369,11 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
         context.l10n.nPhotos(plan.photosAdded),
     ];
     final String details = parts.join(', ');
-    return _vCardOnly
-        ? context.l10n.importedSummary(details)
+    return pending.fromGoogle
+        ? context.l10n.importedFromGoogleSummary(details)
         : _fromThisPhone
         ? context.l10n.importedFromIphoneSummary(details)
-        : context.l10n.importedFromGoogleSummary(details);
+        : context.l10n.importedSummary(details);
   }
 
   Future<void> _withBusy(String text, Future<void> Function() action) async {
@@ -336,7 +409,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: _pending == null || _busy || _vCardOnly,
+      canPop: _pending == null || _busy || _fileOnly,
       onPopInvokedWithResult: (bool didPop, Object? _) {
         if (!didPop && !_busy) {
           setState(() => _pending = null);
@@ -344,25 +417,23 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(
-            _vCardOnly || _isIOS ? context.l10n.importContacts : context.l10n.importFromGoogle,
-          ),
+          title: Text(context.l10n.importContacts),
         ),
         body: Column(
           children: [
             if (_busy) const LinearProgressIndicator(),
             Expanded(
               child: _pending == null
-                  ? (_vCardOnly
+                  ? (_fileOnly
                         ? Center(
                             child: Padding(
                               padding: const EdgeInsets.all(24),
                               child: Text(
                                 _busy
                                     ? context.l10n.reading
-                                    : widget.vCardName == null
+                                    : widget.fileName == null
                                           ? context.l10n.nothingToImportFromFile
-                                          : context.l10n.nothingToImportFrom(widget.vCardName!),
+                                          : context.l10n.nothingToImportFrom(widget.fileName!),
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -386,7 +457,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
         const SizedBox(height: 16),
         if (_isAndroid) ...[
           Text(
-            context.l10n.googleAccountsOnThisPhone,
+            context.l10n.accountsOnThisPhone,
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
@@ -400,9 +471,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
               child: ListTile(
                 leading: const Icon(Icons.lock_outline),
                 title: Text(context.l10n.allowAccessToContacts),
-                subtitle: Text(
-                  context.l10n.neededToReadTheGoogle,
-                ),
+                subtitle: Text(context.l10n.neededToReadPhoneAccounts),
                 trailing: TextButton(
                   onPressed: _busy ? null : _loadAccounts,
                   child: Text(context.l10n.allow),
@@ -413,10 +482,8 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.person_off_outlined),
-                title: Text(context.l10n.noGoogleContactsOnThis),
-                subtitle: Text(
-                  context.l10n.addYourGoogleAccountIn,
-                ),
+                title: Text(context.l10n.noOtherContactsOnThisPhone),
+                subtitle: Text(context.l10n.addAccountOrUseFile),
               ),
             )
           else
@@ -426,17 +493,42 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                   leading: CircleAvatar(
                     backgroundColor: colors.primaryContainer,
                     child: Icon(
-                      Icons.account_circle_outlined,
+                      _kindIcon(account.kind),
                       color: colors.onPrimaryContainer,
                     ),
                   ),
-                  title: Text(account.name),
-                  subtitle: Text(context.l10n.nContacts(account.contactCount)),
+                  title: Text(_accountTitle(account)),
+                  subtitle: Text(
+                    account.name.isEmpty
+                        ? context.l10n.nContacts(account.contactCount)
+                        : '${_kindLabel(account.kind)} · '
+                              '${context.l10n.nContacts(account.contactCount)}',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _busy ? null : () => _previewAccount(account),
                 ),
               );
             }),
+          const SizedBox(height: 20),
+          Text(context.l10n.simCard, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(context.l10n.simCardHelp),
+                  const SizedBox(height: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: _busy ? null : _previewSim,
+                    icon: const Icon(Icons.sim_card_outlined),
+                    label: Text(context.l10n.importFromSimCard),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
         ],
         if (_isIOS) ...[
@@ -465,7 +557,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
           ),
           const SizedBox(height: 20),
         ],
-        Text(context.l10n.googleContactsExportFile, style: theme.textTheme.titleMedium),
+        Text(context.l10n.fromAnExportFile, style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),
         Card(
           child: Padding(
@@ -473,20 +565,29 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _Step(
-                  number: 1,
-                  text: context.l10n.openContactsGoogleComAnd,
-                ),
-                _Step(
-                  number: 2,
-                  text: context.l10n.chooseVcardForIosContacts,
-                ),
-                _Step(number: 3, text: context.l10n.pickThatFileHere),
+                Text(context.l10n.fromAnExportFileHelp),
                 const SizedBox(height: 8),
                 FilledButton.tonalIcon(
                   onPressed: _busy ? null : _pickExportFile,
                   icon: const Icon(Icons.file_open_outlined),
-                  label: Text(context.l10n.chooseExportFile),
+                  label: Text(context.l10n.chooseFile),
+                ),
+                const SizedBox(height: 4),
+                _HowToExport(
+                  title: context.l10n.exportHelpGoogleTitle,
+                  steps: context.l10n.exportHelpGoogle,
+                ),
+                _HowToExport(
+                  title: context.l10n.exportHelpIcloudTitle,
+                  steps: context.l10n.exportHelpIcloud,
+                ),
+                _HowToExport(
+                  title: context.l10n.exportHelpOutlookTitle,
+                  steps: context.l10n.exportHelpOutlook,
+                ),
+                _HowToExport(
+                  title: context.l10n.exportHelpSpreadsheetTitle,
+                  steps: context.l10n.exportHelpSpreadsheet,
                 ),
               ],
             ),
@@ -664,6 +765,8 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
 class _PendingImport {
   _PendingImport({
     required this.sourceLabel,
+    required this.logLabel,
+    required this.fromGoogle,
     required this.incoming,
     required this.plan,
     required this.photos,
@@ -673,6 +776,12 @@ class _PendingImport {
   });
 
   final String sourceLabel;
+
+  /// Where the contacts came from, in the activity log (kept in English).
+  final String logLabel;
+
+  /// Read from a Google account on this phone.
+  final bool fromGoogle;
   final List<VaultContact> incoming;
   final ContactImportPlan plan;
 
@@ -717,27 +826,24 @@ class _PrivacyNote extends StatelessWidget {
   }
 }
 
-class _Step extends StatelessWidget {
-  const _Step({required this.number, required this.text});
+/// "How do I get this file from Google / iCloud / Outlook?", folded away
+/// until tapped.
+class _HowToExport extends StatelessWidget {
+  const _HowToExport({required this.title, required this.steps});
 
-  final int number;
-  final String text;
+  final String title;
+  final String steps;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 11,
-            child: Text('$number', style: const TextStyle(fontSize: 12)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text)),
-        ],
-      ),
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: const EdgeInsetsDirectional.only(bottom: 8),
+      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+      shape: const Border(),
+      collapsedShape: const Border(),
+      title: Text(title),
+      children: [Text(steps)],
     );
   }
 }

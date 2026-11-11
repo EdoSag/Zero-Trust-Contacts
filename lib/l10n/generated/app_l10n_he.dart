@@ -320,7 +320,7 @@ class AppL10nHe extends AppL10n {
 
   @override
   String get thatFileIsNotA =>
-      'הקובץ הזה אינו ייצוא של אנשי קשר. ב-Google Contacts בוחרים ייצוא, ואז \"vCard (for iOS Contacts)\".';
+      'בקובץ הזה אין אנשי קשר ש-ZT Contacts יודעת לקרוא. משתמשים בייצוא vCard ‏(.vcf) או CSV.';
 
   @override
   String get encryptingAndSaving => 'מצפין ושומר…';
@@ -332,27 +332,10 @@ class AppL10nHe extends AppL10n {
   String get importContacts => 'ייבוא אנשי קשר';
 
   @override
-  String get importFromGoogle => 'ייבוא מ-Google';
-
-  @override
-  String get googleAccountsOnThisPhone => 'חשבונות Google בטלפון הזה';
-
-  @override
   String get allowAccessToContacts => 'מתן גישה לאנשי הקשר';
 
   @override
-  String get neededToReadTheGoogle =>
-      'נדרש כדי לקרוא את אנשי הקשר של Google שכבר בטלפון.';
-
-  @override
   String get allow => 'אישור';
-
-  @override
-  String get noGoogleContactsOnThis => 'אין בטלפון אנשי קשר של Google';
-
-  @override
-  String get addYourGoogleAccountIn =>
-      'אפשר להוסיף את חשבון Google בהגדרות Android, או להשתמש בקובץ ייצוא בהמשך.';
 
   @override
   String get contactsOnThisIphone => 'אנשי הקשר באייפון הזה';
@@ -367,23 +350,6 @@ class AppL10nHe extends AppL10n {
 
   @override
   String get importFromThisIphone => 'ייבוא מהאייפון הזה';
-
-  @override
-  String get googleContactsExportFile => 'קובץ ייצוא של Google Contacts';
-
-  @override
-  String get openContactsGoogleComAnd =>
-      'פותחים את contacts.google.com ומקישים על ייצוא.';
-
-  @override
-  String get chooseVcardForIosContacts =>
-      'בוחרים \"vCard (for iOS Contacts)\" ושומרים את הקובץ.';
-
-  @override
-  String get pickThatFileHere => 'בוחרים את הקובץ כאן.';
-
-  @override
-  String get chooseExportFile => 'בחירת קובץ ייצוא';
 
   @override
   String get readyToImport => 'מוכן לייבוא';
@@ -418,7 +384,7 @@ class AppL10nHe extends AppL10n {
 
   @override
   String get noGoogleSignInNeeded =>
-      'אין צורך להתחבר ל-Google. אנשי הקשר נקראים במכשיר הזה ומוצפנים לפני שמירה או סנכרון.';
+      'אין צורך להתחבר ל-Google, ל-Apple או ל-Microsoft. אנשי הקשר נקראים במכשיר הזה ומוצפנים לפני שמירה או סנכרון.';
 
   @override
   String get createANewContact => 'יצירת איש קשר חדש';
@@ -677,10 +643,10 @@ class AppL10nHe extends AppL10n {
       'כבוי: שיחות מאנשי קשר מציגות רק את המספר';
 
   @override
-  String get fromThisIphoneOrA => 'מהאייפון הזה, או מייצוא של Google';
+  String get fromThisIphoneOrA => 'מה-iPhone הזה, או מקובץ ייצוא';
 
   @override
-  String get accountsOnThisPhoneOr => 'חשבונות בטלפון הזה, או ייצוא של Google';
+  String get accountsOnThisPhoneOr => 'חשבונות בטלפון, כרטיס SIM או קובץ ייצוא';
 
   @override
   String get restorePoints => 'נקודות שחזור';
@@ -718,12 +684,6 @@ class AppL10nHe extends AppL10n {
   @override
   String get notEncryptedWorksWithGoogle =>
       'לא מוצפן. עובד עם Google,‏ Apple ואפליקציות אחרות';
-
-  @override
-  String get importAVcardFile => 'ייבוא קובץ vCard';
-
-  @override
-  String get aVcfFileFromAny => 'קובץ ‎.vcf מכל אפליקציית אנשי קשר';
 
   @override
   String get pasteVcardTextInstead => 'הדבקת טקסט vCard במקום';
@@ -1433,4 +1393,99 @@ class AppL10nHe extends AppL10n {
   String cardCouldNotBeRead(String error) {
     return 'לא ניתן לקרוא את הכרטיס: $error';
   }
+
+  @override
+  String get accountsOnThisPhone => 'חשבונות בטלפון הזה';
+
+  @override
+  String get neededToReadPhoneAccounts =>
+      'נדרש כדי לקרוא את אנשי הקשר שכבר נמצאים בטלפון.';
+
+  @override
+  String get noOtherContactsOnThisPhone => 'אין בטלפון אנשי קשר אחרים';
+
+  @override
+  String get addAccountOrUseFile =>
+      'אפשר להוסיף חשבון בהגדרות Android, או להשתמש בקובץ ייצוא בהמשך.';
+
+  @override
+  String get accountKindGoogle => 'Google';
+
+  @override
+  String get accountKindExchange => 'Outlook / Exchange';
+
+  @override
+  String get accountKindSamsung => 'חשבון Samsung';
+
+  @override
+  String get accountKindPhone => 'שמורים בטלפון';
+
+  @override
+  String get accountKindOther => 'חשבון אחר';
+
+  @override
+  String get simCard => 'כרטיס SIM';
+
+  @override
+  String get simCardHelp =>
+      'מעתיק את השמות והמספרים ששמורים בכרטיס ה-SIM. הכרטיס עצמו לא משתנה.';
+
+  @override
+  String get importFromSimCard => 'ייבוא מכרטיס SIM';
+
+  @override
+  String get readingSimCard => 'קורא את כרטיס ה-SIM…';
+
+  @override
+  String get noContactsOnSim => 'לא נמצאו אנשי קשר בכרטיס ה-SIM.';
+
+  @override
+  String get fromAnExportFile => 'מקובץ ייצוא';
+
+  @override
+  String get fromAnExportFileHelp =>
+      'קובץ vCard ‏(.vcf) או גיליון ‏(.csv) מ-Google, ‏iCloud, ‏Outlook או מכל אפליקציה אחרת.';
+
+  @override
+  String get chooseFile => 'בחירת קובץ';
+
+  @override
+  String get exportHelpGoogleTitle => 'איך מייצאים מ-Google';
+
+  @override
+  String get exportHelpGoogle =>
+      'ב-contacts.google.com מקישים על ייצוא, בוחרים vCard או Google CSV ושומרים את הקובץ.';
+
+  @override
+  String get exportHelpIcloudTitle => 'איך מייצאים מ-iCloud';
+
+  @override
+  String get exportHelpIcloud =>
+      'ב-icloud.com/contacts במחשב בוחרים את כל אנשי הקשר (Ctrl+A או ⌘A), לוחצים על כפתור השיתוף ובוחרים ייצוא vCard.';
+
+  @override
+  String get exportHelpOutlookTitle => 'איך מייצאים מ-Outlook';
+
+  @override
+  String get exportHelpOutlook =>
+      'ב-outlook.com פותחים את \'אנשים\', ואז ניהול אנשי קשר, ייצוא אנשי קשר, כל אנשי הקשר. ב-Outlook ל-Windows: קובץ, פתיחה וייצוא, ייבוא/ייצוא, ייצוא לקובץ, ערכים מופרדים באמצעות פסיקים.';
+
+  @override
+  String get exportHelpSpreadsheetTitle => 'מגיליון אלקטרוני';
+
+  @override
+  String get exportHelpSpreadsheet =>
+      'שומרים כ-CSV עם שורת כותרות כמו שם, טלפון, דוא\"ל. גם עמודות חברה, כתובת, יום הולדת והערות נקראות, באנגלית או בעברית.';
+
+  @override
+  String noContactsFoundIn(String source) {
+    return 'לא נמצאו אנשי קשר ב-$source.';
+  }
+
+  @override
+  String get importAContactsFile => 'ייבוא קובץ אנשי קשר';
+
+  @override
+  String get aVcfOrCsvFile =>
+      'קובץ ‎.vcf או ‎.csv מ-iCloud, ‏Outlook, ‏Google או מגיליון';
 }

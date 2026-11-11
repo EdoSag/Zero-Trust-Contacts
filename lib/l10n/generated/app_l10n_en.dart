@@ -322,7 +322,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get thatFileIsNotA =>
-      'That file is not a contacts export. In Google Contacts choose Export, then \"vCard (for iOS Contacts)\".';
+      'That file has no contacts ZT Contacts can read. Use a vCard (.vcf) or CSV export.';
 
   @override
   String get encryptingAndSaving => 'Encrypting and saving…';
@@ -335,27 +335,10 @@ class AppL10nEn extends AppL10n {
   String get importContacts => 'Import contacts';
 
   @override
-  String get importFromGoogle => 'Import from Google';
-
-  @override
-  String get googleAccountsOnThisPhone => 'Google accounts on this phone';
-
-  @override
   String get allowAccessToContacts => 'Allow access to contacts';
 
   @override
-  String get neededToReadTheGoogle =>
-      'Needed to read the Google contacts already on this phone.';
-
-  @override
   String get allow => 'Allow';
-
-  @override
-  String get noGoogleContactsOnThis => 'No Google contacts on this phone';
-
-  @override
-  String get addYourGoogleAccountIn =>
-      'Add your Google account in Android Settings, or use an export file below.';
 
   @override
   String get contactsOnThisIphone => 'Contacts on this iPhone';
@@ -370,23 +353,6 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get importFromThisIphone => 'Import from this iPhone';
-
-  @override
-  String get googleContactsExportFile => 'Google Contacts export file';
-
-  @override
-  String get openContactsGoogleComAnd =>
-      'Open contacts.google.com and tap Export.';
-
-  @override
-  String get chooseVcardForIosContacts =>
-      'Choose \"vCard (for iOS Contacts)\" and save the file.';
-
-  @override
-  String get pickThatFileHere => 'Pick that file here.';
-
-  @override
-  String get chooseExportFile => 'Choose export file';
 
   @override
   String get readyToImport => 'Ready to import';
@@ -422,7 +388,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get noGoogleSignInNeeded =>
-      'No Google sign-in needed. Your contacts are read on this device and encrypted before they are saved or synced.';
+      'No sign-in to Google, Apple or Microsoft needed. Your contacts are read on this device and encrypted before they are saved or synced.';
 
   @override
   String get createANewContact => 'Create a new contact';
@@ -689,11 +655,11 @@ class AppL10nEn extends AppL10n {
       'Off: calls from contacts show only the number';
 
   @override
-  String get fromThisIphoneOrA => 'From this iPhone, or a Google export';
+  String get fromThisIphoneOrA => 'From this iPhone, or an export file';
 
   @override
   String get accountsOnThisPhoneOr =>
-      'Accounts on this phone, or a Google export';
+      'Phone accounts, SIM card, or an export file';
 
   @override
   String get restorePoints => 'Restore points';
@@ -731,12 +697,6 @@ class AppL10nEn extends AppL10n {
   @override
   String get notEncryptedWorksWithGoogle =>
       'Not encrypted. Works with Google, Apple and other apps';
-
-  @override
-  String get importAVcardFile => 'Import a vCard file';
-
-  @override
-  String get aVcfFileFromAny => 'A .vcf file from any contacts app';
 
   @override
   String get pasteVcardTextInstead => 'Paste vCard text instead';
@@ -1449,4 +1409,99 @@ class AppL10nEn extends AppL10n {
   String cardCouldNotBeRead(String error) {
     return 'The card could not be read: $error';
   }
+
+  @override
+  String get accountsOnThisPhone => 'Accounts on this phone';
+
+  @override
+  String get neededToReadPhoneAccounts =>
+      'Needed to read the contacts already on this phone.';
+
+  @override
+  String get noOtherContactsOnThisPhone => 'No other contacts on this phone';
+
+  @override
+  String get addAccountOrUseFile =>
+      'Add an account in Android Settings, or use an export file below.';
+
+  @override
+  String get accountKindGoogle => 'Google';
+
+  @override
+  String get accountKindExchange => 'Outlook / Exchange';
+
+  @override
+  String get accountKindSamsung => 'Samsung account';
+
+  @override
+  String get accountKindPhone => 'Saved on this phone';
+
+  @override
+  String get accountKindOther => 'Other account';
+
+  @override
+  String get simCard => 'SIM card';
+
+  @override
+  String get simCardHelp =>
+      'Copies the names and numbers saved on the SIM card. The SIM itself is not changed.';
+
+  @override
+  String get importFromSimCard => 'Import from SIM card';
+
+  @override
+  String get readingSimCard => 'Reading the SIM card…';
+
+  @override
+  String get noContactsOnSim => 'No contacts found on the SIM card.';
+
+  @override
+  String get fromAnExportFile => 'From an export file';
+
+  @override
+  String get fromAnExportFileHelp =>
+      'A vCard (.vcf) or spreadsheet (.csv) file from Google, iCloud, Outlook or any other app.';
+
+  @override
+  String get chooseFile => 'Choose file';
+
+  @override
+  String get exportHelpGoogleTitle => 'How to export from Google';
+
+  @override
+  String get exportHelpGoogle =>
+      'On contacts.google.com tap Export, choose vCard or Google CSV, and save the file.';
+
+  @override
+  String get exportHelpIcloudTitle => 'How to export from iCloud';
+
+  @override
+  String get exportHelpIcloud =>
+      'On icloud.com/contacts on a computer, select all contacts (Ctrl+A or ⌘A), click the share button and choose Export vCard.';
+
+  @override
+  String get exportHelpOutlookTitle => 'How to export from Outlook';
+
+  @override
+  String get exportHelpOutlook =>
+      'On outlook.com open People, then Manage contacts, Export contacts, All contacts. In Outlook for Windows use File, Open & Export, Import/Export, Export to a file, Comma Separated Values.';
+
+  @override
+  String get exportHelpSpreadsheetTitle => 'From a spreadsheet';
+
+  @override
+  String get exportHelpSpreadsheet =>
+      'Save it as CSV with a header row such as Name, Phone, Email. Company, Address, Birthday and Notes columns are read too, in English or Hebrew.';
+
+  @override
+  String noContactsFoundIn(String source) {
+    return 'No contacts found in $source.';
+  }
+
+  @override
+  String get importAContactsFile => 'Import a contacts file';
+
+  @override
+  String get aVcfOrCsvFile =>
+      'A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet';
 }
