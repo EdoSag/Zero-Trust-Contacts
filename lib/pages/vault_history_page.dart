@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
+import 'package:intl/intl.dart' show DateFormat;
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 String _when(DateTime at) {
   final DateTime t = at.toLocal();
-  String two(int v) => v.toString().padLeft(2, '0');
-  return '${t.year}-${two(t.month)}-${two(t.day)} ${two(t.hour)}:${two(t.minute)}';
+  return DateFormat.yMMMd().add_Hm().format(t);
 }
 
 /// Restore points kept on this device: taken before imports, merges,
@@ -52,20 +53,17 @@ class _RestorePointsPageState extends ConsumerState<RestorePointsPage> {
     final bool? ok = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: const Text('Restore this point?'),
+        title: Text(context.l10n.restoreThisPoint),
         content: Text(
-          'Your contacts go back to how they were on '
-          '${_when(snapshot.createdAt)} (${snapshot.contacts.length} '
-          'contacts), on every device. A restore point of the current state '
-          'is taken first, so you can undo this.',
+          context.l10n.restorePointExplained(_when(snapshot.createdAt), snapshot.contacts.length),
         ),
         actions: <Widget>[
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+              child: Text(context.l10n.cancel)),
           FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Restore')),
+              child: Text(context.l10n.restore)),
         ],
       ),
     );
@@ -73,7 +71,7 @@ class _RestorePointsPageState extends ConsumerState<RestorePointsPage> {
     await _busyRun(() async {
       final int count =
           await requireRepository(ref).restoreSnapshot(snapshot.id);
-      return 'Restored $count contacts.';
+      return currentL10n.restoredN(count);
     });
   }
 
@@ -82,7 +80,7 @@ class _RestorePointsPageState extends ConsumerState<RestorePointsPage> {
     final List<VaultSnapshot>? snapshots = _snapshots;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Restore points'),
+        title: Text(context.l10n.restorePoints),
         actions: <Widget>[
           TextButton(
             onPressed: _busy
@@ -90,27 +88,27 @@ class _RestorePointsPageState extends ConsumerState<RestorePointsPage> {
                 : () => _busyRun(() async {
                       await requireRepository(ref)
                           .createSnapshot(reason: 'Manual restore point');
-                      return 'Restore point saved.';
+                      return currentL10n.restorePointSaved;
                     }),
-            child: const Text('Save now'),
+            child: Text(context.l10n.saveNow),
           ),
         ],
       ),
       body: snapshots == null
           ? const Center(child: CircularProgressIndicator())
           : snapshots.isEmpty
-              ? const Center(child: Text('No restore points yet.'))
+              ? Center(child: Text(context.l10n.noRestorePointsYet))
               : ListView(
                   children: <Widget>[
                     for (final VaultSnapshot s in snapshots)
                       ListTile(
                         leading: const Icon(Icons.restore_outlined),
-                        title: Text(s.reason),
+                        title: Text(restorePointLabel(s.reason)),
                         subtitle: Text(
-                            '${_when(s.createdAt)} · ${s.contacts.length} contacts'),
+                            '${_when(s.createdAt)} · ${context.l10n.nContacts(s.contacts.length)}'),
                         trailing: TextButton(
                           onPressed: _busy ? null : () => _restore(s),
-                          child: const Text('Restore'),
+                          child: Text(context.l10n.restore),
                         ),
                       ),
                   ],
@@ -127,7 +125,7 @@ class ActivityPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Activity on this device')),
+      appBar: AppBar(title: Text(context.l10n.activityOnThisDevice)),
       body: FutureBuilder<List<SecurityActivityEntry>>(
         future: requireRepository(ref).readActivityEntries(),
         builder: (BuildContext context,
@@ -137,7 +135,7 @@ class ActivityPage extends ConsumerWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (entries.isEmpty) {
-            return const Center(child: Text('No activity yet.'));
+            return Center(child: Text(context.l10n.noActivityYet));
           }
           return ListView(
             children: <Widget>[

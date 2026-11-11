@@ -10,4 +10,16 @@
     <string name="contact_widget_save">Save Widget</string>
     <string name="contact_widget_cancel">Cancel</string>
     <string name="zt_account_label">ZT Contacts</string>
+    <string name="cw_permission_required">Contacts permission is required to configure widget.</string>
+    <string name="cw_call_denied">Call permission denied. Widget will open dialer instead.</string>
+    <string name="cw_action_call">Call contact</string>
+    <string name="cw_action_open">Open contact details</string>
+    <string name="cw_none_found">No contacts were found.</string>
+    <string name="cw_pick">Pick a contact and widget action.</string>
+    <string name="cw_select">Please select a contact.</string>
+    <string name="cw_no_phone">This contact has no phone number to call.</string>
+    <string name="cw_choose">Choose contact</string>
+    <string name="cw_tap_pick">Tap to pick someone</string>
+    <string name="cw_tap_call">Tap to call</string>
+    <string name="cw_tap_open">Tap to open</string>
 </resources>

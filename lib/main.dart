@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/app/app_gate.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 const ZtAppConfig contactsAppConfig = ZtAppConfig(
   appId: 'contacts',
@@ -17,6 +18,8 @@ Future<void> main() async {
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+  // The language picked in Settings, so the first frame is already in it.
+  await ZtLanguageController.preload();
   runApp(
     ProviderScope(
       overrides: [ztAppConfigProvider.overrideWithValue(contactsAppConfig)],
@@ -37,6 +40,10 @@ class ZeroTrustContactsApp extends ConsumerWidget {
         theme: theme,
         darkTheme: darkTheme,
         themeMode: mode,
+        // English (default) or Hebrew, from Settings → Appearance → Language.
+        locale: ref.watch(ztLanguageProvider),
+        supportedLocales: ZtLanguages.supported,
+        localizationsDelegates: const [AppL10n.delegate, ...ZtLanguages.delegates],
         home: const AppGate(),
         // Any touch on any screen, including ones pushed over the list
         // (editor, settings, imports), counts as activity for auto-lock.

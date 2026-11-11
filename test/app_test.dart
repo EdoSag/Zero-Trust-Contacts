@@ -98,6 +98,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(UncontrolledProviderScope(
         container: container, child: const ZeroTrustContactsApp()));
+    await tester.pump(); // translations load
   }
 
   Future<void> confirmRecoveryKey(WidgetTester tester) async {
@@ -305,6 +306,59 @@ void main() {
     expect(container.read(vaultControllerProvider),
         isA<VaultUnlocked>().having((v) => v.legacyKey, 'legacyKey', isNull));
 
+    container.read(vaultControllerProvider.notifier).lock();
+    await settle(tester);
+  });
+
+  testWidgets('Hebrew: the whole app turns right-to-left',
+      (WidgetTester tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Create a Zero-Trust account'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextFormField, 'Email'), email);
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Password'), password);
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Confirm password'), password);
+    await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+    await settle(tester);
+    await confirmRecoveryKey(tester);
+    final repo = await container.read(vaultRepositoryProvider.future);
+    final Future<void> saving = repo.upsertSavedContact(contact('c1', 'Ada'));
+    await settle(tester);
+    await saving;
+
+    // Settings → Language → עברית, as the core's picker does.
+    await container
+        .read(ztLanguageProvider.notifier)
+        .set(ZtLanguages.hebrew);
+    await settle(tester);
+
+    expect(find.text('אנשי קשר'), findsWidgets); // "Contacts" tab
+    expect(find.text('Contacts'), findsNothing);
+    final BuildContext context = tester.element(find.text('Ada').first);
+    expect(Directionality.of(context), TextDirection.rtl);
+
+    // The contact's avatar is on the right, its name to the left of it.
+    final Finder row = find
+        .ancestor(of: find.text('Ada').first, matching: find.byType(ListTile))
+        .first;
+    final Rect avatar = tester.getRect(
+        find.descendant(of: row, matching: find.byType(CircleAvatar)).first);
+    final Rect name = tester.getRect(find.text('Ada').first);
+    expect(avatar.center.dx, greaterThan(name.center.dx));
+    // The add button sits at the bottom left.
+    final Rect fab = tester.getRect(find.byType(FloatingActionButton));
+    expect(fab.center.dx, lessThan(tester.view.physicalSize.width /
+        tester.view.devicePixelRatio / 2));
+
+    // The editor's fields and phone types are in Hebrew too.
+    await tester.tap(find.byType(FloatingActionButton));
+    await settle(tester);
+    expect(find.text('איש קשר חדש'), findsOneWidget); // "New contact"
+    expect(find.widgetWithText(TextField, 'שם פרטי'), findsOneWidget);
+    expect(find.text('נייד'), findsOneWidget); // "Mobile"
+    expect(tester.takeException(), isNull);
     container.read(vaultControllerProvider.notifier).lock();
     await settle(tester);
   });

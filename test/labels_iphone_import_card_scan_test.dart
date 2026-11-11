@@ -17,6 +17,7 @@ import 'package:zerotrust_contacts/services/vault_repository.dart';
 
 import 'support/contacts_overrides.dart';
 import 'support/fake_sync_backend.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 VaultContact person(
   String id,
@@ -225,7 +226,11 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(home: home),
+          child: MaterialApp(
+            localizationsDelegates: const [AppL10n.delegate, ...ZtLanguages.delegates],
+            supportedLocales: ZtLanguages.supported,
+            home: home,
+          ),
         ),
       );
       await settle(tester);

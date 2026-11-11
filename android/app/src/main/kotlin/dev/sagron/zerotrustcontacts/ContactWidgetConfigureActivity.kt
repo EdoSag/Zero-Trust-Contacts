@@ -96,7 +96,7 @@ class ContactWidgetConfigureActivity : Activity() {
             if (!granted) {
                 Toast.makeText(
                     this,
-                    "Contacts permission is required to configure widget.",
+                    getString(R.string.cw_permission_required),
                     Toast.LENGTH_LONG,
                 ).show()
                 finish()
@@ -115,7 +115,7 @@ class ContactWidgetConfigureActivity : Activity() {
                 if (!hasCallPermission()) {
                     Toast.makeText(
                         this,
-                        "Call permission denied. Widget will open dialer instead.",
+                        getString(R.string.cw_call_denied),
                         Toast.LENGTH_SHORT,
                     ).show()
                 }
@@ -126,8 +126,8 @@ class ContactWidgetConfigureActivity : Activity() {
 
     private fun setupActionSpinner() {
         val actionLabels = listOf(
-            "Call contact",
-            "Open contact details",
+            getString(R.string.cw_action_call),
+            getString(R.string.cw_action_open),
         )
         val adapter = ArrayAdapter(
             this,
@@ -211,7 +211,7 @@ class ContactWidgetConfigureActivity : Activity() {
         selectedContact = null
         if (contacts.isEmpty()) {
             showLoadingUi(false)
-            statusText.text = "No contacts were found."
+            statusText.text = getString(R.string.cw_none_found)
             saveButton.isEnabled = false
             return
         }
@@ -239,7 +239,7 @@ class ContactWidgetConfigureActivity : Activity() {
             contactDropdown.setText(initialSelection.label, false)
         }
         showLoadingUi(false)
-        statusText.text = "Pick a contact and widget action."
+        statusText.text = getString(R.string.cw_pick)
     }
 
     private fun readPrimaryPhoneNumber(contactId: Long): String? {
@@ -270,7 +270,7 @@ class ContactWidgetConfigureActivity : Activity() {
     private fun handleSave() {
         val selection = resolveSelectedContact()
         if (selection == null) {
-            Toast.makeText(this, "Please select a contact.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.cw_select), Toast.LENGTH_SHORT).show()
             return
         }
         val mode = if (actionSpinner.selectedItemPosition == 0) {
@@ -283,7 +283,7 @@ class ContactWidgetConfigureActivity : Activity() {
         ) {
             Toast.makeText(
                 this,
-                "This contact has no phone number to call.",
+                getString(R.string.cw_no_phone),
                 Toast.LENGTH_SHORT,
             ).show()
             return

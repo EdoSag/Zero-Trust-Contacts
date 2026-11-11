@@ -5,6 +5,7 @@ import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/widgets/compact_button_style.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// Edits made on this device that were replaced by a newer edit of the same
 /// contact from another device. The newer edit is what's saved; here the
@@ -36,7 +37,7 @@ class _MergeConflictsPageState extends ConsumerState<MergeConflictsPage> {
     final SyncStatus status = ref.watch(ztSyncControllerProvider);
     final ThemeData theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Sync conflicts')),
+      appBar: AppBar(title: Text(context.l10n.syncConflicts)),
       body: FutureBuilder<List<ContactConflict>>(
         future: requireRepository(ref).conflictsFrom(status),
         builder: (BuildContext context,
@@ -49,12 +50,11 @@ class _MergeConflictsPageState extends ConsumerState<MergeConflictsPage> {
               .where((ContactConflict c) => !_handled.contains(c.contactId))
               .toList();
           if (open.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'No conflicts. When the same contact is edited on two '
-                  'devices, the newer edit is kept and yours shows up here.',
+                  context.l10n.noConflictsWhenTheSame,
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -76,8 +76,8 @@ class _MergeConflictsPageState extends ConsumerState<MergeConflictsPage> {
                         const SizedBox(height: 6),
                         Text(
                           c.current == null
-                              ? 'Deleted on another device after you edited it.'
-                              : 'Edited on another device after your edit.',
+                              ? context.l10n.deletedOnAnotherDeviceAfter
+                              : context.l10n.editedOnAnotherDeviceAfter,
                           style: TextStyle(
                               color: theme.colorScheme.onSurfaceVariant),
                         ),
@@ -90,20 +90,20 @@ class _MergeConflictsPageState extends ConsumerState<MergeConflictsPage> {
                               style: compactButtonStyle,
                               onPressed: () => _resolve(all, c, null),
                               child: Text(c.current == null
-                                  ? 'Keep deleted'
-                                  : 'Keep the newer one'),
+                                  ? context.l10n.keepDeleted
+                                  : context.l10n.keepTheNewerOne),
                             ),
                             OutlinedButton(
                               style: compactButtonStyle,
                               onPressed: () => _resolve(all, c, c.mine),
-                              child: const Text('Use mine'),
+                              child: Text(context.l10n.useMine),
                             ),
                             if (c.current != null)
                               FilledButton(
                                 style: compactButtonStyle,
                                 onPressed: () => _resolve(
                                     all, c, c.current!.mergeWith(c.mine)),
-                                child: const Text('Combine'),
+                                child: Text(context.l10n.combine),
                               ),
                           ],
                         ),

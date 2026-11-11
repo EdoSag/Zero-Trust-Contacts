@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zerotrust_contacts/phone_sync/phone_sync_controller.dart';
 import 'package:zerotrust_contacts/phone_sync/phone_sync_plan.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// Settings for "Show in Phone and Messages" (Android).
 class PhoneSyncPage extends ConsumerWidget {
@@ -22,18 +23,17 @@ class PhoneSyncPage extends ConsumerWidget {
       final bool? ok = await showDialog<bool>(
         context: context,
         builder: (BuildContext context) => AlertDialog(
-          title: const Text('Remove from the phone?'),
-          content: const Text(
-            'The copies in the phone\'s contacts are removed. Your contacts '
-            'stay in the vault. Calls will show numbers instead of names.',
+          title: Text(context.l10n.removeFromThePhone),
+          content: Text(
+            context.l10n.theCopiesInThePhones,
           ),
           actions: <Widget>[
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel')),
+                child: Text(context.l10n.cancel)),
             FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Remove')),
+                child: Text(context.l10n.remove)),
           ],
         ),
       );
@@ -52,15 +52,15 @@ class PhoneSyncPage extends ConsumerWidget {
         );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Phone and Messages')),
+      appBar: AppBar(title: Text(context.l10n.phoneAndMessages)),
       body: !status.loaded
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               children: <Widget>[
                 SwitchListTile(
-                  title: const Text('Show contacts in Phone and Messages'),
-                  subtitle: const Text(
-                      'Caller ID, the dialer and messaging apps see names'),
+                  title: Text(context.l10n.showContactsInPhoneAnd),
+                  subtitle: Text(
+                      context.l10n.callerIdTheDialerAnd),
                   value: status.enabled,
                   onChanged: status.running ? null : toggle,
                 ),
@@ -73,13 +73,7 @@ class PhoneSyncPage extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      'This puts an unencrypted copy of the details you pick '
-                      'below in the phone\'s own contacts, under a "ZT '
-                      'Contacts" account. Any app you allow to read contacts '
-                      'can see that copy. Your vault stays encrypted and is '
-                      'still where you edit contacts; the copy updates while '
-                      'the app is unlocked and is removed when you turn this '
-                      'off or sign out.',
+                      context.l10n.thisPutsAnUnencryptedCopy,
                       style: TextStyle(color: colors.onSecondaryContainer),
                     ),
                   ),
@@ -89,32 +83,32 @@ class PhoneSyncPage extends ConsumerWidget {
                     leading: Icon(Icons.error_outline, color: colors.error),
                     title: Text(status.error!),
                   ),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Text('What leaves the vault'),
+                  child: Text(context.l10n.whatLeavesTheVault),
                 ),
-                const CheckboxListTile(
-                  title: Text('Name'),
-                  subtitle: Text('Always, so calls show who it is'),
+                CheckboxListTile(
+                  title: Text(context.l10n.name),
+                  subtitle: Text(context.l10n.alwaysSoCallsShowWho),
                   value: true,
                   onChanged: null,
                 ),
-                field('Phone numbers', f.phones,
+                field(context.l10n.phoneNumbers, f.phones,
                     (bool v) => f.copyWith(phones: v),
-                    subtitle: 'Needed for caller ID'),
-                field('Photos', f.photos, (bool v) => f.copyWith(photos: v)),
-                field('Email addresses', f.emails,
+                    subtitle: context.l10n.neededForCallerId),
+                field(context.l10n.photos, f.photos, (bool v) => f.copyWith(photos: v)),
+                field(context.l10n.emailAddresses, f.emails,
                     (bool v) => f.copyWith(emails: v)),
-                field('Company', f.company, (bool v) => f.copyWith(company: v)),
-                field('Addresses', f.addresses,
+                field(context.l10n.company, f.company, (bool v) => f.copyWith(company: v)),
+                field(context.l10n.addresses, f.addresses,
                     (bool v) => f.copyWith(addresses: v)),
-                field('Birthdays', f.birthdays,
+                field(context.l10n.birthdays, f.birthdays,
                     (bool v) => f.copyWith(birthdays: v)),
-                field('Notes', f.notes, (bool v) => f.copyWith(notes: v)),
-                field('Favourites', f.favourites,
+                field(context.l10n.notes, f.notes, (bool v) => f.copyWith(notes: v)),
+                field(context.l10n.favourites, f.favourites,
                     (bool v) => f.copyWith(favourites: v),
-                    subtitle: 'Starred in the phone too'),
-                field('Send blocked contacts to voicemail',
+                    subtitle: context.l10n.starredInThePhoneToo),
+                field(context.l10n.sendBlockedContactsToVoicemail,
                     f.blockedToVoicemail,
                     (bool v) => f.copyWith(blockedToVoicemail: v)),
                 if (status.enabled)
@@ -127,13 +121,13 @@ class PhoneSyncPage extends ConsumerWidget {
                           )
                         : const Icon(Icons.sync),
                     title: Text(status.running
-                        ? 'Updating the phone\'s contacts…'
+                        ? context.l10n.updatingThePhonesContacts
                         : status.onPhone == null
-                            ? 'Waiting to update'
-                            : '${status.onPhone} contacts on this phone'),
+                            ? context.l10n.waitingToUpdate
+                            : context.l10n.nOnThisPhone(status.onPhone!)),
                     trailing: TextButton(
                       onPressed: status.running ? null : controller.run,
-                      child: const Text('Update now'),
+                      child: Text(context.l10n.updateNow),
                     ),
                   ),
               ],

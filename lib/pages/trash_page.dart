@@ -6,6 +6,7 @@ import 'package:zerotrust_contacts/app/contacts_collection.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// Deleted contacts, kept for 30 days so they can be put back. Synced: a
 /// contact deleted on one phone shows up here on every phone.
@@ -51,7 +52,7 @@ class _TrashPageState extends ConsumerState<TrashPage> {
       await _load();
       if (mounted) _snack(message);
     } on Object catch (error) {
-      if (mounted) _snack('That didn\'t work: $error');
+      if (mounted) _snack(currentL10n.thatDidntWork('$error'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -66,7 +67,7 @@ class _TrashPageState extends ConsumerState<TrashPage> {
           actions: <Widget>[
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel')),
+                child: Text(context.l10n.cancel)),
             FilledButton(
                 onPressed: () => Navigator.pop(context, true),
                 child: Text(action)),
@@ -77,20 +78,19 @@ class _TrashPageState extends ConsumerState<TrashPage> {
 
   Future<void> _restore(TrashedContact item) => _run(() async {
         await _repo.restoreFromTrash(item.contact.id);
-        return '${item.contact.displayName} is back in your contacts.';
+        return currentL10n.isBackInContacts(item.contact.displayName);
       });
 
   Future<void> _deleteForever(TrashedContact item) async {
     if (!await _confirm(
-        'Delete for good?',
-        '${item.contact.displayName} is deleted from every device and can\'t '
-            'be restored.',
-        'Delete')) {
+        context.l10n.deleteForGood,
+        context.l10n.deletedEverywhereName(item.contact.displayName),
+        context.l10n.delete)) {
       return;
     }
     await _run(() async {
       await _repo.deleteForever(item.contact.id);
-      return 'Deleted for good.';
+      return currentL10n.deletedForGood;
     });
   }
 
@@ -98,15 +98,14 @@ class _TrashPageState extends ConsumerState<TrashPage> {
     final int count = _items?.length ?? 0;
     if (count == 0 ||
         !await _confirm(
-            'Empty the trash?',
-            '$count ${count == 1 ? 'contact is' : 'contacts are'} deleted '
-                'from every device and can\'t be restored.',
-            'Empty trash')) {
+            context.l10n.emptyTheTrash,
+            context.l10n.deletedEverywhereN(count),
+            context.l10n.emptyTrash)) {
       return;
     }
     await _run(() async {
       final int done = await _repo.emptyTrash();
-      return 'Deleted $done ${done == 1 ? 'contact' : 'contacts'} for good.';
+      return currentL10n.deletedNForGood(done);
     });
   }
 
@@ -116,34 +115,32 @@ class _TrashPageState extends ConsumerState<TrashPage> {
     final DateTime now = DateTime.now().toUtc();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Trash'),
+        title: Text(context.l10n.trash),
         actions: <Widget>[
           if (items != null && items.isNotEmpty)
             TextButton(
               onPressed: _busy ? null : _emptyTrash,
-              child: const Text('Empty trash'),
+              child: Text(context.l10n.emptyTrash),
             ),
         ],
       ),
       body: items == null
           ? const Center(child: CircularProgressIndicator())
           : items.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
                     padding: EdgeInsets.all(24),
                     child: Text(
-                      'The trash is empty.\nDeleted contacts stay here for '
-                      '30 days.',
+                      context.l10n.theTrashIsEmptyDeleted,
                       textAlign: TextAlign.center,
                     ),
                   ),
                 )
               : ListView(
                   children: <Widget>[
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Text('Contacts in the trash are deleted for '
-                          'good after 30 days.'),
+                      child: Text(context.l10n.contactsInTheTrashAre),
                     ),
                     for (final TrashedContact item in items)
                       ListTile(
@@ -154,12 +151,12 @@ class _TrashPageState extends ConsumerState<TrashPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
                             IconButton(
-                              tooltip: 'Restore',
+                              tooltip: context.l10n.restore,
                               onPressed: _busy ? null : () => _restore(item),
                               icon: const Icon(Icons.restore_from_trash),
                             ),
                             IconButton(
-                              tooltip: 'Delete for good',
+                              tooltip: context.l10n.deleteForGoodX,
                               onPressed:
                                   _busy ? null : () => _deleteForever(item),
                               icon: const Icon(Icons.delete_forever_outlined),
@@ -173,8 +170,7 @@ class _TrashPageState extends ConsumerState<TrashPage> {
   }
 
   static String _daysLeftText(int days) => switch (days) {
-        0 => 'Deleted for good today',
-        1 => '1 day left',
-        _ => '$days days left',
+        0 => currentL10n.deletedForGoodToday,
+        _ => currentL10n.daysLeft(days),
       };
 }

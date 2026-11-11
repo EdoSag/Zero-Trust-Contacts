@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zerotrust_contacts/legacy/legacy_contacts_importer.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
 import 'package:zerotrust_contacts/widgets/compact_button_style.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// Asks for the password from before the update and brings the earlier
 /// contacts over. Returns the number imported, or null when cancelled.
@@ -36,14 +37,13 @@ class _LegacyImportBannerState extends ConsumerState<LegacyImportBanner> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'Bring over your contacts from before the update',
+                context.l10n.bringOverYourContactsFrom,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: colors.onSecondaryContainer),
               ),
               const SizedBox(height: 4),
               Text(
-                'Contacts now uses your Zero-Trust account. Enter your '
-                'password once to move your earlier contacts across.',
+                context.l10n.contactsNowUsesYourZero,
                 style: TextStyle(color: colors.onSecondaryContainer),
               ),
               Row(
@@ -52,7 +52,7 @@ class _LegacyImportBannerState extends ConsumerState<LegacyImportBanner> {
                   TextButton(
                     style: compactButtonStyle,
                     onPressed: () => setState(() => _hidden = true),
-                    child: const Text('Later'),
+                    child: Text(context.l10n.later),
                   ),
                   FilledButton(
                     style: compactButtonStyle,
@@ -60,10 +60,9 @@ class _LegacyImportBannerState extends ConsumerState<LegacyImportBanner> {
                       final int? count = await showLegacyImportDialog(context);
                       if (count == null || !context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('Brought over $count '
-                              '${count == 1 ? 'contact' : 'contacts'}.')));
+                          content: Text(context.l10n.broughtOver(count))));
                     },
-                    child: const Text('Bring over'),
+                    child: Text(context.l10n.bringOver),
                   ),
                 ],
               ),
@@ -108,14 +107,12 @@ class _LegacyImportDialogState extends ConsumerState<_LegacyImportDialog> {
     } on LegacyPasswordNeeded {
       if (mounted) {
         setState(() => _error =
-            'That password doesn\'t open your earlier contacts. If you '
-            'changed it since, use the one from before.');
+            context.l10n.thatPasswordDoesntOpenYour);
       }
     } on Object {
       if (mounted) {
         setState(
-            () => _error = 'Couldn\'t bring them over. Check your connection '
-                'and try again.');
+            () => _error = context.l10n.couldntBringThemOverCheck);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -125,20 +122,19 @@ class _LegacyImportDialogState extends ConsumerState<_LegacyImportDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Earlier contacts'),
+      title: Text(context.l10n.earlierContacts),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Text(
-            'Enter the password you used in Contacts before this update. '
-            'It\'s only needed once; nothing is sent to the server.',
+          Text(
+            context.l10n.enterThePasswordYouUsed,
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _password,
             decoration: InputDecoration(
-                labelText: 'Password from before', errorText: _error),
+                labelText: context.l10n.passwordFromBefore, errorText: _error),
             obscureText: true,
             autofocus: true,
             enabled: !_busy,
@@ -153,10 +149,10 @@ class _LegacyImportDialogState extends ConsumerState<_LegacyImportDialog> {
       actions: <Widget>[
         TextButton(
           onPressed: _busy ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.cancel),
         ),
         FilledButton(
-            onPressed: _busy ? null : _import, child: const Text('Bring over')),
+            onPressed: _busy ? null : _import, child: Text(context.l10n.bringOver)),
       ],
     );
   }

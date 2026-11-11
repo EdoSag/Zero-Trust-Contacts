@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import 'package:zerotrust_contacts/import/mecard.dart';
 import 'package:zerotrust_contacts/pages/google_import_page.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// Scans a contact QR code (a vCard or MECARD, like the one "Show QR code"
 /// makes) with the camera. The picture never leaves the phone: the code is
@@ -28,7 +29,7 @@ class QrScanPage extends StatefulWidget {
     }
     final bool? imported = await navigator.push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => GoogleImportPage(vCardText: vCard, vCardName: 'QR code'),
+        builder: (_) => GoogleImportPage(vCardText: vCard, vCardName: context.l10n.qrCode),
       ),
     );
     return imported == true;
@@ -53,7 +54,7 @@ class _QrScanPageState extends State<QrScanPage> {
       }
       final String? vCard = vCardFromQr(code);
       if (vCard == null) {
-        setState(() => _hint = 'That code is not a contact.');
+        setState(() => _hint = context.l10n.thatCodeIsNotA);
         return;
       }
       _done = true;
@@ -72,17 +73,16 @@ class _QrScanPageState extends State<QrScanPage> {
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Scan a contact QR code')),
+      appBar: AppBar(title: Text(context.l10n.scanAContactQrCode)),
       body: Column(
         children: <Widget>[
           Expanded(
             child: _denied
-                ? const Center(
+                ? Center(
                     child: Padding(
                       padding: EdgeInsets.all(24),
                       child: Text(
-                        'Allow the camera for ZT Contacts in the phone\'s '
-                        'settings to scan a code.',
+                        context.l10n.allowTheCameraForZt,
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -109,8 +109,7 @@ class _QrScanPageState extends State<QrScanPage> {
             padding: const EdgeInsets.all(16),
             child: Text(
               _hint ??
-                  'Point the camera at a contact QR code. It is read on this '
-                  'phone only.',
+                  context.l10n.pointTheCameraAtA,
               textAlign: TextAlign.center,
             ),
           ),

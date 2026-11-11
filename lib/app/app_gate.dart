@@ -7,6 +7,7 @@ import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
 import 'package:zerotrust_contacts/pages/home_page.dart';
 import 'package:zerotrust_contacts/phone_sync/phone_sync_controller.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// Routes between the shared account screens and the address book.
 ///
@@ -167,14 +168,13 @@ class _ContactsHomeState extends ConsumerState<_ContactsHome> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Couldn\'t open your contacts on this device. '
-                    '${ztErrorMessage(error)}',
+                    context.l10n.cantOpenContacts(ztErrorMessage(error)),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => ref.invalidate(vaultRepositoryProvider),
-                    child: const Text('Try again'),
+                    child: Text(context.l10n.tryAgain),
                   ),
                 ],
               ),
