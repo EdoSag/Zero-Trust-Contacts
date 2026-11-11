@@ -10,6 +10,7 @@ import 'package:zerotrust_contacts/phone_sync/phone_contacts_bridge.dart';
 import 'package:zerotrust_contacts/phone_sync/phone_sync_plan.dart';
 import 'package:zerotrust_contacts/services/contact_photo_service.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 final phoneContactsBridgeProvider = Provider<PhoneContactsBridge>(
     (ref) => const MethodChannelPhoneContactsBridge());
@@ -168,8 +169,7 @@ class PhoneSyncController extends Notifier<PhoneSyncStatus> {
         .whileShowingSystemUi(_bridge.requestPermission);
     if (!granted) {
       state = state.copyWith(
-          error: 'Contacts permission is needed to show contacts in the '
-              'Phone and Messages apps.');
+          error: currentL10n.contactsPermissionIsNeededTo);
       return false;
     }
     state = state.copyWith(enabled: true, fields: fields, clearError: true);

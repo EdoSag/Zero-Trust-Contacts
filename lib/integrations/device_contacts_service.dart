@@ -68,12 +68,37 @@ class ContactSourceStats {
   }
 }
 
-/// A Google (or other) account whose contacts are synced to this phone.
+/// An account whose contacts are on this phone: Google, Samsung,
+/// Outlook/Exchange, the SIM card, or the phone itself.
 class ImportAccount {
-  ImportAccount({required this.name, required this.contactCount});
+  ImportAccount({
+    required this.name,
+    required this.contactCount,
+    this.type = DeviceContactsService.googleAccountType,
+    this.kind = ImportAccountKind.google,
+  });
 
+  /// The account's name, often an email address. Empty for contacts saved
+  /// to the phone without an account.
   final String name;
   final int contactCount;
+
+  /// Android's account type (`com.google`…). Empty for no account.
+  final String type;
+  final ImportAccountKind kind;
+}
+
+enum ImportAccountKind {
+  google,
+  sim,
+  exchange,
+  samsung,
+  phone,
+  other;
+
+  static ImportAccountKind parse(Object? raw) => ImportAccountKind.values
+      .firstWhere((ImportAccountKind k) => k.name == '$raw',
+          orElse: () => ImportAccountKind.other);
 }
 
 /// Something another app handed to ZT Contacts.
@@ -299,6 +324,41 @@ class DeviceContactsService {
               contactCount: ContactSourceStats._toCount(item['count']),
             ))
         .where((ImportAccount account) => account.name.isNotEmpty)
+        .toList();
+  }
+
+  /// Every account on this phone that holds contacts, except ZT Contacts'
+  /// own caller-ID copy (Android only).
+  Future<List<ImportAccount>> loadAllImportAccounts() async {
+    if (!Platform.isAndroid) {
+      return <ImportAccount>[];
+    }
+    final List<dynamic>? response = await _channel.invokeMethod<List<dynamic>>(
+      'getAllImportAccounts',
+    );
+    return (response ?? <dynamic>[])
+        .whereType<Map<dynamic, dynamic>>()
+        .map((Map<dynamic, dynamic> item) => ImportAccount(
+              name: (item['name'] ?? '').toString(),
+              type: (item['type'] ?? '').toString(),
+              kind: ImportAccountKind.parse(item['kind']),
+              contactCount: ContactSourceStats._toCount(item['count']),
+            ))
+        .where((ImportAccount account) => account.contactCount > 0)
+        .toList();
+  }
+
+  /// The contacts stored on the SIM card itself, as `name`, `number` and
+  /// `emails` maps (Android only).
+  Future<List<Map<String, dynamic>>> loadSimContacts() async {
+    if (!Platform.isAndroid) {
+      return <Map<String, dynamic>>[];
+    }
+    final List<dynamic>? response =
+        await _channel.invokeMethod<List<dynamic>>('getSimContacts');
+    return (response ?? <dynamic>[])
+        .whereType<Map<dynamic, dynamic>>()
+        .map((Map<dynamic, dynamic> item) => Map<String, dynamic>.from(item))
         .toList();
   }
 

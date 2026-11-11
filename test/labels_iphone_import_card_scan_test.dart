@@ -9,7 +9,7 @@ import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/import/ios_address_book.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/pages/create_contact_page.dart';
-import 'package:zerotrust_contacts/pages/google_import_page.dart';
+import 'package:zerotrust_contacts/pages/import_contacts_page.dart';
 import 'package:zerotrust_contacts/pages/labels_page.dart';
 import 'package:zerotrust_contacts/scan/card_scanner.dart';
 import 'package:zerotrust_contacts/services/contact_actions.dart';
@@ -17,6 +17,7 @@ import 'package:zerotrust_contacts/services/vault_repository.dart';
 
 import 'support/contacts_overrides.dart';
 import 'support/fake_sync_backend.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 VaultContact person(
   String id,
@@ -225,7 +226,11 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(home: home),
+          child: MaterialApp(
+            localizationsDelegates: const [AppL10n.delegate, ...ZtLanguages.delegates],
+            supportedLocales: ZtLanguages.supported,
+            home: home,
+          ),
         ),
       );
       await settle(tester);
@@ -353,7 +358,7 @@ void main() {
       ]);
       await open(
         tester,
-        GoogleImportPage(isIOS: true, addressBook: book),
+        ImportContactsPage(isIOS: true, addressBook: book),
         contacts: <VaultContact>[person('1', 'Ada')],
       );
       expect(find.text('Import contacts'), findsOneWidget);
@@ -374,12 +379,55 @@ void main() {
       await finish(tester);
     });
 
+    testWidgets('CSV file: preview, then import merges and adds (C19)', (
+      WidgetTester tester,
+    ) async {
+      await open(
+        tester,
+        const ImportContactsPage(
+          fileName: 'contacts.csv',
+          fileText: 'First Name,Last Name,Mobile Phone,E-mail Address\n'
+              'Ada,,+44 7700 900101,ada@new.example\n'
+              'Noa,Bar,054-123-4567,\n',
+        ),
+        contacts: <VaultContact>[person('1', 'Ada')],
+      );
+      expect(find.text('Ready to import'), findsOneWidget);
+      expect(find.text('From contacts.csv (Outlook CSV)'), findsOneWidget);
+      await tester.tap(find.text('Import 2 contacts'));
+      await settle(tester);
+
+      final List<VaultContact> after = await saved(tester);
+      expect(after, hasLength(2));
+      final VaultContact ada =
+          after.firstWhere((VaultContact c) => c.displayName == 'Ada');
+      expect(ada.id, '1');
+      expect(ada.emails, <String>['ada@new.example']);
+      final VaultContact noa =
+          after.firstWhere((VaultContact c) => c.displayName == 'Noa Bar');
+      expect(noa.typeOf('phone', '054-123-4567'), 'mobile');
+      await finish(tester);
+    });
+
+    testWidgets('a file that is not contacts says so (C19)', (
+      WidgetTester tester,
+    ) async {
+      await open(
+        tester,
+        const ImportContactsPage(fileName: 'notes.txt', fileText: 'hello'),
+      );
+      expect(find.text('Ready to import'), findsNothing);
+      expect(find.textContaining('no contacts ZT Contacts can read'),
+          findsOneWidget);
+      await finish(tester);
+    });
+
     testWidgets('iPhone: a refused permission says how to allow it', (
       WidgetTester tester,
     ) async {
       await open(
         tester,
-        GoogleImportPage(
+        ImportContactsPage(
           isIOS: true,
           addressBook: FakeAddressBook(<fc.Contact>[], allowed: false),
         ),

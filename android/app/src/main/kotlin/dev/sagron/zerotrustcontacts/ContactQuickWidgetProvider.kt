@@ -162,8 +162,8 @@ class ContactQuickWidgetProvider : AppWidgetProvider() {
                 if (wide) R.layout.contact_quick_widget_wide else R.layout.contact_quick_widget,
             )
             if (configuration == null) {
-                views.setTextViewText(R.id.widget_label, "Choose contact")
-                if (wide) views.setTextViewText(R.id.widget_caption, "Tap to pick someone")
+                views.setTextViewText(R.id.widget_label, context.getString(R.string.cw_choose))
+                if (wide) views.setTextViewText(R.id.widget_caption, context.getString(R.string.cw_tap_pick))
                 views.setTextViewText(R.id.widget_initials, "+")
                 views.setViewVisibility(R.id.widget_photo, View.GONE)
                 views.setViewVisibility(R.id.widget_icon, View.GONE)
@@ -182,7 +182,7 @@ class ContactQuickWidgetProvider : AppWidgetProvider() {
                     R.id.widget_label,
                     if (wide) configuration.contactName else firstName(configuration.contactName),
                 )
-                if (wide) views.setTextViewText(R.id.widget_caption, if (calls) "Tap to call" else "Tap to open")
+                if (wide) views.setTextViewText(R.id.widget_caption, context.getString(if (calls) R.string.cw_tap_call else R.string.cw_tap_open))
                 views.setTextViewText(R.id.widget_initials, initials(configuration.contactName))
                 val photo = loadPhoto(context, configuration)
                 if (photo != null) {

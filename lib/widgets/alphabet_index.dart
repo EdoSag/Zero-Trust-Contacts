@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// The strip of letters down the end edge of the list. Tap or drag over it
 /// to jump to that letter; a bubble shows the letter under the finger.
@@ -76,7 +77,7 @@ class _AlphabetIndexState extends State<AlphabetIndex> {
                     ),
                   ),
                 Semantics(
-                  label: 'Jump to a letter',
+                  label: context.l10n.jumpToALetter,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTapDown: (TapDownDetails d) =>

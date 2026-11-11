@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 // Sentinel used in copyWith to distinguish "not provided" from explicit null.
 class _Absent {
@@ -99,7 +100,7 @@ class VaultContact {
     final String? type = typeOf(field, value);
     return type == null || type.isEmpty
         ? fallback
-        : '${type[0].toUpperCase()}${type.substring(1)}';
+        : fieldTypeLabel(type);
   }
 
   /// [valueTypes] without entries for values the contact no longer has.

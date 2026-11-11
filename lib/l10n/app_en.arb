@@ -1,0 +1,915 @@
+{
+  "@@locale": "en",
+  "tryAgain": "Try again",
+  "bringOverYourContactsFrom": "Bring over your contacts from before the update",
+  "contactsNowUsesYourZero": "Contacts now uses your Zero-Trust account. Enter your password once to move your earlier contacts across.",
+  "later": "Later",
+  "bringOver": "Bring over",
+  "thatPasswordDoesntOpenYour": "That password doesn't open your earlier contacts. If you changed it since, use the one from before.",
+  "couldntBringThemOverCheck": "Couldn't bring them over. Check your connection and try again.",
+  "earlierContacts": "Earlier contacts",
+  "enterThePasswordYouUsed": "Enter the password you used in Contacts before this update. It's only needed once; nothing is sent to the server.",
+  "passwordFromBefore": "Password from before",
+  "cancel": "Cancel",
+  "undo": "Undo",
+  "changesUndoneOnEveryDevice": "Changes undone on every device.",
+  "blockContact": "Block contact",
+  "thisContactWillBeMarked": "This contact will be marked as blocked.",
+  "reasonOptional": "Reason (optional)",
+  "eGSpamUnwantedContact": "e.g. Spam, unwanted contact…",
+  "block": "Block",
+  "unblockContact": "Unblock contact",
+  "thisContactWillBeUnblocked": "This contact will be unblocked.",
+  "unblock": "Unblock",
+  "whatsappIsntInstalledOrDoesnt": "WhatsApp isn't installed, or doesn't know this number.",
+  "signalIsntInstalled": "Signal isn't installed.",
+  "noAppOnThisPhone": "No app on this phone can open that.",
+  "scanWithAnotherPhonesCamera": "Scan with another phone's camera to add this contact. Anyone who can see the code can read it.",
+  "done": "Done",
+  "secureSharePackage": "Secure share package",
+  "copyBothPackageAndPassphrase": "Copy both package and passphrase to share securely.",
+  "passphraseCopied": "Passphrase copied",
+  "copyPassphrase": "Copy passphrase",
+  "packageCopied": "Package copied",
+  "copyPackage": "Copy package",
+  "email": "Email",
+  "address": "Address",
+  "company": "Company",
+  "birthday": "Birthday",
+  "notes": "Notes",
+  "copied": "Copied",
+  "call": "Call",
+  "text": "Text",
+  "directions": "Directions",
+  "share": "Share",
+  "shareAsVcard": "Share as vCard",
+  "showQrCode": "Show QR code",
+  "encryptedShare": "Encrypted share",
+  "edit": "Edit",
+  "saveToTheVault": "Save to the vault",
+  "undoChanges": "Undo changes",
+  "moveToTrash": "Move to trash",
+  "blocked": "Blocked",
+  "favorite": "Favorite",
+  "pin": "Pin",
+  "noPhone": "no phone",
+  "noEmail": "no email",
+  "noCompany": "no company",
+  "otherAddress": "other address",
+  "otherLabels": "other labels",
+  "otherNotes": "other notes",
+  "otherBirthday": "other birthday",
+  "notAFavourite": "not a favourite",
+  "notBlocked": "not blocked",
+  "smallDifferences": "Small differences",
+  "goBackToThisVersion": "Go back to this version?",
+  "goBack": "Go back",
+  "noEarlierVersionsOfThis": "No earlier versions of this contact on this phone yet.\nVersions come from the daily, weekly and before-import restore points.",
+  "chooseFromGallery": "Choose from gallery",
+  "takeAPhoto": "Take a photo",
+  "removePhoto": "Remove photo",
+  "addAtLeastOneContact": "Add at least one contact detail to save.",
+  "youMayAlreadyHaveThis": "You may already have this contact",
+  "youMayAlreadyHaveThese": "You may already have these contacts",
+  "addTheNewDetailsTo": "Add the new details to this contact",
+  "openThisContactInstead": "Open this contact instead",
+  "tapAContactToAdd": "Tap a contact to add the new details to it, or save a separate contact anyway.",
+  "saveAnyway": "Save anyway",
+  "selectBirthday": "Select birthday",
+  "noLabel": "No label",
+  "remove": "Remove",
+  "close": "Close",
+  "editContact": "Edit contact",
+  "newContact": "New contact",
+  "removeFromFavorites": "Remove from favorites",
+  "addToFavorites": "Add to favorites",
+  "save": "Save",
+  "firstName": "First name",
+  "lastName": "Last name",
+  "addPhone": "Add phone",
+  "withCountryCodeLike972": "With country code, like +972 50 123 4567",
+  "addEmail": "Add email",
+  "addAddress": "Add address",
+  "streetCityCountry": "Street, city, country",
+  "addBirthday": "Add birthday",
+  "label": "Label",
+  "addLabel": "Add label",
+  "familyWorkGym": "Family, Work, Gym…",
+  "websiteOrOther": "Website or other",
+  "addWebsiteOrOtherDetail": "Add website or other detail",
+  "readingThisIphonesContacts": "Reading this iPhone's contacts…",
+  "iphoneContacts": "iPhone contacts",
+  "reading": "Reading…",
+  "thatFileIsNotA": "That file has no contacts ZT Contacts can read. Use a vCard (.vcf) or CSV export.",
+  "encryptingAndSaving": "Encrypting and saving…",
+  "everythingWasAlreadyInYour": "Everything was already in your vault.",
+  "importContacts": "Import contacts",
+  "allowAccessToContacts": "Allow access to contacts",
+  "allow": "Allow",
+  "contactsOnThisIphone": "Contacts on this iPhone",
+  "ztContactsIsNotAllowed": "ZT Contacts is not allowed to read your contacts. Turn it on in the iPhone Settings app under Privacy & Security, Contacts, then try again.",
+  "copiesEverythingTheIphoneContacts": "Copies everything the iPhone Contacts app shows (iCloud and other accounts) into your vault. You see what will change before anything is saved, and people you already have are merged, not doubled.",
+  "importFromThisIphone": "Import from this iPhone",
+  "readyToImport": "Ready to import",
+  "newLabel": "New",
+  "updated": "Updated",
+  "alreadyHere": "Already here",
+  "everythingInThisSourceIs": "Everything in this source is already in your vault.",
+  "thisExportLinksToPhotos": "This export links to photos instead of including them. Downloading connects to Google's photo server, which sees this phone's address. Photos are then encrypted like everything else.",
+  "update": "Update",
+  "back": "Back",
+  "nothingToImport": "Nothing to import",
+  "importPhotos": "Import photos",
+  "noGoogleSignInNeeded": "No sign-in to Google, Apple or Microsoft needed. Your contacts are read on this device and encrypted before they are saved or synced.",
+  "createANewContact": "Create a new contact",
+  "addToAContactI": "Add to a contact I already have",
+  "searchYourContacts": "Search your contacts",
+  "searchNamePhoneEmailNotes": "Search name, phone, email, notes",
+  "settings": "Settings",
+  "all": "All",
+  "sort": "Sort",
+  "firstNameAToZ": "First name, A to Z",
+  "lastNameAToZ": "Last name, A to Z",
+  "recentlyChanged": "Recently changed",
+  "bySource": "By source",
+  "recent": "Recent",
+  "source": "Source",
+  "addALabel": "Add a label",
+  "add": "Add",
+  "merge": "Merge",
+  "cancelSelection": "Cancel selection",
+  "selectNone": "Select none",
+  "selectAll": "Select all",
+  "bringYourIphoneContacts": "Bring your iPhone contacts",
+  "bringYourGoogleContacts": "Bring your Google contacts",
+  "importThemIntoYourEncrypted": "Import them into your encrypted vault in a few taps.",
+  "importLabel": "Import",
+  "contactsPermissionDeniedShowingVault": "Contacts permission denied. Showing vault-only contacts.",
+  "noContactsMatchTheCurrent": "No contacts match the current filters.",
+  "pinned": "Pinned",
+  "favorites": "Favorites",
+  "frequent": "Frequent",
+  "noHighlightsYetStarPin": "No highlights yet. Star/pin contacts to see them here.",
+  "trash": "Trash",
+  "deletedContactsKeptFor30": "Deleted contacts, kept for 30 days",
+  "scanAContactQrCode": "Scan a contact QR code",
+  "addAContactSomeoneShows": "Add a contact someone shows you",
+  "scanABusinessCard": "Scan a business card",
+  "readOnThisPhoneThe": "Read on this phone, the picture is never uploaded",
+  "labels": "Labels",
+  "manageLabels": "Manage labels",
+  "noLabelsYet": "No labels yet",
+  "smartGroups": "Smart groups",
+  "duplicateCleanup": "Duplicate cleanup",
+  "noDuplicatesDetected": "No duplicates detected",
+  "contacts": "Contacts",
+  "highlights": "Highlights",
+  "organize": "Organize",
+  "labelName": "Label name",
+  "addAContactFirstThen": "Add a contact first, then you can put it in a label.",
+  "newLabelX": "New label",
+  "next": "Next",
+  "noLabelsYetMakeOne": "No labels yet. Make one for family, a team or a class, then email or text everyone in it at once.",
+  "renameLabel": "Rename label",
+  "rename": "Rename",
+  "theContactsStayOnlyThe": "The contacts stay. Only the label is taken off them.",
+  "deleteLabel": "Delete label",
+  "everyContactAlreadyHasThis": "Every contact already has this label.",
+  "nobodyHereHasAnEmail": "Nobody here has an email address.",
+  "noMailAppCouldBe": "No mail app could be opened.",
+  "nobodyHereHasAPhone": "Nobody here has a phone number.",
+  "noMessagesAppCouldBe": "No messages app could be opened.",
+  "clearSelection": "Clear selection",
+  "removeFromLabel": "Remove from label",
+  "addContacts": "Add contacts",
+  "emailAll": "Email all",
+  "textAll": "Text all",
+  "nobodyHasThisLabelAny": "Nobody has this label any more.",
+  "searchContacts": "Search contacts",
+  "syncConflicts": "Sync conflicts",
+  "noConflictsWhenTheSame": "No conflicts. When the same contact is edited on two devices, the newer edit is kept and yours shows up here.",
+  "deletedOnAnotherDeviceAfter": "Deleted on another device after you edited it.",
+  "editedOnAnotherDeviceAfter": "Edited on another device after your edit.",
+  "keepDeleted": "Keep deleted",
+  "keepTheNewerOne": "Keep the newer one",
+  "useMine": "Use mine",
+  "combine": "Combine",
+  "qrCode": "QR code",
+  "thatCodeIsNotA": "That code is not a contact.",
+  "allowTheCameraForZt": "Allow the camera for ZT Contacts in the phone's settings to scan a code.",
+  "pointTheCameraAtA": "Point the camera at a contact QR code. It is read on this phone only.",
+  "bringOverContactsFromBefore": "Bring over contacts from before the update",
+  "needsYourPasswordFromBefore": "Needs your password from before, once",
+  "showInPhoneAndMessages": "Show in Phone and Messages",
+  "onCallerIdAndThe": "On: caller ID and the dialer show your contacts",
+  "offCallsFromContactsShow": "Off: calls from contacts show only the number",
+  "fromThisIphoneOrA": "From this iPhone, or an export file",
+  "accountsOnThisPhoneOr": "Phone accounts, SIM card, or an export file",
+  "restorePoints": "Restore points",
+  "undoAnImportMergeOr": "Undo an import, merge or restore",
+  "none": "None",
+  "activityOnThisDevice": "Activity on this device",
+  "saveAnEncryptedBackup": "Save an encrypted backup",
+  "aFileSealedWithA": "A file sealed with a passphrase you choose",
+  "copyToTheClipboardInstead": "Copy to the clipboard instead",
+  "restoreAnEncryptedBackup": "Restore an encrypted backup",
+  "fromABackupFile": "From a backup file",
+  "pasteTheBackupTextInstead": "Paste the backup text instead",
+  "exportContactsAsAVcard": "Export contacts as a vCard file",
+  "notEncryptedWorksWithGoogle": "Not encrypted. Works with Google, Apple and other apps",
+  "pasteVcardTextInstead": "Paste vCard text instead",
+  "exportEncryptedBackup": "Export encrypted backup",
+  "passphrase8Characters": "Passphrase (8+ characters)",
+  "thePassphraseNeedsAtLeast": "The passphrase needs at least 8 characters.",
+  "encryptedBackupCopiedToThe": "Encrypted backup copied to the clipboard.",
+  "encryptedBackupSaved": "Encrypted backup saved.",
+  "nothingWasSaved": "Nothing was saved.",
+  "restoreEncryptedBackup": "Restore encrypted backup",
+  "backupText": "Backup text",
+  "passphrase": "Passphrase",
+  "theBackupAndItsPassphrase": "The backup and its passphrase are both needed.",
+  "thereAreNoContactsTo": "There are no contacts to export yet.",
+  "vcardCopiedToTheClipboard": "vCard copied to the clipboard.",
+  "importVcard": "Import vCard",
+  "pasteVcardText": "Paste vCard text",
+  "deleteForGood": "Delete for good?",
+  "delete": "Delete",
+  "deletedForGood": "Deleted for good.",
+  "emptyTheTrash": "Empty the trash?",
+  "emptyTrash": "Empty trash",
+  "theTrashIsEmptyDeleted": "The trash is empty.\nDeleted contacts stay here for 30 days.",
+  "contactsInTheTrashAre": "Contacts in the trash are deleted for good after 30 days.",
+  "restore": "Restore",
+  "deleteForGoodX": "Delete for good",
+  "deletedForGoodToday": "Deleted for good today",
+  "restoreThisPoint": "Restore this point?",
+  "restorePointSaved": "Restore point saved.",
+  "saveNow": "Save now",
+  "noRestorePointsYet": "No restore points yet.",
+  "noActivityYet": "No activity yet.",
+  "contactsPermissionIsNeededTo": "Contacts permission is needed to show contacts in the Phone and Messages apps.",
+  "removeFromThePhone": "Remove from the phone?",
+  "theCopiesInThePhones": "The copies in the phone's contacts are removed. Your contacts stay in the vault. Calls will show numbers instead of names.",
+  "phoneAndMessages": "Phone and Messages",
+  "showContactsInPhoneAnd": "Show contacts in Phone and Messages",
+  "callerIdTheDialerAnd": "Caller ID, the dialer and messaging apps see names",
+  "thisPutsAnUnencryptedCopy": "This puts an unencrypted copy of the details you pick below in the phone's own contacts, under a \"ZT Contacts\" account. Any app you allow to read contacts can see that copy. Your vault stays encrypted and is still where you edit contacts; the copy updates while the app is unlocked and is removed when you turn this off or sign out.",
+  "whatLeavesTheVault": "What leaves the vault",
+  "name": "Name",
+  "alwaysSoCallsShowWho": "Always, so calls show who it is",
+  "phoneNumbers": "Phone numbers",
+  "neededForCallerId": "Needed for caller ID",
+  "photos": "Photos",
+  "emailAddresses": "Email addresses",
+  "addresses": "Addresses",
+  "birthdays": "Birthdays",
+  "favourites": "Favourites",
+  "starredInThePhoneToo": "Starred in the phone too",
+  "sendBlockedContactsToVoicemail": "Send blocked contacts to voicemail",
+  "updatingThePhonesContacts": "Updating the phone's contacts…",
+  "waitingToUpdate": "Waiting to update",
+  "updateNow": "Update now",
+  "theCardIsReadOn": "The card is read on this phone. The picture is not uploaded and is deleted once it has been read.",
+  "takeAPhotoOfThe": "Take a photo of the card",
+  "chooseAPhoto": "Choose a photo",
+  "readingTheCard": "Reading the card…",
+  "noDetailsCouldBeRead": "No details could be read from that picture. Try again in good light with the card filling the frame.",
+  "jumpToALetter": "Jump to a letter",
+  "nContacts": "{count, plural, =1{1 contact} other{{count} contacts}}",
+  "@nContacts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "typeMobile": "Mobile",
+  "typeHome": "Home",
+  "typeWork": "Work",
+  "typeMain": "Main",
+  "typeOther": "Other",
+  "phoneLabel": "Phone",
+  "unnamedContact": "Unnamed Contact",
+  "srcSaved": "Saved",
+  "srcAccount": "Account",
+  "srcSim": "SIM",
+  "rpBeforeMerging": "Before merging duplicates",
+  "rpDaily": "Automatic daily restore point",
+  "rpWeekly": "Automatic weekly restore point",
+  "rpBeforeRestoring": "Before restoring a restore point",
+  "rpBeforeReplacing": "Before replacing local contacts",
+  "rpManual": "Manual restore point",
+  "dupSimilar": "Similar contacts",
+  "dupPhone": "Same phone number",
+  "dupEmail": "Same email",
+  "dupName": "Same display name",
+  "rpBeforeImport": "Before import from {source}",
+  "@rpBeforeImport": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "cantOpenContacts": "Couldn't open your contacts on this device. {error}",
+  "@cantOpenContacts": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "broughtOver": "{count, plural, =1{Brought over 1 contact.} other{Brought over {count} contacts.}}",
+  "@broughtOver": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "movedToTrash": "{name} moved to the trash",
+  "@movedToTrash": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "couldntShare": "Couldn't share: {error}",
+  "@couldntShare": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "qrCodeFor": "QR code for {name}",
+  "@qrCodeFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "passphraseValue": "Passphrase: {value}",
+  "@passphraseValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "expiresAt": "Expires: {date}",
+  "@expiresAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "textNumber": "Text {number}",
+  "@textNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "interactionCount": "Interaction count: {count}",
+  "@interactionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "histName": "name: {value}",
+  "@histName": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "histPhone": "phone: {value}",
+  "@histPhone": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "histEmail": "email: {value}",
+  "@histEmail": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "histCompany": "company: {value}",
+  "@histCompany": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "histFavourite": "favourite",
+  "histBlocked": "blocked",
+  "goesBackTo": "{name} goes back to how it was on {date}, on every device. The photo stays as it is now.",
+  "@goesBackTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToSaveContact": "Failed to save contact: {error}",
+  "@failedToSaveContact": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "whatToDoWith": "What to do with {name}",
+  "@whatToDoWith": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "readingName": "Reading {name}…",
+  "@readingName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "encryptingPhotos": "Encrypting photos… {done} of {total}",
+  "@encryptingPhotos": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "nAdded": "{count} added",
+  "@nAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nUpdated": "{count} updated",
+  "@nUpdated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nPhotos": "{count, plural, =1{1 photo} other{{count} photos}}",
+  "@nPhotos": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importedSummary": "Imported: {details}.",
+  "@importedSummary": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "importedFromIphoneSummary": "Imported from this iPhone: {details}.",
+  "@importedFromIphoneSummary": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "importedFromGoogleSummary": "Imported from Google: {details}.",
+  "@importedFromGoogleSummary": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "nothingToImportFrom": "Nothing to import from {name}.",
+  "@nothingToImportFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "nothingToImportFromFile": "Nothing to import from this file.",
+  "fromSource": "From {source}",
+  "@fromSource": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "matchingContactsGet": "Matching contacts get the missing phones, emails and details added. Nothing you already have is changed or removed, and a restore point is saved first so you can undo the import from Account & Vault.",
+  "photosAddedToo": "{count, plural, =1{1 photo added too, encrypted on this phone.} other{{count} photos added too, encrypted on this phone.}}",
+  "@photosAddedToo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadPhotosFromGoogle": "{count, plural, =1{Download 1 photo from Google} other{Download {count} photos from Google}}",
+  "@downloadPhotosFromGoogle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "andNMore": "and {count} more",
+  "@andNMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importNContacts": "{count, plural, =1{Import 1 contact} other{Import {count} contacts}}",
+  "@importNContacts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "saveName": "Save {name}",
+  "@saveName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mergedDuplicatesInto": "Merged duplicates into {name}",
+  "@mergedDuplicatesInto": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "labelFilter": "Label: {label}",
+  "@labelFilter": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "thatDidntWork": "That didn't work: {error}",
+  "@thatDidntWork": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "nMovedToTrash": "{count, plural, =1{1 contact moved to the trash} other{{count} contacts moved to the trash}}",
+  "@nMovedToTrash": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addedLabelTo": "{count, plural, =1{Added \"{label}\" to 1 contact} other{Added \"{label}\" to {count} contacts}}",
+  "@addedLabelTo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "mergeNIntoOne": "Merge {count} contacts into one?",
+  "@mergeNIntoOne": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mergeExplained": "{names}\n\nTheir phones, emails and other details are combined. A restore point is saved first, so you can undo this from Settings.",
+  "@mergeExplained": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "mergedInto": "Merged into {name}",
+  "@mergedInto": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "nSelected": "{count} selected",
+  "@nSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contactsCount": "Contacts ({count})",
+  "@contactsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "birthdaysSoon": "Birthdays soon ({count})",
+  "@birthdaysSoon": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "staleContacts": "Stale contacts ({count})",
+  "@staleContacts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "missingPhone": "Missing phone ({count})",
+  "@missingPhone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addToLabel": "Add to {label}",
+  "@addToLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "labelNowHas": "{label} now has {contacts}.",
+  "@labelNowHas": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "contacts": {
+        "type": "String"
+      }
+    }
+  },
+  "renamedTo": "Renamed to {name}.",
+  "@renamedTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteTheLabel": "Delete the label {label}?",
+  "@deleteTheLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "addedContacts": "Added {contacts}.",
+  "@addedContacts": {
+    "placeholders": {
+      "contacts": {
+        "type": "String"
+      }
+    }
+  },
+  "tookOutOf": "Took {contacts} out of {label}.",
+  "@tookOutOf": {
+    "placeholders": {
+      "contacts": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "emailN": "Email {count}",
+  "@emailN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "textN": "Text {count}",
+  "@textN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "holdRowToSelect": "{contacts}. Hold a row to select several.",
+  "@holdRowToSelect": {
+    "placeholders": {
+      "contacts": {
+        "type": "String"
+      }
+    }
+  },
+  "addN": "Add {count}",
+  "@addN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editsReplaced": "{count, plural, =1{1 edit replaced by a newer one from another device} other{{count} edits replaced by a newer one from another device}}",
+  "@editsReplaced": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "couldntReadThatFile": "Couldn't read that file: {error}",
+  "@couldntReadThatFile": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importedNContacts": "{count, plural, =1{Imported 1 contact.} other{Imported {count} contacts.}}",
+  "@importedNContacts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "savedAsVcard": "{count, plural, =1{1 contact saved as a vCard file.} other{{count} contacts saved as a vCard file.}}",
+  "@savedAsVcard": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importedFromVcard": "{count, plural, =1{Imported 1 contact from the vCard.} other{Imported {count} contacts from the vCard.}}",
+  "@importedFromVcard": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "isBackInContacts": "{name} is back in your contacts.",
+  "@isBackInContacts": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deletedEverywhereName": "{name} is deleted from every device and can't be restored.",
+  "@deletedEverywhereName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deletedEverywhereN": "{count, plural, =1{1 contact is deleted from every device and can't be restored.} other{{count} contacts are deleted from every device and can't be restored.}}",
+  "@deletedEverywhereN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deletedNForGood": "{count, plural, =1{Deleted 1 contact for good.} other{Deleted {count} contacts for good.}}",
+  "@deletedNForGood": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysLeft": "{count, plural, =1{1 day left} other{{count} days left}}",
+  "@daysLeft": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "restorePointExplained": "Your contacts go back to how they were on {date} ({count} contacts), on every device. A restore point of the current state is taken first, so you can undo this.",
+  "@restorePointExplained": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "restoredN": "{count, plural, =1{Restored 1 contact.} other{Restored {count} contacts.}}",
+  "@restoredN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nOnThisPhone": "{count, plural, =1{1 contact on this phone} other{{count} contacts on this phone}}",
+  "@nOnThisPhone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cardCouldNotBeRead": "The card could not be read: {error}",
+  "@cardCouldNotBeRead": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsOnThisPhone": "Accounts on this phone",
+  "neededToReadPhoneAccounts": "Needed to read the contacts already on this phone.",
+  "noOtherContactsOnThisPhone": "No other contacts on this phone",
+  "addAccountOrUseFile": "Add an account in Android Settings, or use an export file below.",
+  "accountKindGoogle": "Google",
+  "accountKindExchange": "Outlook / Exchange",
+  "accountKindSamsung": "Samsung account",
+  "accountKindPhone": "Saved on this phone",
+  "accountKindOther": "Other account",
+  "simCard": "SIM card",
+  "simCardHelp": "Copies the names and numbers saved on the SIM card. The SIM itself is not changed.",
+  "importFromSimCard": "Import from SIM card",
+  "readingSimCard": "Reading the SIM card…",
+  "noContactsOnSim": "No contacts found on the SIM card.",
+  "fromAnExportFile": "From an export file",
+  "fromAnExportFileHelp": "A vCard (.vcf) or spreadsheet (.csv) file from Google, iCloud, Outlook or any other app.",
+  "chooseFile": "Choose file",
+  "exportHelpGoogleTitle": "How to export from Google",
+  "exportHelpGoogle": "On contacts.google.com tap Export, choose vCard or Google CSV, and save the file.",
+  "exportHelpIcloudTitle": "How to export from iCloud",
+  "exportHelpIcloud": "On icloud.com/contacts on a computer, select all contacts (Ctrl+A or ⌘A), click the share button and choose Export vCard.",
+  "exportHelpOutlookTitle": "How to export from Outlook",
+  "exportHelpOutlook": "On outlook.com open People, then Manage contacts, Export contacts, All contacts. In Outlook for Windows use File, Open & Export, Import/Export, Export to a file, Comma Separated Values.",
+  "exportHelpSpreadsheetTitle": "From a spreadsheet",
+  "exportHelpSpreadsheet": "Save it as CSV with a header row such as Name, Phone, Email. Company, Address, Birthday and Notes columns are read too, in English or Hebrew.",
+  "noContactsFoundIn": "No contacts found in {source}.",
+  "@noContactsFoundIn": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "importAContactsFile": "Import a contacts file",
+  "aVcfOrCsvFile": "A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet"
+}
