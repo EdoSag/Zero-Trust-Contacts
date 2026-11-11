@@ -13,6 +13,7 @@ import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
 import 'package:zerotrust_contacts/services/contact_photo_service.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// The one contact editor: a new contact, a new contact filled in from
 /// somewhere else ([prefill]: a phone contact, a number another app asked
@@ -141,7 +142,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                 Icons.photo_library_outlined,
                 color: colorScheme.primary,
               ),
-              title: const Text('Choose from gallery'),
+              title: Text(context.l10n.chooseFromGallery),
               onTap: () async {
                 final XFile? file = await vault.whileShowingSystemUi(
                   const PhotoPicker().pickFromGallery,
@@ -154,7 +155,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                 Icons.camera_alt_outlined,
                 color: colorScheme.primary,
               ),
-              title: const Text('Take a photo'),
+              title: Text(context.l10n.takeAPhoto),
               onTap: () async {
                 final XFile? file = await vault.whileShowingSystemUi(
                   const PhotoPicker().pickFromCamera,
@@ -165,7 +166,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
             if (_hasPhoto)
               ListTile(
                 leading: Icon(Icons.delete_outline, color: colorScheme.error),
-                title: const Text('Remove photo'),
+                title: Text(context.l10n.removePhoto),
                 onTap: () => Navigator.of(ctx).pop('remove'),
               ),
           ],
@@ -305,8 +306,8 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
     VaultContact contact = _fromForm();
     if (_isEmpty(contact) && !_hasPhoto) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add at least one contact detail to save.'),
+        SnackBar(
+          content: Text(context.l10n.addAtLeastOneContact),
         ),
       );
       return;
@@ -371,7 +372,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save contact: $e')));
+      ).showSnackBar(SnackBar(content: Text(context.l10n.failedToSaveContact('$e'))));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -387,10 +388,10 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
       builder: (BuildContext ctx) => AlertDialog(
         title: Text(
           matches.length == 1
-              ? 'You may already have this contact'
-              : 'You may already have these contacts',
+              ? context.l10n.youMayAlreadyHaveThis
+              : context.l10n.youMayAlreadyHaveThese,
         ),
-        contentPadding: const EdgeInsets.only(top: 12),
+        contentPadding: EdgeInsets.only(top: 12),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
@@ -407,29 +408,28 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                     ].join(' · '),
                   ),
                   trailing: PopupMenuButton<_DuplicateChoice>(
-                    tooltip: 'What to do with ${match.displayName}',
+                    tooltip: context.l10n.whatToDoWith(match.displayName),
                     onSelected: (_DuplicateChoice c) =>
                         Navigator.of(ctx).pop((c, match)),
                     itemBuilder: (_) =>
-                        const <PopupMenuEntry<_DuplicateChoice>>[
+                        <PopupMenuEntry<_DuplicateChoice>>[
                           PopupMenuItem<_DuplicateChoice>(
                             value: _DuplicateChoice.addTo,
-                            child: Text('Add the new details to this contact'),
+                            child: Text(context.l10n.addTheNewDetailsTo),
                           ),
                           PopupMenuItem<_DuplicateChoice>(
                             value: _DuplicateChoice.open,
-                            child: Text('Open this contact instead'),
+                            child: Text(context.l10n.openThisContactInstead),
                           ),
                         ],
                   ),
                   onTap: () =>
                       Navigator.of(ctx).pop((_DuplicateChoice.addTo, match)),
                 ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(24, 8, 24, 0),
                 child: Text(
-                  'Tap a contact to add the new details to it, or save a '
-                  'separate contact anyway.',
+                  context.l10n.tapAContactToAdd,
                 ),
               ),
             ],
@@ -438,13 +438,13 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(
               ctx,
             ).pop((_DuplicateChoice.saveAnyway, matches.first)),
-            child: const Text('Save anyway'),
+            child: Text(context.l10n.saveAnyway),
           ),
         ],
       ),
@@ -465,7 +465,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
       initialDate: initial,
       firstDate: first,
       lastDate: last,
-      helpText: 'Select birthday',
+      helpText: context.l10n.selectBirthday,
     );
     if (picked == null) {
       return;
@@ -475,8 +475,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
     setState(() => controller.text = '${picked.year}-$month-$day');
   }
 
-  static String _typeName(String type) =>
-      '${type[0].toUpperCase()}${type.substring(1)}';
+  static String _typeName(String type) => fieldTypeLabel(type);
 
   Widget _typedSection({
     required String title,
@@ -525,9 +524,9 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                           value: type,
                           child: Text(_typeName(type)),
                         ),
-                      const DropdownMenuItem<String>(
+                      DropdownMenuItem<String>(
                         value: '',
-                        child: Text('No label'),
+                        child: Text(context.l10n.noLabel),
                       ),
                     ],
                     onChanged: (String? value) =>
@@ -535,7 +534,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Remove',
+                  tooltip: context.l10n.remove,
                   icon: const Icon(Icons.close),
                   onPressed: () => setState(() {
                     rows.remove(row);
@@ -587,7 +586,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Remove',
+                  tooltip: context.l10n.remove,
                   icon: const Icon(Icons.close),
                   onPressed: () => setState(() {
                     rows.remove(controller);
@@ -608,14 +607,14 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Close',
+          tooltip: context.l10n.close,
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: Text(_editing ? 'Edit contact' : 'New contact'),
+        title: Text(_editing ? context.l10n.editContact : context.l10n.newContact),
         actions: <Widget>[
           IconButton(
-            tooltip: _isFavorite ? 'Remove from favorites' : 'Add to favorites',
+            tooltip: _isFavorite ? context.l10n.removeFromFavorites : context.l10n.addToFavorites,
             icon: Icon(_isFavorite ? Icons.star : Icons.star_border),
             onPressed: () => setState(() => _isFavorite = !_isFavorite),
           ),
@@ -632,7 +631,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Save'),
+                    : Text(context.l10n.save),
               ),
             ),
           ),
@@ -692,36 +691,36 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                 DirectionalTextField(
                   controller: _firstName,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(labelText: 'First name'),
+                  decoration: InputDecoration(labelText: context.l10n.firstName),
                 ),
                 const SizedBox(height: 8),
                 DirectionalTextField(
                   controller: _lastName,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(labelText: 'Last name'),
+                  decoration: InputDecoration(labelText: context.l10n.lastName),
                 ),
                 const SizedBox(height: 8),
                 DirectionalTextField(
                   controller: _company,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(labelText: 'Company'),
+                  decoration: InputDecoration(labelText: context.l10n.company),
                 ),
                 const SizedBox(height: 8),
               ],
             ),
             _typedSection(
-              title: 'Phone',
-              addLabel: 'Add phone',
+              title: context.l10n.phoneLabel,
+              addLabel: context.l10n.addPhone,
               icon: Icons.phone_outlined,
               rows: _phones,
               types: VaultContact.phoneTypes,
-              hint: 'With country code, like +972 50 123 4567',
+              hint: context.l10n.withCountryCodeLike972,
               keyboardType: TextInputType.phone,
               forceLtr: true,
             ),
             _typedSection(
-              title: 'Email',
-              addLabel: 'Add email',
+              title: context.l10n.email,
+              addLabel: context.l10n.addEmail,
               icon: Icons.email_outlined,
               rows: _emails,
               types: VaultContact.emailTypes,
@@ -730,32 +729,32 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
               forceLtr: true,
             ),
             _typedSection(
-              title: 'Address',
-              addLabel: 'Add address',
+              title: context.l10n.address,
+              addLabel: context.l10n.addAddress,
               icon: Icons.place_outlined,
               rows: _addresses,
               types: VaultContact.addressTypes,
-              hint: 'Street, city, country',
+              hint: context.l10n.streetCityCountry,
               keyboardType: TextInputType.streetAddress,
               maxLines: 2,
             ),
             _plainSection(
-              title: 'Birthday',
-              addLabel: 'Add birthday',
+              title: context.l10n.birthday,
+              addLabel: context.l10n.addBirthday,
               icon: Icons.cake_outlined,
               rows: _birthdays,
               birthday: true,
             ),
             _plainSection(
-              title: 'Label',
-              addLabel: 'Add label',
+              title: context.l10n.label,
+              addLabel: context.l10n.addLabel,
               icon: Icons.label_outline,
               rows: _labels,
-              hint: 'Family, Work, Gym…',
+              hint: context.l10n.familyWorkGym,
             ),
             _plainSection(
-              title: 'Website or other',
-              addLabel: 'Add website or other detail',
+              title: context.l10n.websiteOrOther,
+              addLabel: context.l10n.addWebsiteOrOtherDetail,
               icon: Icons.link,
               rows: _other,
             ),
@@ -766,7 +765,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
                   controller: _notes,
                   maxLines: null,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(labelText: 'Notes'),
+                  decoration: InputDecoration(labelText: context.l10n.notes),
                 ),
               ],
             ),

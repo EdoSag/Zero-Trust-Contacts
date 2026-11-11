@@ -19,6 +19,7 @@ import 'package:zerotrust_contacts/phone_sync/phone_sync_controller.dart';
 import 'package:zerotrust_contacts/phone_sync/phone_sync_page.dart';
 import 'package:zerotrust_contacts/pages/vault_history_page.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// The shared Zero-Trust settings screen, with Contacts' own rows: Google
 /// import, restore points, sync conflicts, activity, and backups.
@@ -49,98 +50,97 @@ class ContactsSettingsPage extends ConsumerWidget {
         if (legacyPending)
           ListTile(
             leading: const Icon(Icons.move_down_outlined),
-            title: const Text('Bring over contacts from before the update'),
-            subtitle: const Text('Needs your password from before, once'),
+            title: Text(context.l10n.bringOverContactsFromBefore),
+            subtitle: Text(context.l10n.needsYourPasswordFromBefore),
             onTap: () => showLegacyImportDialog(context),
           ),
         if (phoneSyncSupported)
           ListTile(
             leading: const Icon(Icons.phone_in_talk_outlined),
-            title: const Text('Show in Phone and Messages'),
+            title: Text(context.l10n.showInPhoneAndMessages),
             subtitle: Text(phoneSync.enabled
-                ? 'On: caller ID and the dialer show your contacts'
-                : 'Off: calls from contacts show only the number'),
+                ? context.l10n.onCallerIdAndThe
+                : context.l10n.offCallsFromContactsShow),
             onTap: () => push(const PhoneSyncPage()),
           ),
         ListTile(
           leading: const Icon(Icons.download_outlined),
           title: Text(defaultTargetPlatform == TargetPlatform.iOS
-              ? 'Import contacts'
-              : 'Import from Google'),
+              ? context.l10n.importContacts
+              : context.l10n.importFromGoogle),
           subtitle: Text(defaultTargetPlatform == TargetPlatform.iOS
-              ? 'From this iPhone, or a Google export'
-              : 'Accounts on this phone, or a Google export'),
+              ? context.l10n.fromThisIphoneOrA
+              : context.l10n.accountsOnThisPhoneOr),
           onTap: () => push(const GoogleImportPage()),
         ),
         ListTile(
           leading: const Icon(Icons.delete_outline),
-          title: const Text('Trash'),
-          subtitle: const Text('Deleted contacts, kept for 30 days'),
+          title: Text(context.l10n.trash),
+          subtitle: Text(context.l10n.deletedContactsKeptFor30),
           onTap: () => push(const TrashPage()),
         ),
         ListTile(
           leading: const Icon(Icons.restore_outlined),
-          title: const Text('Restore points'),
-          subtitle: const Text('Undo an import, merge or restore'),
+          title: Text(context.l10n.restorePoints),
+          subtitle: Text(context.l10n.undoAnImportMergeOr),
           onTap: () => push(const RestorePointsPage()),
         ),
         ListTile(
           leading: const Icon(Icons.call_split_outlined),
-          title: const Text('Sync conflicts'),
+          title: Text(context.l10n.syncConflicts),
           subtitle: Text(conflicts == 0
-              ? 'None'
-              : '$conflicts ${conflicts == 1 ? 'edit' : 'edits'} replaced '
-                  'by a newer one from another device'),
+              ? context.l10n.none
+              : context.l10n.editsReplaced(conflicts)),
           onTap: () => push(const MergeConflictsPage()),
         ),
         ListTile(
           leading: const Icon(Icons.history_outlined),
-          title: const Text('Activity on this device'),
+          title: Text(context.l10n.activityOnThisDevice),
           onTap: () => push(const ActivityPage()),
         ),
       ],
       backupSection: <Widget>[
         ListTile(
           leading: const Icon(Icons.lock_outline),
-          title: const Text('Save an encrypted backup'),
-          subtitle: const Text('A file sealed with a passphrase you choose'),
+          title: Text(context.l10n.saveAnEncryptedBackup),
+          subtitle: Text(context.l10n.aFileSealedWithA),
           onTap: () => _exportEncrypted(context, ref, toFile: true),
           trailing: IconButton(
-            tooltip: 'Copy to the clipboard instead',
+            tooltip: context.l10n.copyToTheClipboardInstead,
             icon: const Icon(Icons.copy_outlined),
             onPressed: () => _exportEncrypted(context, ref, toFile: false),
           ),
         ),
         ListTile(
           leading: const Icon(Icons.lock_open_outlined),
-          title: const Text('Restore an encrypted backup'),
-          subtitle: const Text('From a backup file'),
+          title: Text(context.l10n.restoreAnEncryptedBackup),
+          subtitle: Text(context.l10n.fromABackupFile),
           onTap: () => _importEncrypted(context, ref, fromFile: true),
           trailing: IconButton(
-            tooltip: 'Paste the backup text instead',
+            tooltip: context.l10n.pasteTheBackupTextInstead,
             icon: const Icon(Icons.paste_outlined),
             onPressed: () => _importEncrypted(context, ref, fromFile: false),
           ),
         ),
         ListTile(
           leading: const Icon(Icons.contact_page_outlined),
-          title: const Text('Export contacts as a vCard file'),
-          subtitle: const Text(
-              'Not encrypted. Works with Google, Apple and other apps'),
+          title: Text(context.l10n.exportContactsAsAVcard),
+          subtitle: Text(
+              context.l10n.notEncryptedWorksWithGoogle),
           onTap: () => _exportVCard(context, ref, toFile: true),
           trailing: IconButton(
-            tooltip: 'Copy to the clipboard instead',
+            tooltip: context.l10n.copyToTheClipboardInstead,
             icon: const Icon(Icons.copy_outlined),
             onPressed: () => _exportVCard(context, ref, toFile: false),
           ),
         ),
         ListTile(
           leading: const Icon(Icons.contact_mail_outlined),
-          title: const Text('Import a vCard file'),
-          subtitle: const Text('A .vcf file from any contacts app'),
+          title: Text(context.l10n.importAVcardFile),
+          subtitle: Text(context.l10n.aVcfFileFromAny),
           onTap: () => _importVCardFile(context, ref),
           trailing: IconButton(
-            tooltip: 'Paste vCard text instead',
+            tooltip: context.l10n.pasteVcardTextInstead,
             icon: const Icon(Icons.paste_outlined),
             onPressed: () => _importVCard(context, ref),
           ),
@@ -148,8 +148,8 @@ class ContactsSettingsPage extends ConsumerWidget {
         if (QrScanPage.isSupported)
           ListTile(
             leading: const Icon(Icons.qr_code_scanner),
-            title: const Text('Scan a contact QR code'),
-            subtitle: const Text('Add a contact someone shows you'),
+            title: Text(context.l10n.scanAContactQrCode),
+            subtitle: Text(context.l10n.addAContactSomeoneShows),
             onTap: () => QrScanPage.scanAndImport(context),
           ),
       ],
@@ -214,13 +214,13 @@ class ContactsSettingsPage extends ConsumerWidget {
       {required bool toFile}) async {
     final List<String>? values = await showTextInputsDialog(
       context,
-      title: 'Export encrypted backup',
-      labels: const <String>['Passphrase (8+ characters)'],
+      title: context.l10n.exportEncryptedBackup,
+      labels: <String>[context.l10n.passphrase8Characters],
       obscure: true,
     );
     if (values == null || !context.mounted) return;
     if (values[0].length < 8) {
-      _snack(context, 'The passphrase needs at least 8 characters.');
+      _snack(context, context.l10n.thePassphraseNeedsAtLeast);
       return;
     }
     await _run(context, () async {
@@ -229,7 +229,7 @@ class ContactsSettingsPage extends ConsumerWidget {
           await repo.exportEncryptedJson(passphrase: values[0]);
       if (!toFile) {
         await Clipboard.setData(ClipboardData(text: package));
-        return 'Encrypted backup copied to the clipboard.';
+        return currentL10n.encryptedBackupCopiedToThe;
       }
       final bool saved = await _saveFile(
         ref,
@@ -237,7 +237,7 @@ class ContactsSettingsPage extends ConsumerWidget {
         mimeType: 'application/octet-stream',
         text: package,
       );
-      return saved ? 'Encrypted backup saved.' : 'Nothing was saved.';
+      return saved ? currentL10n.encryptedBackupSaved : currentL10n.nothingWasSaved;
     });
   }
 
@@ -248,15 +248,15 @@ class ContactsSettingsPage extends ConsumerWidget {
       try {
         backup = (await _pickTextFile(ref))?.$2.trim();
       } on Object catch (error) {
-        if (context.mounted) _snack(context, 'Couldn\'t read that file: $error');
+        if (context.mounted) _snack(context, currentL10n.couldntReadThatFile('$error'));
         return;
       }
       if (backup == null || !context.mounted) return;
     }
     final List<String>? values = await showTextInputsDialog(
       context,
-      title: 'Restore encrypted backup',
-      labels: <String>[if (!fromFile) 'Backup text', 'Passphrase'],
+      title: context.l10n.restoreEncryptedBackup,
+      labels: <String>[if (!fromFile) context.l10n.backupText, context.l10n.passphrase],
       multilineFirst: !fromFile,
       obscure: fromFile,
     );
@@ -264,13 +264,13 @@ class ContactsSettingsPage extends ConsumerWidget {
     final String text = backup ?? values.first;
     final String passphrase = values.last;
     if (text.isEmpty || passphrase.isEmpty) {
-      _snack(context, 'The backup and its passphrase are both needed.');
+      _snack(context, context.l10n.theBackupAndItsPassphrase);
       return;
     }
     await _run(context, () async {
       final int count = await requireRepository(ref).importEncryptedJson(
           encryptedPackage: text, passphrase: passphrase);
-      return 'Imported $count contacts.';
+      return currentL10n.importedNContacts(count);
     });
   }
 
@@ -280,12 +280,12 @@ class ContactsSettingsPage extends ConsumerWidget {
       final VaultRepository repo = requireRepository(ref);
       final List<VaultContact> contacts = await repo.loadSavedContacts();
       if (contacts.isEmpty) {
-        return 'There are no contacts to export yet.';
+        return currentL10n.thereAreNoContactsTo;
       }
       final String vcard = repo.exportVCard(contacts);
       if (!toFile) {
         await Clipboard.setData(ClipboardData(text: vcard));
-        return 'vCard copied to the clipboard.';
+        return currentL10n.vcardCopiedToTheClipboard;
       }
       final bool saved = await _saveFile(
         ref,
@@ -298,8 +298,8 @@ class ContactsSettingsPage extends ConsumerWidget {
             details: 'Exported ${contacts.length} contacts as a vCard file');
       }
       return saved
-          ? '${contacts.length} contacts saved as a vCard file.'
-          : 'Nothing was saved.';
+          ? currentL10n.savedAsVcard(contacts.length)
+          : currentL10n.nothingWasSaved;
     });
   }
 
@@ -313,21 +313,21 @@ class ContactsSettingsPage extends ConsumerWidget {
             GoogleImportPage(vCardText: file.$2, vCardName: file.$1),
       ));
     } on Object catch (error) {
-      if (context.mounted) _snack(context, 'Couldn\'t read that file: $error');
+      if (context.mounted) _snack(context, currentL10n.couldntReadThatFile('$error'));
     }
   }
 
   Future<void> _importVCard(BuildContext context, WidgetRef ref) async {
     final List<String>? values = await showTextInputsDialog(
       context,
-      title: 'Import vCard',
-      labels: const <String>['Paste vCard text'],
+      title: context.l10n.importVcard,
+      labels: <String>[context.l10n.pasteVcardText],
       multilineFirst: true,
     );
     if (values == null || values[0].isEmpty || !context.mounted) return;
     await _run(context, () async {
       final int count = await requireRepository(ref).importVCard(values[0]);
-      return 'Imported $count contacts from the vCard.';
+      return currentL10n.importedFromVcard(count);
     });
   }
 }
@@ -369,13 +369,13 @@ Future<List<String>?> showTextInputsDialog(
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(<String>[
             for (final TextEditingController c in controllers) c.text.trim(),
           ]),
-          child: const Text('OK'),
+          child: Text(MaterialLocalizations.of(context).okButtonLabel),
         ),
       ],
     ),

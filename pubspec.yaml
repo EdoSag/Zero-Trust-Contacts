@@ -16,12 +16,16 @@ hooks:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   # Shared account, keys, sync, settings and look of every Zero-Trust app.
   zero_trust_core:
     git:
       url: https://github.com/EdoSag/Zero-Trust-Core.git
       path: packages/zero_trust_core
-      ref: 4af4c3b21f61d7ba974899c4a0498406001efec8 # v0.7.2 (switch to the tag once it's pushed)
+      # 0.10.0: the English/Hebrew language setting (Core PR #21). Switch to
+      # the v0.10.0 tag once it's pushed.
+      ref: ba9a62de6bf17de7deb4596751c3f457d48d7942
   flutter_riverpod: ^3.5.0
   supabase_flutter: ^2.9.0
   flutter_dotenv: ^6.0.1
@@ -45,6 +49,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - .env

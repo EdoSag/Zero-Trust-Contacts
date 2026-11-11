@@ -26,6 +26,7 @@ import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
 import 'package:zerotrust_contacts/widgets/compact_button_style.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -266,20 +267,20 @@ class _HomePageState extends ConsumerState<HomePage> {
             final bool? addToExisting = await showDialog<bool>(
               context: context,
               builder: (BuildContext ctx) => SimpleDialog(
-                title: Text('Save ${contact.displayName}'),
+                title: Text(context.l10n.saveName(contact.displayName)),
                 children: [
                   SimpleDialogOption(
                     onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const ListTile(
+                    child: ListTile(
                       leading: Icon(Icons.person_add_alt),
-                      title: Text('Create a new contact'),
+                      title: Text(context.l10n.createANewContact),
                     ),
                   ),
                   SimpleDialogOption(
                     onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const ListTile(
+                    child: ListTile(
                       leading: Icon(Icons.group_add_outlined),
-                      title: Text('Add to a contact I already have'),
+                      title: Text(context.l10n.addToAContactI),
                     ),
                   ),
                 ],
@@ -343,8 +344,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Search your contacts',
+                      decoration: InputDecoration(
+                        hintText: context.l10n.searchYourContacts,
                         prefixIcon: Icon(Icons.search),
                       ),
                       onChanged: (String value) =>
@@ -404,7 +405,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         await _vaultRepository.mergeDuplicateContacts(group.contacts);
     if (merged != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Merged duplicates into ${merged.displayName}')),
+        SnackBar(content: Text(context.l10n.mergedDuplicatesInto(merged.displayName))),
       );
       await _loadContacts();
     }
@@ -422,7 +423,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search name, phone, email, notes',
+                    hintText: context.l10n.searchNamePhoneEmailNotes,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _query.isEmpty
                         ? null
@@ -450,47 +451,47 @@ class _HomePageState extends ConsumerState<HomePage> {
                     await _loadContacts();
                   }
                 },
-                tooltip: 'Settings',
+                tooltip: context.l10n.settings,
                 icon: const Icon(Icons.settings_outlined),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _sourceChip('all', 'All'),
-                _sourceChip('saved', 'Saved'),
-                _sourceChip('account', 'Account'),
-                _sourceChip('sim card', 'SIM'),
-                _sourceChip('phone', 'Phone'),
+                _sourceChip('all', context.l10n.all),
+                _sourceChip('saved', context.l10n.srcSaved),
+                _sourceChip('account', context.l10n.srcAccount),
+                _sourceChip('sim card', context.l10n.srcSim),
+                _sourceChip('phone', context.l10n.phoneLabel),
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: PopupMenuButton<ContactSortMode>(
-              tooltip: 'Sort',
+              tooltip: context.l10n.sort,
               onSelected: _setSortMode,
               itemBuilder: (BuildContext context) {
-                return const [
+                return [
                   PopupMenuItem(
                     value: ContactSortMode.alphabetical,
-                    child: Text('First name, A to Z'),
+                    child: Text(context.l10n.firstNameAToZ),
                   ),
                   PopupMenuItem(
                     value: ContactSortMode.lastName,
-                    child: Text('Last name, A to Z'),
+                    child: Text(context.l10n.lastNameAToZ),
                   ),
                   PopupMenuItem(
                     value: ContactSortMode.recent,
-                    child: Text('Recently changed'),
+                    child: Text(context.l10n.recentlyChanged),
                   ),
                   PopupMenuItem(
                     value: ContactSortMode.source,
-                    child: Text('By source'),
+                    child: Text(context.l10n.bySource),
                   ),
                 ];
               },
@@ -506,7 +507,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: Row(
                 children: [
                   Chip(
-                    label: Text('Label: $_activeLabelFilter'),
+                    label: Text(context.l10n.labelFilter(_activeLabelFilter)),
                     onDeleted: () {
                       setState(() {
                         _activeLabelFilter = '';
@@ -539,13 +540,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   String _sortLabel(ContactSortMode mode) {
     switch (mode) {
       case ContactSortMode.alphabetical:
-        return 'First name';
+        return context.l10n.firstName;
       case ContactSortMode.lastName:
-        return 'Last name';
+        return context.l10n.lastName;
       case ContactSortMode.recent:
-        return 'Recent';
+        return context.l10n.recent;
       case ContactSortMode.source:
-        return 'Source';
+        return context.l10n.source;
     }
   }
 
@@ -659,7 +660,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     try {
       await action(contacts);
     } on Object catch (error) {
-      _snack('That didn\'t work: $error');
+      _snack(currentL10n.thatDidntWork('$error'));
     } finally {
       if (mounted) {
         setState(() => _bulkBusy = false);
@@ -675,11 +676,9 @@ class _HomePageState extends ConsumerState<HomePage> {
         final int moved = await repo.deleteSavedContacts(ids);
         if (mounted) setState(_selected.clear);
         _snack(
-          moved == 1
-              ? '1 contact moved to the trash'
-              : '$moved contacts moved to the trash',
+          currentL10n.nMovedToTrash(moved),
           action: SnackBarAction(
-            label: 'Undo',
+            label: currentL10n.undo,
             onPressed: () async {
               for (final String id in ids) {
                 await repo.restoreFromTrash(id);
@@ -694,7 +693,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final String? label = await showDialog<String>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('Add a label'),
+        title: Text(context.l10n.addALabel),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -704,7 +703,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 controller: controller,
                 autofocus: true,
                 textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'Label'),
+                decoration: InputDecoration(labelText: context.l10n.label),
               ),
               if (_labelCounts.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -726,11 +725,11 @@ class _HomePageState extends ConsumerState<HomePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Add'),
+            child: Text(context.l10n.add),
           ),
         ],
       ),
@@ -743,9 +742,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       final int changed = await _vaultRepository.addLabel(
           contacts.map((VaultContact c) => c.id), label);
       if (mounted) setState(_selected.clear);
-      _snack(changed == 1
-          ? 'Added "$label" to 1 contact'
-          : 'Added "$label" to $changed contacts');
+      _snack(currentL10n.addedLabelTo(changed, label));
     });
   }
 
@@ -775,20 +772,18 @@ class _HomePageState extends ConsumerState<HomePage> {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        title: Text('Merge ${contacts.length} contacts into one?'),
+        title: Text(context.l10n.mergeNIntoOne(contacts.length)),
         content: Text(
-          '${contacts.map((VaultContact c) => c.displayName).join(', ')}\n\n'
-          'Their phones, emails and other details are combined. A restore '
-          'point is saved first, so you can undo this from Settings.',
+          context.l10n.mergeExplained(contacts.map((VaultContact c) => c.displayName).join(', ')),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Merge'),
+            child: Text(context.l10n.merge),
           ),
         ],
       ),
@@ -801,7 +796,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           await _vaultRepository.mergeDuplicateContacts(contacts);
       if (mounted) setState(_selected.clear);
       if (merged != null) {
-        _snack('Merged into ${merged.displayName}');
+        _snack(currentL10n.mergedInto(merged.displayName));
       }
     });
   }
@@ -814,14 +809,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     final bool all = selectable.every(_selected.contains);
     return AppBar(
       leading: IconButton(
-        tooltip: 'Cancel selection',
+        tooltip: context.l10n.cancelSelection,
         icon: const Icon(Icons.close),
         onPressed: () => setState(_selected.clear),
       ),
-      title: Text('${_selected.length} selected'),
+      title: Text(context.l10n.nSelected(_selected.length)),
       actions: [
         IconButton(
-          tooltip: all ? 'Select none' : 'Select all',
+          tooltip: all ? context.l10n.selectNone : context.l10n.selectAll,
           icon: Icon(all ? Icons.deselect : Icons.select_all),
           onPressed: () => setState(() {
             if (all) {
@@ -832,23 +827,23 @@ class _HomePageState extends ConsumerState<HomePage> {
           }),
         ),
         IconButton(
-          tooltip: 'Add a label',
+          tooltip: context.l10n.addALabel,
           icon: const Icon(Icons.label_outline),
           onPressed: _bulkBusy ? null : _labelSelected,
         ),
         IconButton(
-          tooltip: 'Share',
+          tooltip: context.l10n.share,
           icon: const Icon(Icons.share_outlined),
           onPressed: _bulkBusy ? null : _shareSelected,
         ),
         if (_selected.length > 1)
           IconButton(
-            tooltip: 'Merge',
+            tooltip: context.l10n.merge,
             icon: const Icon(Icons.merge_type_outlined),
             onPressed: _bulkBusy ? null : _mergeSelected,
           ),
         IconButton(
-          tooltip: 'Move to trash',
+          tooltip: context.l10n.moveToTrash,
           icon: const Icon(Icons.delete_outline),
           onPressed: _bulkBusy ? null : _deleteSelected,
         ),
@@ -892,18 +887,18 @@ class _HomePageState extends ConsumerState<HomePage> {
               color: colorScheme.onPrimaryContainer),
           title: Text(
             defaultTargetPlatform == TargetPlatform.iOS
-                ? 'Bring your iPhone contacts'
-                : 'Bring your Google contacts',
+                ? context.l10n.bringYourIphoneContacts
+                : context.l10n.bringYourGoogleContacts,
             style: TextStyle(color: colorScheme.onPrimaryContainer),
           ),
           subtitle: Text(
-            'Import them into your encrypted vault in a few taps.',
+            context.l10n.importThemIntoYourEncrypted,
             style: TextStyle(color: colorScheme.onPrimaryContainer),
           ),
           trailing: FilledButton(
             style: compactButtonStyle,
             onPressed: _openGoogleImport,
-            child: const Text('Import'),
+            child: Text(context.l10n.importLabel),
           ),
         ),
       ),
@@ -962,26 +957,26 @@ class _HomePageState extends ConsumerState<HomePage> {
                     const LegacyImportBanner(),
                     if (_savedContacts.isEmpty) _buildGoogleImportBanner(),
                     if (_permissionDenied)
-                      const Padding(
+                      Padding(
                         padding:
                             EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                         child: Text(
-                          'Contacts permission denied. Showing vault-only contacts.',
+                          context.l10n.contactsPermissionDeniedShowingVault,
                         ),
                       ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                       child: Text(
-                        'Contacts (${contacts.length})',
+                        context.l10n.contactsCount(contacts.length),
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                     ),
                     if (contacts.isEmpty)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.all(24),
                         child: Center(
                             child:
-                                Text('No contacts match the current filters.')),
+                                Text(context.l10n.noContactsMatchTheCurrent)),
                       ),
                   ],
                 ),
@@ -1081,15 +1076,15 @@ class _HomePageState extends ConsumerState<HomePage> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildHighlightsSection('Pinned', pinned),
-          _buildHighlightsSection('Favorites', favorites),
-          _buildHighlightsSection('Frequent', frequent),
+          _buildHighlightsSection(context.l10n.pinned, pinned),
+          _buildHighlightsSection(context.l10n.favorites, favorites),
+          _buildHighlightsSection(context.l10n.frequent, frequent),
           if (pinned.isEmpty && favorites.isEmpty && frequent.isEmpty)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.only(top: 40),
                 child: Text(
-                    'No highlights yet. Star/pin contacts to see them here.'),
+                    context.l10n.noHighlightsYetStarPin),
               ),
             ),
         ],
@@ -1109,8 +1104,8 @@ class _HomePageState extends ConsumerState<HomePage> {
           Card(
             child: ListTile(
               leading: const Icon(Icons.delete_outline),
-              title: const Text('Trash'),
-              subtitle: const Text('Deleted contacts, kept for 30 days'),
+              title: Text(context.l10n.trash),
+              subtitle: Text(context.l10n.deletedContactsKeptFor30),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(builder: (_) => const TrashPage())),
@@ -1121,8 +1116,8 @@ class _HomePageState extends ConsumerState<HomePage> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.qr_code_scanner),
-                title: const Text('Scan a contact QR code'),
-                subtitle: const Text('Add a contact someone shows you'),
+                title: Text(context.l10n.scanAContactQrCode),
+                subtitle: Text(context.l10n.addAContactSomeoneShows),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
                   if (await QrScanPage.scanAndImport(context) && mounted) {
@@ -1137,9 +1132,9 @@ class _HomePageState extends ConsumerState<HomePage> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.document_scanner_outlined),
-                title: const Text('Scan a business card'),
-                subtitle: const Text(
-                    'Read on this phone, the picture is never uploaded'),
+                title: Text(context.l10n.scanABusinessCard),
+                subtitle: Text(
+                    context.l10n.readOnThisPhoneThe),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
                   final VaultContact? saved =
@@ -1161,7 +1156,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text('Labels',
+                        child: Text(context.l10n.labels,
                             style: Theme.of(context).textTheme.titleMedium),
                       ),
                       TextButton(
@@ -1175,13 +1170,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                             await _loadContacts(quiet: true);
                           }
                         },
-                        child: const Text('Manage labels'),
+                        child: Text(context.l10n.manageLabels),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   if (_labelCounts.isEmpty)
-                    const Text('No labels yet')
+                    Text(context.l10n.noLabelsYet)
                   else
                     Wrap(
                       spacing: 8,
@@ -1210,7 +1205,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Smart groups',
+                  Text(context.l10n.smartGroups,
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   ListTile(
@@ -1218,21 +1213,21 @@ class _HomePageState extends ConsumerState<HomePage> {
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.cake_outlined),
                     title: Text(
-                        'Birthdays soon (${_healthSummary.upcomingBirthdays.length})'),
+                        context.l10n.birthdaysSoon(_healthSummary.upcomingBirthdays.length)),
                   ),
                   ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.access_time_outlined),
                     title: Text(
-                        'Stale contacts (${_healthSummary.staleContacts.length})'),
+                        context.l10n.staleContacts(_healthSummary.staleContacts.length)),
                   ),
                   ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.phone_disabled_outlined),
                     title: Text(
-                        'Missing phone (${_healthSummary.missingPhoneContacts.length})'),
+                        context.l10n.missingPhone(_healthSummary.missingPhoneContacts.length)),
                   ),
                 ],
               ),
@@ -1246,12 +1241,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Duplicate cleanup',
+                    context.l10n.duplicateCleanup,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
                   if (_duplicateGroups.isEmpty)
-                    const Text('No duplicates detected')
+                    Text(context.l10n.noDuplicatesDetected)
                   else
                     ..._duplicateGroups.map((ContactDuplicateGroup group) {
                       return ListTile(
@@ -1259,7 +1254,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         contentPadding: EdgeInsets.zero,
                         leading: const Icon(Icons.merge_type_outlined),
                         title: Text(
-                          '${group.reason} (${group.contacts.length})',
+                          '${duplicateReasonLabel(group.reason)} (${group.contacts.length})',
                         ),
                         subtitle: Text(
                           group.contacts
@@ -1270,7 +1265,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ),
                         trailing: TextButton(
                           onPressed: () => _mergeDuplicateGroup(group),
-                          child: const Text('Merge'),
+                          child: Text(context.l10n.merge),
                         ),
                       );
                     }),
@@ -1313,12 +1308,12 @@ class _HomePageState extends ConsumerState<HomePage> {
         onPressed: () async {
           final VaultContact? created = await Navigator.of(context)
               .push<VaultContact>(MaterialPageRoute<VaultContact>(
-                  builder: (_) => const CreateContactPage()));
+                  builder: (_) => CreateContactPage()));
           if (created != null && mounted) {
             await _loadContacts();
           }
         },
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tabIndex,
@@ -1328,13 +1323,13 @@ class _HomePageState extends ConsumerState<HomePage> {
             _selected.clear();
           });
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-              icon: Icon(Icons.people_alt_outlined), label: 'Contacts'),
+              icon: Icon(Icons.people_alt_outlined), label: context.l10n.contacts),
           NavigationDestination(
-              icon: Icon(Icons.star_outline), label: 'Highlights'),
+              icon: Icon(Icons.star_outline), label: context.l10n.highlights),
           NavigationDestination(
-              icon: Icon(Icons.folder_open_outlined), label: 'Organize'),
+              icon: Icon(Icons.folder_open_outlined), label: context.l10n.organize),
         ],
       ),
     );

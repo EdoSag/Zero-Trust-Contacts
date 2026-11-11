@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zero_trust_core/zero_trust_core.dart';
@@ -17,6 +18,7 @@ import 'package:zerotrust_contacts/pages/create_contact_page.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
 import 'package:zerotrust_contacts/widgets/compact_button_style.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 class ContactDetailPage extends ConsumerStatefulWidget {
   const ContactDetailPage({
@@ -110,11 +112,11 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
-        content: Text('${_contact.displayName} moved to the trash'),
+        content: Text(context.l10n.movedToTrash(_contact.displayName)),
         // Flutter keeps a snackbar with an action open until it is tapped.
         persist: false,
         action: SnackBarAction(
-          label: 'Undo',
+          label: context.l10n.undo,
           onPressed: () => repo.restoreFromTrash(id),
         ),
       ));
@@ -133,7 +135,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
     await _refreshSavedState();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Changes undone on every device.')));
+          SnackBar(content: Text(context.l10n.changesUndoneOnEveryDevice)));
     }
   }
 
@@ -167,22 +169,22 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
             children: [
               Icon(Icons.block, color: colorScheme.error),
               const SizedBox(width: 8),
-              const Text('Block contact'),
+              Text(context.l10n.blockContact),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('This contact will be marked as blocked.'),
+              Text(context.l10n.thisContactWillBeMarked),
               const SizedBox(height: 12),
               TextField(
                 controller: reasonController,
                 maxLines: 2,
                 maxLength: 200,
                 decoration: InputDecoration(
-                  labelText: 'Reason (optional)',
-                  hintText: 'e.g. Spam, unwanted contact…',
+                  labelText: context.l10n.reasonOptional,
+                  hintText: context.l10n.eGSpamUnwantedContact,
                   labelStyle: TextStyle(color: colorScheme.error),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(
@@ -200,13 +202,13 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
               style:
                   FilledButton.styleFrom(backgroundColor: colorScheme.error),
-              child: const Text('Block'),
+              child: Text(context.l10n.block),
             ),
           ],
         );
@@ -239,16 +241,16 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('Unblock contact'),
-        content: const Text('This contact will be unblocked.'),
+        title: Text(context.l10n.unblockContact),
+        content: Text(context.l10n.thisContactWillBeUnblocked),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Unblock'),
+            child: Text(context.l10n.unblock),
           ),
         ],
       ),
@@ -296,9 +298,9 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
   }
 
   static String _noAppMessage(Uri uri) => switch (uri.host) {
-        'wa.me' => 'WhatsApp isn\'t installed, or doesn\'t know this number.',
-        'signal.me' => 'Signal isn\'t installed.',
-        _ => 'No app on this phone can open that.',
+        'wa.me' => currentL10n.whatsappIsntInstalledOrDoesnt,
+        'signal.me' => currentL10n.signalIsntInstalled,
+        _ => currentL10n.noAppOnThisPhone,
       };
 
   String? get _firstPhone =>
@@ -336,7 +338,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
     } on Object catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Couldn\'t share: $error')));
+            SnackBar(content: Text(context.l10n.couldntShare('$error'))));
       }
     } finally {
       if (mounted) {
@@ -372,13 +374,12 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
                   size: 256,
                   backgroundColor: Colors.white,
                   errorCorrectionLevel: QrErrorCorrectLevel.L,
-                  semanticsLabel: 'QR code for ${_contact.displayName}',
+                  semanticsLabel: context.l10n.qrCodeFor(_contact.displayName),
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Scan with another phone\'s camera to add this contact. '
-                'Anyone who can see the code can read it.',
+              Text(
+                context.l10n.scanWithAnotherPhonesCamera,
                 textAlign: TextAlign.center,
               ),
             ],
@@ -387,7 +388,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
         actions: <Widget>[
           FilledButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Done'),
+            child: Text(context.l10n.done),
           ),
         ],
       ),
@@ -413,17 +414,17 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: const Text('Secure share package'),
+            title: Text(context.l10n.secureSharePackage),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Passphrase: ${package.passphrase}'),
+                Text(context.l10n.passphraseValue(package.passphrase)),
                 const SizedBox(height: 8),
-                Text('Expires: ${package.expiresAt.toLocal()}'),
+                Text(context.l10n.expiresAt(DateFormat.yMMMd().add_Hm().format(package.expiresAt.toLocal()))),
                 const SizedBox(height: 12),
-                const Text(
-                    'Copy both package and passphrase to share securely.'),
+                Text(
+                    context.l10n.copyBothPackageAndPassphrase),
               ],
             ),
             actions: [
@@ -433,26 +434,26 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
                       ClipboardData(text: package.passphrase));
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Passphrase copied')),
+                      SnackBar(content: Text(context.l10n.passphraseCopied)),
                     );
                   }
                 },
-                child: const Text('Copy passphrase'),
+                child: Text(context.l10n.copyPassphrase),
               ),
               TextButton(
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: package.payload));
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Package copied')),
+                      SnackBar(content: Text(context.l10n.packageCopied)),
                     );
                   }
                 },
-                child: const Text('Copy package'),
+                child: Text(context.l10n.copyPackage),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Done'),
+                child: Text(context.l10n.done),
               ),
             ],
           );
@@ -483,11 +484,11 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
               heightFactor: 1,
               child: Text(phone, textDirection: TextDirection.ltr),
             ),
-            subtitle: Text(_contact.typeLabel('phone', phone, fallback: 'Phone')),
+            subtitle: Text(_contact.typeLabel('phone', phone, fallback: context.l10n.phoneLabel)),
             onTap: () => _open(ContactActions.call(phone)),
             onLongPress: () => _copy(phone),
             trailing: IconButton(
-              tooltip: 'Text $phone',
+              tooltip: context.l10n.textNumber(phone),
               icon: const Icon(Icons.sms_outlined),
               onPressed: () => _open(ContactActions.text(phone)),
             ),
@@ -502,7 +503,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
               heightFactor: 1,
               child: Text(email, textDirection: TextDirection.ltr),
             ),
-            subtitle: Text(_contact.typeLabel('email', email, fallback: 'Email')),
+            subtitle: Text(_contact.typeLabel('email', email, fallback: context.l10n.email)),
             onTap: () => _open(ContactActions.email(email)),
             onLongPress: () => _copy(email),
           ),
@@ -511,7 +512,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
             leading: const Icon(Icons.place_outlined),
             title: Text(address),
             subtitle:
-                Text(_contact.typeLabel('address', address, fallback: 'Address')),
+                Text(_contact.typeLabel('address', address, fallback: context.l10n.address)),
             onTap: () => _open(
                 ContactActions.directions(address, isIOS: _isIOS),
                 interaction: false),
@@ -522,13 +523,13 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
           ListTile(
             leading: const Icon(Icons.apartment_outlined),
             title: Text(_contact.company),
-            subtitle: const Text('Company'),
+            subtitle: Text(context.l10n.company),
           ),
         for (final String birthday in _contact.birthdays)
           ListTile(
             leading: const Icon(Icons.cake_outlined),
             title: Text(birthday),
-            subtitle: const Text('Birthday'),
+            subtitle: Text(context.l10n.birthday),
           ),
         if (_contact.labels.isNotEmpty)
           Wrap(
@@ -541,7 +542,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
         if (_contact.notes.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
-            'Notes',
+            context.l10n.notes,
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 6),
@@ -553,7 +554,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
         ],
         const SizedBox(height: 20),
         Text(
-          'Interaction count: ${_contact.interactionCount}',
+          context.l10n.interactionCount(_contact.interactionCount),
           style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
       ],
@@ -565,7 +566,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
     if (mounted) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Copied')));
+        ..showSnackBar(SnackBar(content: Text(context.l10n.copied)));
     }
   }
 
@@ -586,18 +587,18 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
           label: Text(label),
         );
     return <Widget>[
-      action(Icons.call_outlined, 'Call',
+      action(Icons.call_outlined, context.l10n.call,
           phone == null ? null : ContactActions.call(phone)),
-      action(Icons.sms_outlined, 'Text',
+      action(Icons.sms_outlined, context.l10n.text,
           phone == null ? null : ContactActions.text(phone)),
       if (email != null)
-        action(Icons.email_outlined, 'Email', ContactActions.email(email)),
+        action(Icons.email_outlined, context.l10n.email, ContactActions.email(email)),
       if (phone != null)
         action(Icons.chat_outlined, 'WhatsApp', ContactActions.whatsApp(phone)),
       if (phone != null && ContactActions.signal(phone) != null)
         action(Icons.forum_outlined, 'Signal', ContactActions.signal(phone)),
       if (address != null)
-        action(Icons.directions_outlined, 'Directions',
+        action(Icons.directions_outlined, context.l10n.directions,
             ContactActions.directions(address, isIOS: _isIOS),
             interaction: false),
     ];
@@ -611,33 +612,33 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
         actions: [
           PopupMenuButton<String>(
             enabled: !_busy,
-            tooltip: 'Share',
-            icon: const Icon(Icons.share_outlined),
+            tooltip: context.l10n.share,
+            icon: Icon(Icons.share_outlined),
             onSelected: (String choice) => switch (choice) {
               'vcard' => _shareVCard(),
               'qr' => _showQrCode(),
               _ => _shareSecurePackage(),
             },
-            itemBuilder: (BuildContext context) => const [
+            itemBuilder: (BuildContext context) => [
               PopupMenuItem<String>(
                 value: 'vcard',
                 child: ListTile(
                   leading: Icon(Icons.contact_page_outlined),
-                  title: Text('Share as vCard'),
+                  title: Text(context.l10n.shareAsVcard),
                 ),
               ),
               PopupMenuItem<String>(
                 value: 'qr',
                 child: ListTile(
                   leading: Icon(Icons.qr_code_2),
-                  title: Text('Show QR code'),
+                  title: Text(context.l10n.showQrCode),
                 ),
               ),
               PopupMenuItem<String>(
                 value: 'secure',
                 child: ListTile(
                   leading: Icon(Icons.shield_outlined),
-                  title: Text('Encrypted share'),
+                  title: Text(context.l10n.encryptedShare),
                 ),
               ),
             ],
@@ -646,7 +647,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
             onPressed: _busy ? null : _edit,
             icon: Icon(
                 _isSavedContact ? Icons.edit_outlined : Icons.person_add_alt),
-            tooltip: _isSavedContact ? 'Edit' : 'Save to the vault',
+            tooltip: _isSavedContact ? context.l10n.edit : context.l10n.saveToTheVault,
           ),
           if (_isSavedContact)
             PopupMenuButton<String>(
@@ -655,19 +656,19 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
                 'history' => _openHistory(),
                 _ => _delete(),
               },
-              itemBuilder: (BuildContext context) => const [
+              itemBuilder: (BuildContext context) => [
                 PopupMenuItem<String>(
                   value: 'history',
                   child: ListTile(
                     leading: Icon(Icons.history),
-                    title: Text('Undo changes'),
+                    title: Text(context.l10n.undoChanges),
                   ),
                 ),
                 PopupMenuItem<String>(
                   value: 'trash',
                   child: ListTile(
                     leading: Icon(Icons.delete_outline),
-                    title: Text('Move to trash'),
+                    title: Text(context.l10n.moveToTrash),
                   ),
                 ),
               ],
@@ -707,7 +708,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'Blocked',
+                            context.l10n.blocked,
                             style: TextStyle(
                               color: Theme.of(context)
                                   .colorScheme
@@ -750,7 +751,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
                         ? Icons.star
                         : Icons.star_border_outlined,
                   ),
-                  label: const Text('Favorite'),
+                  label: Text(context.l10n.favorite),
                 ),
                 OutlinedButton.icon(
                   style: compactButtonStyle,
@@ -760,7 +761,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
                         ? Icons.push_pin
                         : Icons.push_pin_outlined,
                   ),
-                  label: const Text('Pin'),
+                  label: Text(context.l10n.pin),
                 ),
                 if (_isSavedContact)
                   OutlinedButton.icon(
@@ -778,7 +779,7 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
                           : Theme.of(context).colorScheme.error,
                     ),
                     label: Text(
-                      _contact.isBlocked ? 'Unblock' : 'Block',
+                      _contact.isBlocked ? context.l10n.unblock : context.l10n.block,
                       style: TextStyle(
                         color: (_busy || _contact.isBlocked)
                             ? null

@@ -12,6 +12,7 @@ import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/services/contact_actions.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 bool _hasLabel(VaultContact contact, String label) => contact.labels.any(
   (String l) => l.trim().toLowerCase() == label.trim().toLowerCase(),
@@ -40,12 +41,12 @@ Future<String?> _askLabelName(
         controller: controller,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(labelText: 'Label name'),
+        decoration: InputDecoration(labelText: context.l10n.labelName),
       ),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(controller.text),
@@ -98,19 +99,19 @@ class _LabelsPageState extends ConsumerState<LabelsPage> {
   Future<void> _create() async {
     final List<VaultContact> contacts = _contacts ?? <VaultContact>[];
     if (contacts.isEmpty) {
-      _snack('Add a contact first, then you can put it in a label.');
+      _snack(context.l10n.addAContactFirstThen);
       return;
     }
     final String? name = await _askLabelName(
       context,
-      title: 'New label',
-      action: 'Next',
+      title: context.l10n.newLabelX,
+      action: context.l10n.next,
     );
     if (name == null || !mounted) return;
     final Set<String>? picked = await Navigator.of(context).push<Set<String>>(
       MaterialPageRoute<Set<String>>(
         builder: (_) => LabelMembersPicker(
-          title: 'Add to $name',
+          title: context.l10n.addToLabel(name),
           contacts: contacts
               .where((VaultContact c) => !_hasLabel(c, name))
               .toList(),
@@ -121,11 +122,11 @@ class _LabelsPageState extends ConsumerState<LabelsPage> {
     final int added = await _repo.addLabel(picked, name);
     await _load();
     if (mounted) {
-      _snack('$name now has ${_count(added)}.');
+      _snack(currentL10n.labelNowHas(name, _count(added)));
     }
   }
 
-  String _count(int n) => n == 1 ? '1 contact' : '$n contacts';
+  String _count(int n) => currentL10n.nContacts(n);
 
   @override
   Widget build(BuildContext context) {
@@ -136,21 +137,20 @@ class _LabelsPageState extends ConsumerState<LabelsPage> {
     final List<String> names = counts.keys.toList()
       ..sort(ContactSorting.compareNames);
     return Scaffold(
-      appBar: AppBar(title: const Text('Labels')),
+      appBar: AppBar(title: Text(context.l10n.labels)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: contacts == null ? null : _create,
         icon: const Icon(Icons.new_label_outlined),
-        label: const Text('New label'),
+        label: Text(context.l10n.newLabelX),
       ),
       body: contacts == null
           ? const Center(child: CircularProgressIndicator())
           : names.isEmpty
-          ? const Center(
+          ? Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: Text(
-                  'No labels yet. Make one for family, a team or a class, '
-                  'then email or text everyone in it at once.',
+                  context.l10n.noLabelsYetMakeOne,
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -229,7 +229,7 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(text)));
 
-  String _count(int n) => n == 1 ? '1 contact' : '$n contacts';
+  String _count(int n) => currentL10n.nContacts(n);
 
   Future<void> _run(Future<String?> Function() action) async {
     if (_busy) return;
@@ -239,7 +239,7 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
       await _load();
       if (mounted && message != null) _snack(message);
     } on Object catch (error) {
-      if (mounted) _snack('That didn\'t work: $error');
+      if (mounted) _snack(currentL10n.thatDidntWork('$error'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -248,15 +248,15 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
   Future<void> _rename() async {
     final String? name = await _askLabelName(
       context,
-      title: 'Rename label',
-      action: 'Rename',
+      title: context.l10n.renameLabel,
+      action: context.l10n.rename,
       initial: _label,
     );
     if (name == null || name == _label || !mounted) return;
     await _run(() async {
       await _repo.renameLabel(_label, name);
       _label = name;
-      return 'Renamed to $name.';
+      return currentL10n.renamedTo(name);
     });
   }
 
@@ -265,18 +265,18 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
         await showDialog<bool>(
           context: context,
           builder: (BuildContext context) => AlertDialog(
-            title: Text('Delete the label $_label?'),
-            content: const Text(
-              'The contacts stay. Only the label is taken off them.',
+            title: Text(context.l10n.deleteTheLabel(_label)),
+            content: Text(
+              context.l10n.theContactsStayOnlyThe,
             ),
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
+                child: Text(context.l10n.cancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Delete label'),
+                child: Text(context.l10n.deleteLabel),
               ),
             ],
           ),
@@ -291,7 +291,7 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
     } on Object catch (error) {
       if (mounted) {
         setState(() => _busy = false);
-        _snack('That didn\'t work: $error');
+        _snack(currentL10n.thatDidntWork('$error'));
       }
     }
   }
@@ -301,19 +301,19 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
         .where((VaultContact c) => !_hasLabel(c, _label))
         .toList();
     if (others.isEmpty) {
-      _snack('Every contact already has this label.');
+      _snack(context.l10n.everyContactAlreadyHasThis);
       return;
     }
     final Set<String>? picked = await Navigator.of(context).push<Set<String>>(
       MaterialPageRoute<Set<String>>(
         builder: (_) =>
-            LabelMembersPicker(title: 'Add to $_label', contacts: others),
+            LabelMembersPicker(title: context.l10n.addToLabel(_label), contacts: others),
       ),
     );
     if (picked == null || picked.isEmpty || !mounted) return;
     await _run(() async {
       final int added = await _repo.addLabel(picked, _label);
-      return 'Added ${_count(added)}.';
+      return currentL10n.addedContacts(_count(added));
     });
   }
 
@@ -323,7 +323,7 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
       ids: _selected.toList(),
     );
     _selected.clear();
-    return 'Took ${_count(removed)} out of $_label.';
+    return currentL10n.tookOutOf(_count(removed), _label);
   });
 
   Future<void> _open(Uri? uri, String nothing, String failed) async {
@@ -350,8 +350,8 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
       for (final VaultContact c in _audience)
         if (c.emails.isNotEmpty) c.emails.first,
     ]),
-    'Nobody here has an email address.',
-    'No mail app could be opened.',
+    context.l10n.nobodyHereHasAnEmail,
+    context.l10n.noMailAppCouldBe,
   );
 
   Future<void> _textAll() => _open(
@@ -359,8 +359,8 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
       for (final VaultContact c in _audience)
         if (c.phones.isNotEmpty) c.phones.first,
     ], isIOS: Platform.isIOS),
-    'Nobody here has a phone number.',
-    'No messages app could be opened.',
+    context.l10n.nobodyHereHasAPhone,
+    context.l10n.noMessagesAppCouldBe,
   );
 
   @override
@@ -382,14 +382,14 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
         appBar: selecting
             ? AppBar(
                 leading: IconButton(
-                  tooltip: 'Clear selection',
+                  tooltip: context.l10n.clearSelection,
                   icon: const Icon(Icons.close),
                   onPressed: () => setState(_selected.clear),
                 ),
-                title: Text('${_selected.length} selected'),
+                title: Text(context.l10n.nSelected(_selected.length)),
                 actions: <Widget>[
                   IconButton(
-                    tooltip: 'Select all',
+                    tooltip: context.l10n.selectAll,
                     icon: const Icon(Icons.select_all),
                     onPressed: () => setState(
                       () => _selected.addAll(
@@ -398,7 +398,7 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Remove from label',
+                    tooltip: context.l10n.removeFromLabel,
                     icon: const Icon(Icons.label_off_outlined),
                     onPressed: _busy ? null : _removeSelected,
                   ),
@@ -408,21 +408,21 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
                 title: Text(_label, textDirection: directionOf(_label)),
                 actions: <Widget>[
                   IconButton(
-                    tooltip: 'Add contacts',
-                    icon: const Icon(Icons.person_add_alt_outlined),
+                    tooltip: context.l10n.addContacts,
+                    icon: Icon(Icons.person_add_alt_outlined),
                     onPressed: _busy || _all == null ? null : _addMembers,
                   ),
                   PopupMenuButton<String>(
                     onSelected: (String value) =>
                         value == 'rename' ? _rename() : _delete(),
-                    itemBuilder: (_) => const <PopupMenuEntry<String>>[
+                    itemBuilder: (_) => <PopupMenuEntry<String>>[
                       PopupMenuItem<String>(
                         value: 'rename',
-                        child: Text('Rename label'),
+                        child: Text(context.l10n.renameLabel),
                       ),
                       PopupMenuItem<String>(
                         value: 'delete',
-                        child: Text('Delete label'),
+                        child: Text(context.l10n.deleteLabel),
                       ),
                     ],
                   ),
@@ -441,7 +441,7 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
                             onPressed: withEmail == 0 ? null : _emailAll,
                             icon: const Icon(Icons.mail_outline),
                             label: Text(
-                              selecting ? 'Email $withEmail' : 'Email all',
+                              selecting ? context.l10n.emailN(withEmail) : context.l10n.emailAll,
                             ),
                           ),
                         ),
@@ -451,7 +451,7 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
                             onPressed: withPhone == 0 ? null : _textAll,
                             icon: const Icon(Icons.sms_outlined),
                             label: Text(
-                              selecting ? 'Text $withPhone' : 'Text all',
+                              selecting ? context.l10n.textN(withPhone) : context.l10n.textAll,
                             ),
                           ),
                         ),
@@ -467,9 +467,8 @@ class _LabelDetailPageState extends ConsumerState<LabelDetailPage> {
                       alignment: AlignmentDirectional.centerStart,
                       child: Text(
                         members.isEmpty
-                            ? 'Nobody has this label any more.'
-                            : '${_count(members.length)}. Hold a row to '
-                                  'select several.',
+                            ? context.l10n.nobodyHasThisLabelAny
+                            : context.l10n.holdRowToSelect(_count(members.length)),
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
@@ -574,7 +573,7 @@ class _LabelMembersPickerState extends State<LabelMembersPicker> {
                 onPressed: _picked.isEmpty
                     ? null
                     : () => Navigator.of(context).pop(_picked),
-                child: Text(_picked.isEmpty ? 'Add' : 'Add ${_picked.length}'),
+                child: Text(_picked.isEmpty ? context.l10n.add : context.l10n.addN(_picked.length)),
               ),
             ),
           ),
@@ -585,9 +584,9 @@ class _LabelMembersPickerState extends State<LabelMembersPicker> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search),
-                hintText: 'Search contacts',
+                hintText: context.l10n.searchContacts,
               ),
               onChanged: (String value) => setState(() => _query = value),
             ),

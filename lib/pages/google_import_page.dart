@@ -15,6 +15,7 @@ import 'package:zerotrust_contacts/import/vcard_parser.dart';
 import 'package:zerotrust_contacts/integrations/device_contacts_service.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/services/vault_repository.dart';
+import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// "Import from Google" in a few taps.
 ///
@@ -74,7 +75,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
   bool _fromThisPhone = false;
 
   Future<void> _previewAddressBook() async {
-    await _withBusy('Reading this iPhone\'s contacts…', () async {
+    await _withBusy(context.l10n.readingThisIphonesContacts, () async {
       final bool granted = await ref
           .read(vaultControllerProvider.notifier)
           .whileShowingSystemUi(widget.addressBook.requestPermission);
@@ -84,7 +85,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
       }
       final AddressBookImport read = await widget.addressBook.read();
       await _preparePreview(
-        sourceLabel: 'iPhone contacts',
+        sourceLabel: currentL10n.iphoneContacts,
         incoming: read.contacts,
         photos: <String, PhotoLoader>{
           for (final MapEntry<String, String> e in read.photoIds.entries)
@@ -105,7 +106,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
       _loadingAccounts = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _withBusy(
-          'Reading…',
+          context.l10n.reading,
           () => _previewVCard(text, widget.vCardName ?? 'vCard'),
         );
       });
@@ -149,7 +150,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
   }
 
   Future<void> _previewAccount(ImportAccount account) async {
-    await _withBusy('Reading ${account.name}…', () async {
+    await _withBusy(context.l10n.readingName(account.name), () async {
       final List<Map<String, dynamic>> rows = await _deviceService
           .loadAccountContacts(account.name);
       final AccountImport read = accountImportFromFields(rows);
@@ -172,13 +173,12 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
     if (file == null) {
       return;
     }
-    await _withBusy('Reading ${file.name}…', () async {
+    await _withBusy(currentL10n.readingName(file.name), () async {
       final List<int> bytes = await file.xFile.readAsBytes();
       final String text = utf8.decode(bytes, allowMalformed: true);
       if (!text.toUpperCase().contains('BEGIN:VCARD')) {
         throw StateError(
-          'That file is not a contacts export. In Google Contacts choose '
-          'Export, then "vCard (for iOS Contacts)".',
+          currentL10n.thatFileIsNotA,
         );
       }
       await _previewVCard(text, file.name);
@@ -259,7 +259,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
           e.key: () => downloader.download(e.value),
       ...pending.photos,
     };
-    await _withBusy('Encrypting and saving…', () async {
+    await _withBusy(context.l10n.encryptingAndSaving, () async {
       final ContactImportPlan done = await _vaultRepository.importContacts(
         pending.incoming,
         sourceLabel: _vCardOnly || _fromThisPhone
@@ -269,7 +269,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
         onPhotoProgress: (int doneCount, int total) {
           if (mounted && total > 0) {
             setState(
-              () => _busyText = 'Encrypting photos… $doneCount of $total',
+              () => _busyText = currentL10n.encryptingPhotos(doneCount, total),
             );
           }
         },
@@ -287,20 +287,20 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
 
   String _summary(ContactImportPlan plan) {
     if (plan.isEmpty && plan.photosAdded == 0) {
-      return 'Everything was already in your vault.';
+      return context.l10n.everythingWasAlreadyInYour;
     }
     final List<String> parts = <String>[
-      if (plan.toAdd.isNotEmpty) '${plan.toAdd.length} added',
-      if (plan.toUpdate.isNotEmpty) '${plan.toUpdate.length} updated',
+      if (plan.toAdd.isNotEmpty) context.l10n.nAdded(plan.toAdd.length),
+      if (plan.toUpdate.isNotEmpty) context.l10n.nUpdated(plan.toUpdate.length),
       if (plan.photosAdded > 0)
-        '${plan.photosAdded} ${plan.photosAdded == 1 ? 'photo' : 'photos'}',
+        context.l10n.nPhotos(plan.photosAdded),
     ];
-    return '${_vCardOnly
-        ? 'Imported'
+    final String details = parts.join(', ');
+    return _vCardOnly
+        ? context.l10n.importedSummary(details)
         : _fromThisPhone
-        ? 'Imported from this iPhone'
-        : 'Imported from Google'}: '
-        '${parts.join(', ')}.';
+        ? context.l10n.importedFromIphoneSummary(details)
+        : context.l10n.importedFromGoogleSummary(details);
   }
 
   Future<void> _withBusy(String text, Future<void> Function() action) async {
@@ -345,7 +345,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            _vCardOnly || _isIOS ? 'Import contacts' : 'Import from Google',
+            _vCardOnly || _isIOS ? context.l10n.importContacts : context.l10n.importFromGoogle,
           ),
         ),
         body: Column(
@@ -359,9 +359,10 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                               padding: const EdgeInsets.all(24),
                               child: Text(
                                 _busy
-                                    ? 'Reading…'
-                                    : 'Nothing to import from '
-                                          '${widget.vCardName ?? 'this file'}.',
+                                    ? context.l10n.reading
+                                    : widget.vCardName == null
+                                          ? context.l10n.nothingToImportFromFile
+                                          : context.l10n.nothingToImportFrom(widget.vCardName!),
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -385,7 +386,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
         const SizedBox(height: 16),
         if (_isAndroid) ...[
           Text(
-            'Google accounts on this phone',
+            context.l10n.googleAccountsOnThisPhone,
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
@@ -398,13 +399,13 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.lock_outline),
-                title: const Text('Allow access to contacts'),
-                subtitle: const Text(
-                  'Needed to read the Google contacts already on this phone.',
+                title: Text(context.l10n.allowAccessToContacts),
+                subtitle: Text(
+                  context.l10n.neededToReadTheGoogle,
                 ),
                 trailing: TextButton(
                   onPressed: _busy ? null : _loadAccounts,
-                  child: const Text('Allow'),
+                  child: Text(context.l10n.allow),
                 ),
               ),
             )
@@ -412,10 +413,9 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.person_off_outlined),
-                title: const Text('No Google contacts on this phone'),
-                subtitle: const Text(
-                  'Add your Google account in Android Settings, or use an '
-                  'export file below.',
+                title: Text(context.l10n.noGoogleContactsOnThis),
+                subtitle: Text(
+                  context.l10n.addYourGoogleAccountIn,
                 ),
               ),
             )
@@ -431,7 +431,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                     ),
                   ),
                   title: Text(account.name),
-                  subtitle: Text('${account.contactCount} contacts'),
+                  subtitle: Text(context.l10n.nContacts(account.contactCount)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _busy ? null : () => _previewAccount(account),
                 ),
@@ -440,7 +440,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
           const SizedBox(height: 20),
         ],
         if (_isIOS) ...[
-          Text('Contacts on this iPhone', style: theme.textTheme.titleMedium),
+          Text(context.l10n.contactsOnThisIphone, style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Card(
             child: Padding(
@@ -450,20 +450,14 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                 children: [
                   Text(
                     _addressBookDenied
-                        ? 'ZT Contacts is not allowed to read your contacts. '
-                              'Turn it on in the iPhone Settings app under '
-                              'Privacy & Security, Contacts, then try again.'
-                        : 'Copies everything the iPhone Contacts app shows '
-                              '(iCloud and other accounts) into your vault. '
-                              'You see what will change before anything is '
-                              'saved, and people you already have are '
-                              'merged, not doubled.',
+                        ? context.l10n.ztContactsIsNotAllowed
+                        : context.l10n.copiesEverythingTheIphoneContacts,
                   ),
                   const SizedBox(height: 8),
                   FilledButton.tonalIcon(
                     onPressed: _busy ? null : _previewAddressBook,
                     icon: const Icon(Icons.phone_iphone),
-                    label: const Text('Import from this iPhone'),
+                    label: Text(context.l10n.importFromThisIphone),
                   ),
                 ],
               ),
@@ -471,7 +465,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
           ),
           const SizedBox(height: 20),
         ],
-        Text('Google Contacts export file', style: theme.textTheme.titleMedium),
+        Text(context.l10n.googleContactsExportFile, style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),
         Card(
           child: Padding(
@@ -479,20 +473,20 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _Step(
+                _Step(
                   number: 1,
-                  text: 'Open contacts.google.com and tap Export.',
+                  text: context.l10n.openContactsGoogleComAnd,
                 ),
-                const _Step(
+                _Step(
                   number: 2,
-                  text: 'Choose "vCard (for iOS Contacts)" and save the file.',
+                  text: context.l10n.chooseVcardForIosContacts,
                 ),
-                const _Step(number: 3, text: 'Pick that file here.'),
+                _Step(number: 3, text: context.l10n.pickThatFileHere),
                 const SizedBox(height: 8),
                 FilledButton.tonalIcon(
                   onPressed: _busy ? null : _pickExportFile,
                   icon: const Icon(Icons.file_open_outlined),
-                  label: const Text('Choose export file'),
+                  label: Text(context.l10n.chooseExportFile),
                 ),
               ],
             ),
@@ -530,29 +524,29 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text('Ready to import', style: theme.textTheme.headlineSmall),
+              Text(context.l10n.readyToImport, style: theme.textTheme.headlineSmall),
               const SizedBox(height: 4),
               Text(
-                'From ${pending.sourceLabel}',
+                context.l10n.fromSource(pending.sourceLabel),
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
               const SizedBox(height: 16),
               Row(
                 children: [
                   _CountTile(
-                    label: 'New',
+                    label: context.l10n.newLabel,
                     count: plan.toAdd.length,
                     colors: colors,
                   ),
                   const SizedBox(width: 8),
                   _CountTile(
-                    label: 'Updated',
+                    label: context.l10n.updated,
                     count: plan.toUpdate.length,
                     colors: colors,
                   ),
                   const SizedBox(width: 8),
                   _CountTile(
-                    label: 'Already here',
+                    label: context.l10n.alreadyHere,
                     count: plan.unchangedCount,
                     colors: colors,
                   ),
@@ -561,11 +555,8 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
               const SizedBox(height: 12),
               Text(
                 plan.isEmpty
-                    ? 'Everything in this source is already in your vault.'
-                    : 'Matching contacts get the missing phones, emails and '
-                          'details added. Nothing you already have is changed or '
-                          'removed, and a restore point is saved first so you can '
-                          'undo the import from Account & Vault.',
+                    ? context.l10n.everythingInThisSourceIs
+                    : context.l10n.matchingContactsGet,
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
               if (pending.newPhotos > 0) ...[
@@ -576,9 +567,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '${pending.newPhotos} '
-                        '${pending.newPhotos == 1 ? 'photo' : 'photos'} '
-                        'added too, encrypted on this phone.',
+                        context.l10n.photosAddedToo(pending.newPhotos),
                       ),
                     ),
                   ],
@@ -593,15 +582,10 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                       ? null
                       : (bool on) => setState(() => _downloadLinkedPhotos = on),
                   title: Text(
-                    'Download ${pending.newLinkedPhotos} '
-                    '${pending.newLinkedPhotos == 1 ? 'photo' : 'photos'} '
-                    'from Google',
+                    context.l10n.downloadPhotosFromGoogle(pending.newLinkedPhotos),
                   ),
-                  subtitle: const Text(
-                    'This export links to photos instead of including them. '
-                    'Downloading connects to Google\'s photo server, which '
-                    'sees this phone\'s address. Photos are then encrypted '
-                    'like everything else.',
+                  subtitle: Text(
+                    context.l10n.thisExportLinksToPhotos,
                   ),
                 ),
               ],
@@ -622,7 +606,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                   title: Text(contact.displayName),
                   subtitle: detail.isEmpty ? null : Text(detail),
                   trailing: Text(
-                    isNew ? 'New' : 'Update',
+                    isNew ? context.l10n.newLabel : context.l10n.update,
                     style: theme.textTheme.labelSmall,
                   ),
                 );
@@ -631,7 +615,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                    'and ${plan.changeCount - sample.length} more',
+                    context.l10n.andNMore(plan.changeCount - sample.length),
                     style: TextStyle(color: colors.onSurfaceVariant),
                   ),
                 ),
@@ -649,7 +633,7 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                     onPressed: _busy
                         ? null
                         : () => setState(() => _pending = null),
-                    child: const Text('Back'),
+                    child: Text(context.l10n.back),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -661,10 +645,10 @@ class _GoogleImportPageState extends ConsumerState<GoogleImportPage> {
                         : _confirmImport,
                     child: Text(
                       !_hasWork(pending)
-                          ? 'Nothing to import'
+                          ? context.l10n.nothingToImport
                           : plan.isEmpty
-                          ? 'Import photos'
-                          : 'Import ${plan.changeCount} contacts',
+                          ? context.l10n.importPhotos
+                          : context.l10n.importNContacts(plan.changeCount),
                     ),
                   ),
                 ),
@@ -723,8 +707,7 @@ class _PrivacyNote extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'No Google sign-in needed. Your contacts are read on this '
-              'device and encrypted before they are saved or synced.',
+              context.l10n.noGoogleSignInNeeded,
               style: TextStyle(color: colors.onSecondaryContainer),
             ),
           ),

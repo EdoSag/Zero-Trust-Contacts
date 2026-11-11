@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="contact_quick_widget_label">איש קשר</string>
+    <string name="contact_quick_widget_description">התקשרות לאדם אחד או פתיחתו בהקשה אחת. אפשר להרחיב כדי לראות את השם ליד התמונה</string>
+    <string name="contact_widget_configure_title">הגדרת ווידג׳ט איש קשר</string>
+    <string name="contact_widget_contact_label">איש קשר</string>
+    <string name="contact_widget_contact_search_hint">הקלדה לחיפוש אנשי קשר</string>
+    <string name="contact_widget_action_label">פעולה</string>
+    <string name="contact_widget_status_loading">טוען אנשי קשר...</string>
+    <string name="contact_widget_save">שמירת הווידג׳ט</string>
+    <string name="contact_widget_cancel">ביטול</string>
+    <string name="zt_account_label">ZT Contacts</string>
+    <string name="cw_permission_required">כדי להגדיר את הווידג׳ט נדרשת הרשאה לאנשי הקשר.</string>
+    <string name="cw_call_denied">הרשאת השיחות נדחתה. הווידג׳ט יפתח את החייגן במקום.</string>
+    <string name="cw_action_call">התקשרות לאיש הקשר</string>
+    <string name="cw_action_open">פתיחת פרטי איש הקשר</string>
+    <string name="cw_none_found">לא נמצאו אנשי קשר.</string>
+    <string name="cw_pick">יש לבחור איש קשר ופעולה לווידג׳ט.</string>
+    <string name="cw_select">יש לבחור איש קשר.</string>
+    <string name="cw_no_phone">לאיש הקשר הזה אין מספר טלפון.</string>
+    <string name="cw_choose">בחירת איש קשר</string>
+    <string name="cw_tap_pick">הקשה לבחירת אדם</string>
+    <string name="cw_tap_call">הקשה להתקשרות</string>
+    <string name="cw_tap_open">הקשה לפתיחה</string>
+</resources>
