@@ -16,15 +16,15 @@ import android.telephony.SubscriptionManager
  */
 object SimContacts {
     fun read(context: Context): List<Map<String, Any>> {
-        val found = linkedMapOf<String, Map<String, Any>>()
+        val found = linkedMapOf<String, SimContact>()
         fun add(name: String, number: String, emails: List<String>) {
             val n = name.trim()
             val p = number.trim()
             if (n.isEmpty() && p.isEmpty()) return
             val key = "$n\n${p.filter { it.isDigit() || it == '+' }}"
-            if (key !in found) {
-                found[key] = mapOf("name" to n, "number" to p, "emails" to emails)
-            }
+            // Both providers can list the same contact, and only the older
+            // one has its emails: keep those instead of dropping the copy.
+            found.getOrPut(key) { SimContact(n, p) }.emails.addAll(emails)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -85,7 +85,9 @@ object SimContacts {
                 // No SIM, or this slot doesn't exist.
             }
         }
-        return found.values.toList()
+        return found.values.map {
+            mapOf("name" to it.name, "number" to it.number, "emails" to it.emails.toList())
+        }
     }
 
     /** The subscription ids of the SIMs that have a contacts phonebook (ADN). */
@@ -119,6 +121,10 @@ object SimContacts {
             if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) ids.add(subId)
         }
         return ids.toList()
+    }
+
+    private class SimContact(val name: String, val number: String) {
+        val emails = linkedSetOf<String>()
     }
 
     private fun Cursor.text(index: Int): String =

@@ -5,8 +5,9 @@ import 'dart:typed_data';
 ///
 /// Exports come in several encodings: UTF-8 (Google, iCloud), UTF-8 with a
 /// byte order mark (Outlook.com), UTF-16 (older Outlook and Excel "Unicode
-/// text") and Windows-1255 (Hebrew Outlook and Excel on Windows). Pure Dart,
-/// so it runs on the device and in tests.
+/// text"), Windows-1255 (Hebrew Outlook and Excel on Windows) and
+/// Windows-1252 (the same in Western languages). Pure Dart, so it runs on
+/// the device and in tests.
 String decodeContactFile(List<int> input) {
   final Uint8List bytes = input is Uint8List
       ? input
@@ -43,11 +44,59 @@ String decodeContactFile(List<int> input) {
   try {
     return utf8.decode(bytes);
   } on FormatException {
-    // Not valid UTF-8: a Windows "ANSI" file. Windows-1255 covers Hebrew
-    // and reads plain Latin text the same as Windows-1252.
-    return _windows1255(bytes);
+    // Not valid UTF-8: a Windows "ANSI" file, Hebrew or Western. Plain
+    // Latin text reads the same in both; the other letters tell them apart.
+    return _looksWestern(bytes) ? _windows1252(bytes) : _windows1255(bytes);
   }
 }
+
+bool _isLatinLetter(int b) =>
+    (b >= 0x41 && b <= 0x5A) || (b >= 0x61 && b <= 0x7A);
+
+/// A Hebrew letter in Windows-1255, an accented small letter in 1252.
+bool _isHighLetter(int b) => b >= 0xE0 && b <= 0xFA;
+
+/// Whether an "ANSI" file is Windows-1252 (Western) and not Windows-1255
+/// (Hebrew). The file doesn't say, so this goes by its letters: a byte
+/// that means nothing in 1255, a capital like É with no Hebrew letter in
+/// front of it (there the byte is a vowel point, which follows a letter),
+/// or letters that sit inside Latin words (René, Müller) more often than
+/// next to each other (Hebrew words).
+bool _looksWestern(Uint8List bytes) {
+  int inLatinWord = 0;
+  int inHighWord = 0;
+  for (int i = 0; i < bytes.length; i++) {
+    final int b = bytes[i];
+    if (b < 0x80) continue;
+    if (_cp1255High[b - 0x80] == 0xFFFD) return true;
+    final int before = i > 0 ? bytes[i - 1] : 0x20;
+    final int after = i + 1 < bytes.length ? bytes[i + 1] : 0x20;
+    if (b >= 0xC0 && b <= 0xD8) {
+      if (!(before >= 0xC0 && before <= 0xFA)) return true;
+    } else if (_isHighLetter(b)) {
+      if (_isLatinLetter(before) || _isLatinLetter(after)) {
+        inLatinWord++;
+      } else {
+        inHighWord++;
+      }
+    }
+  }
+  return inLatinWord > inHighWord;
+}
+
+/// Windows-1252 bytes 0x80-0x9F; the rest match Unicode. Unused positions
+/// map to U+FFFD.
+const List<int> _cp1252C1 = <int>[
+  0x20AC, 0xFFFD, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+  0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0xFFFD, 0x017D, 0xFFFD,
+  0xFFFD, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+  0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0xFFFD, 0x017E, 0x0178,
+];
+
+String _windows1252(Uint8List bytes) => String.fromCharCodes(<int>[
+  for (final int b in bytes)
+    b >= 0x80 && b <= 0x9F ? _cp1252C1[b - 0x80] : b,
+]);
 
 String _utf16(Uint8List bytes, {required bool littleEndian}) {
   final List<int> units = <int>[];
