@@ -10,7 +10,8 @@ import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_banner.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
-import 'package:zerotrust_contacts/pages/google_import_page.dart';
+import 'package:zerotrust_contacts/import/contact_file_text.dart';
+import 'package:zerotrust_contacts/pages/import_contacts_page.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 import 'package:zerotrust_contacts/pages/merge_conflicts_page.dart';
 import 'package:zerotrust_contacts/pages/qr_scan_page.dart';
@@ -65,13 +66,11 @@ class ContactsSettingsPage extends ConsumerWidget {
           ),
         ListTile(
           leading: const Icon(Icons.download_outlined),
-          title: Text(defaultTargetPlatform == TargetPlatform.iOS
-              ? context.l10n.importContacts
-              : context.l10n.importFromGoogle),
+          title: Text(context.l10n.importContacts),
           subtitle: Text(defaultTargetPlatform == TargetPlatform.iOS
               ? context.l10n.fromThisIphoneOrA
               : context.l10n.accountsOnThisPhoneOr),
-          onTap: () => push(const GoogleImportPage()),
+          onTap: () => push(const ImportContactsPage()),
         ),
         ListTile(
           leading: const Icon(Icons.delete_outline),
@@ -136,8 +135,8 @@ class ContactsSettingsPage extends ConsumerWidget {
         ),
         ListTile(
           leading: const Icon(Icons.contact_mail_outlined),
-          title: Text(context.l10n.importAVcardFile),
-          subtitle: Text(context.l10n.aVcfFileFromAny),
+          title: Text(context.l10n.importAContactsFile),
+          subtitle: Text(context.l10n.aVcfOrCsvFile),
           onTap: () => _importVCardFile(context, ref),
           trailing: IconButton(
             tooltip: context.l10n.pasteVcardTextInstead,
@@ -207,7 +206,7 @@ class ContactsSettingsPage extends ConsumerWidget {
       return null;
     }
     final Uint8List bytes = await file.xFile.readAsBytes();
-    return (file.name, utf8.decode(bytes, allowMalformed: true));
+    return (file.name, decodeContactFile(bytes));
   }
 
   Future<void> _exportEncrypted(BuildContext context, WidgetRef ref,
@@ -310,7 +309,7 @@ class ContactsSettingsPage extends ConsumerWidget {
       if (file == null || !context.mounted) return;
       await Navigator.of(context).push(MaterialPageRoute<bool>(
         builder: (_) =>
-            GoogleImportPage(vCardText: file.$2, vCardName: file.$1),
+            ImportContactsPage(fileText: file.$2, fileName: file.$1),
       ));
     } on Object catch (error) {
       if (context.mounted) _snack(context, currentL10n.couldntReadThatFile('$error'));

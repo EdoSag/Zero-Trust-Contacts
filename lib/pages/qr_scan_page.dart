@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import 'package:zerotrust_contacts/import/mecard.dart';
-import 'package:zerotrust_contacts/pages/google_import_page.dart';
+import 'package:zerotrust_contacts/pages/import_contacts_page.dart';
 import 'package:zerotrust_contacts/l10n/l10n.dart';
 
 /// Scans a contact QR code (a vCard or MECARD, like the one "Show QR code"
@@ -29,7 +29,7 @@ class QrScanPage extends StatefulWidget {
     }
     final bool? imported = await navigator.push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => GoogleImportPage(vCardText: vCard, vCardName: context.l10n.qrCode),
+        builder: (_) => ImportContactsPage(fileText: vCard, fileName: context.l10n.qrCode),
       ),
     );
     return imported == true;

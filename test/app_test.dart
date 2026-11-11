@@ -247,7 +247,7 @@ void main() {
     await tester.tap(find.byTooltip('Settings'));
     await settle(tester);
     await tester.scrollUntilVisible(find.text('Restore points'), 200);
-    expect(find.text('Import from Google'), findsOneWidget);
+    expect(find.text('Import contacts'), findsOneWidget);
 
     container.read(vaultControllerProvider.notifier).lock();
     await settle(tester);

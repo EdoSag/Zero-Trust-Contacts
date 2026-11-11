@@ -130,10 +130,46 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                     }
 
+                    "getAllImportAccounts" -> {
+                        try {
+                            result.success(getAllImportAccounts())
+                        } catch (error: SecurityException) {
+                            result.error(
+                                "permission_denied",
+                                "Contacts permission is required to list accounts.",
+                                null,
+                            )
+                        } catch (error: Exception) {
+                            result.error("accounts_read_failed", error.localizedMessage, null)
+                        }
+                    }
+
+                    "getSimContacts" -> {
+                        Thread {
+                            try {
+                                val contacts = SimContacts.read(this)
+                                runOnUiThread { result.success(contacts) }
+                            } catch (error: SecurityException) {
+                                runOnUiThread {
+                                    result.error(
+                                        "permission_denied",
+                                        "Contacts permission is required to read the SIM card.",
+                                        null,
+                                    )
+                                }
+                            } catch (error: Exception) {
+                                runOnUiThread {
+                                    result.error("sim_read_failed", error.localizedMessage, null)
+                                }
+                            }
+                        }.start()
+                    }
+
                     "getAccountContacts" -> {
                         val accountType = call.argument<String>("accountType") ?: googleAccountType
+                        // An empty name is valid: contacts saved on the phone with no account.
                         val accountName = call.argument<String>("accountName")
-                        if (accountName.isNullOrBlank()) {
+                        if (accountName == null) {
                             result.error("invalid_argument", "Missing account name.", null)
                             return@setMethodCallHandler
                         }
@@ -433,6 +469,79 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    /**
+     * Raw contacts of one account. An empty type or name stands for "none":
+     * contacts saved to the phone itself have no account.
+     */
+    private fun accountSelection(accountType: String, accountName: String): String {
+        val type = if (accountType.isEmpty()) {
+            "${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NULL"
+        } else {
+            "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ?"
+        }
+        val name = if (accountName.isEmpty()) {
+            "${ContactsContract.RawContacts.ACCOUNT_NAME} IS NULL"
+        } else {
+            "${ContactsContract.RawContacts.ACCOUNT_NAME} = ?"
+        }
+        return "$type AND $name AND ${ContactsContract.RawContacts.DELETED} = 0"
+    }
+
+    private fun accountSelectionArgs(accountType: String, accountName: String): Array<String> =
+        listOf(accountType, accountName).filter { it.isNotEmpty() }.toTypedArray()
+
+    /**
+     * Every account on this phone that holds contacts (Google, Samsung,
+     * Outlook/Exchange, SIM card, the phone itself…), except ZT Contacts'
+     * own caller-ID copy, with counts.
+     */
+    private fun getAllImportAccounts(): List<Map<String, Any>> {
+        ensureContactsPermission()
+        val counts = linkedMapOf<Pair<String, String>, Int>()
+        contentResolver.query(
+            ContactsContract.RawContacts.CONTENT_URI,
+            arrayOf(
+                ContactsContract.RawContacts.ACCOUNT_TYPE,
+                ContactsContract.RawContacts.ACCOUNT_NAME,
+            ),
+            "${ContactsContract.RawContacts.DELETED} = 0",
+            null,
+            "${ContactsContract.RawContacts.ACCOUNT_NAME} COLLATE NOCASE ASC",
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val type = cursor.getString(0)?.trim().orEmpty()
+                val name = cursor.getString(1)?.trim().orEmpty()
+                if (type == PhoneContactsSync.ACCOUNT_TYPE) continue
+                val key = type to name
+                counts[key] = (counts[key] ?: 0) + 1
+            }
+        }
+        return counts.map { (key, count) ->
+            mapOf(
+                "type" to key.first,
+                "name" to key.second,
+                "kind" to accountKind(key.first, key.second),
+                "count" to count,
+            )
+        }
+    }
+
+    /** google, sim, exchange, samsung, phone or other: picks the icon and wording. */
+    private fun accountKind(type: String, name: String): String {
+        val t = type.lowercase(Locale.US)
+        val n = name.lowercase(Locale.US)
+        return when {
+            t == googleAccountType -> "google"
+            t.contains("sim") || t.contains("icc") || n.contains("sim") -> "sim"
+            t.contains("exchange") || t.contains("outlook") ||
+                t.contains("microsoft") || t.contains("office") -> "exchange"
+            t.isEmpty() || t.contains("phone") || t.contains("local") ||
+                n == "phone" || n == "device" -> "phone"
+            t.contains("samsung") || t.contains("osp") -> "samsung"
+            else -> "other"
+        }
+    }
+
     /** Accounts of [accountType] that have contacts on this phone, with counts. */
     private fun getImportAccounts(accountType: String): List<Map<String, Any>> {
         ensureContactsPermission()
@@ -469,10 +578,8 @@ class MainActivity : FlutterFragmentActivity() {
         contentResolver.query(
             ContactsContract.RawContacts.CONTENT_URI,
             arrayOf(ContactsContract.RawContacts._ID, ContactsContract.RawContacts.STARRED),
-            "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ? AND " +
-                "${ContactsContract.RawContacts.ACCOUNT_NAME} = ? AND " +
-                "${ContactsContract.RawContacts.DELETED} = 0",
-            arrayOf(accountType, accountName),
+            accountSelection(accountType, accountName),
+            accountSelectionArgs(accountType, accountName),
             null,
         )?.use { cursor ->
             val idIndex = cursor.getColumnIndexOrThrow(ContactsContract.RawContacts._ID)
@@ -619,10 +726,9 @@ class MainActivity : FlutterFragmentActivity() {
                 ContactsContract.Groups.TITLE,
                 ContactsContract.Groups.SYSTEM_ID,
             ),
-            "${ContactsContract.Groups.ACCOUNT_TYPE} = ? AND " +
-                "${ContactsContract.Groups.ACCOUNT_NAME} = ? AND " +
-                "${ContactsContract.Groups.DELETED} = 0",
-            arrayOf(accountType, accountName),
+            // Groups use the same account_type / account_name / deleted columns.
+            accountSelection(accountType, accountName),
+            accountSelectionArgs(accountType, accountName),
             null,
         )?.use { cursor ->
             while (cursor.moveToNext()) {

@@ -167,6 +167,10 @@ class VCardParser {
       r'^(\d{4})-?(\d{2})-?(\d{2})',
     ).firstMatch(value);
     if (full != null) {
+      // iCloud and Outlook write 1604 / 4501 when the year is unknown.
+      if (full.group(1) == '1604' || full.group(1) == '4501') {
+        return '--${full.group(2)}-${full.group(3)}';
+      }
       return '${full.group(1)}-${full.group(2)}-${full.group(3)}';
     }
     return null;

@@ -15,7 +15,7 @@ import 'package:zerotrust_contacts/legacy/legacy_import_banner.dart';
 import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/pages/create_contact_page.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
-import 'package:zerotrust_contacts/pages/google_import_page.dart';
+import 'package:zerotrust_contacts/pages/import_contacts_page.dart';
 import 'package:zerotrust_contacts/pages/labels_page.dart';
 import 'package:zerotrust_contacts/pages/qr_scan_page.dart';
 import 'package:zerotrust_contacts/pages/settings_page.dart';
@@ -259,7 +259,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       switch (request) {
         case IncomingVCard(:final String text, :final String name):
           await navigator.push<bool>(MaterialPageRoute<bool>(
-            builder: (_) => GoogleImportPage(vCardText: text, vCardName: name),
+            builder: (_) => ImportContactsPage(fileText: text, fileName: name),
           ));
         case IncomingNewContact(:final VaultContact contact):
           VaultContact? target;
@@ -870,7 +870,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Future<void> _openGoogleImport() async {
     final bool? imported = await Navigator.of(context).push<bool>(
-        MaterialPageRoute<bool>(builder: (_) => const GoogleImportPage()));
+        MaterialPageRoute<bool>(builder: (_) => const ImportContactsPage()));
     if (imported == true && mounted) {
       await _loadContacts();
     }

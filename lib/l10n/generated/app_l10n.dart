@@ -700,7 +700,7 @@ abstract class AppL10n {
   /// No description provided for @thatFileIsNotA.
   ///
   /// In en, this message translates to:
-  /// **'That file is not a contacts export. In Google Contacts choose Export, then \"vCard (for iOS Contacts)\".'**
+  /// **'That file has no contacts ZT Contacts can read. Use a vCard (.vcf) or CSV export.'**
   String get thatFileIsNotA;
 
   /// No description provided for @encryptingAndSaving.
@@ -721,47 +721,17 @@ abstract class AppL10n {
   /// **'Import contacts'**
   String get importContacts;
 
-  /// No description provided for @importFromGoogle.
-  ///
-  /// In en, this message translates to:
-  /// **'Import from Google'**
-  String get importFromGoogle;
-
-  /// No description provided for @googleAccountsOnThisPhone.
-  ///
-  /// In en, this message translates to:
-  /// **'Google accounts on this phone'**
-  String get googleAccountsOnThisPhone;
-
   /// No description provided for @allowAccessToContacts.
   ///
   /// In en, this message translates to:
   /// **'Allow access to contacts'**
   String get allowAccessToContacts;
 
-  /// No description provided for @neededToReadTheGoogle.
-  ///
-  /// In en, this message translates to:
-  /// **'Needed to read the Google contacts already on this phone.'**
-  String get neededToReadTheGoogle;
-
   /// No description provided for @allow.
   ///
   /// In en, this message translates to:
   /// **'Allow'**
   String get allow;
-
-  /// No description provided for @noGoogleContactsOnThis.
-  ///
-  /// In en, this message translates to:
-  /// **'No Google contacts on this phone'**
-  String get noGoogleContactsOnThis;
-
-  /// No description provided for @addYourGoogleAccountIn.
-  ///
-  /// In en, this message translates to:
-  /// **'Add your Google account in Android Settings, or use an export file below.'**
-  String get addYourGoogleAccountIn;
 
   /// No description provided for @contactsOnThisIphone.
   ///
@@ -786,36 +756,6 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Import from this iPhone'**
   String get importFromThisIphone;
-
-  /// No description provided for @googleContactsExportFile.
-  ///
-  /// In en, this message translates to:
-  /// **'Google Contacts export file'**
-  String get googleContactsExportFile;
-
-  /// No description provided for @openContactsGoogleComAnd.
-  ///
-  /// In en, this message translates to:
-  /// **'Open contacts.google.com and tap Export.'**
-  String get openContactsGoogleComAnd;
-
-  /// No description provided for @chooseVcardForIosContacts.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose \"vCard (for iOS Contacts)\" and save the file.'**
-  String get chooseVcardForIosContacts;
-
-  /// No description provided for @pickThatFileHere.
-  ///
-  /// In en, this message translates to:
-  /// **'Pick that file here.'**
-  String get pickThatFileHere;
-
-  /// No description provided for @chooseExportFile.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose export file'**
-  String get chooseExportFile;
 
   /// No description provided for @readyToImport.
   ///
@@ -880,7 +820,7 @@ abstract class AppL10n {
   /// No description provided for @noGoogleSignInNeeded.
   ///
   /// In en, this message translates to:
-  /// **'No Google sign-in needed. Your contacts are read on this device and encrypted before they are saved or synced.'**
+  /// **'No sign-in to Google, Apple or Microsoft needed. Your contacts are read on this device and encrypted before they are saved or synced.'**
   String get noGoogleSignInNeeded;
 
   /// No description provided for @createANewContact.
@@ -1378,13 +1318,13 @@ abstract class AppL10n {
   /// No description provided for @fromThisIphoneOrA.
   ///
   /// In en, this message translates to:
-  /// **'From this iPhone, or a Google export'**
+  /// **'From this iPhone, or an export file'**
   String get fromThisIphoneOrA;
 
   /// No description provided for @accountsOnThisPhoneOr.
   ///
   /// In en, this message translates to:
-  /// **'Accounts on this phone, or a Google export'**
+  /// **'Phone accounts, SIM card, or an export file'**
   String get accountsOnThisPhoneOr;
 
   /// No description provided for @restorePoints.
@@ -1458,18 +1398,6 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Not encrypted. Works with Google, Apple and other apps'**
   String get notEncryptedWorksWithGoogle;
-
-  /// No description provided for @importAVcardFile.
-  ///
-  /// In en, this message translates to:
-  /// **'Import a vCard file'**
-  String get importAVcardFile;
-
-  /// No description provided for @aVcfFileFromAny.
-  ///
-  /// In en, this message translates to:
-  /// **'A .vcf file from any contacts app'**
-  String get aVcfFileFromAny;
 
   /// No description provided for @pasteVcardTextInstead.
   ///
@@ -2382,6 +2310,174 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'The card could not be read: {error}'**
   String cardCouldNotBeRead(String error);
+
+  /// No description provided for @accountsOnThisPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts on this phone'**
+  String get accountsOnThisPhone;
+
+  /// No description provided for @neededToReadPhoneAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Needed to read the contacts already on this phone.'**
+  String get neededToReadPhoneAccounts;
+
+  /// No description provided for @noOtherContactsOnThisPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'No other contacts on this phone'**
+  String get noOtherContactsOnThisPhone;
+
+  /// No description provided for @addAccountOrUseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an account in Android Settings, or use an export file below.'**
+  String get addAccountOrUseFile;
+
+  /// No description provided for @accountKindGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Google'**
+  String get accountKindGoogle;
+
+  /// No description provided for @accountKindExchange.
+  ///
+  /// In en, this message translates to:
+  /// **'Outlook / Exchange'**
+  String get accountKindExchange;
+
+  /// No description provided for @accountKindSamsung.
+  ///
+  /// In en, this message translates to:
+  /// **'Samsung account'**
+  String get accountKindSamsung;
+
+  /// No description provided for @accountKindPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this phone'**
+  String get accountKindPhone;
+
+  /// No description provided for @accountKindOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other account'**
+  String get accountKindOther;
+
+  /// No description provided for @simCard.
+  ///
+  /// In en, this message translates to:
+  /// **'SIM card'**
+  String get simCard;
+
+  /// No description provided for @simCardHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Copies the names and numbers saved on the SIM card. The SIM itself is not changed.'**
+  String get simCardHelp;
+
+  /// No description provided for @importFromSimCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from SIM card'**
+  String get importFromSimCard;
+
+  /// No description provided for @readingSimCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading the SIM card…'**
+  String get readingSimCard;
+
+  /// No description provided for @noContactsOnSim.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts found on the SIM card.'**
+  String get noContactsOnSim;
+
+  /// No description provided for @fromAnExportFile.
+  ///
+  /// In en, this message translates to:
+  /// **'From an export file'**
+  String get fromAnExportFile;
+
+  /// No description provided for @fromAnExportFileHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'A vCard (.vcf) or spreadsheet (.csv) file from Google, iCloud, Outlook or any other app.'**
+  String get fromAnExportFileHelp;
+
+  /// No description provided for @chooseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file'**
+  String get chooseFile;
+
+  /// No description provided for @exportHelpGoogleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to export from Google'**
+  String get exportHelpGoogleTitle;
+
+  /// No description provided for @exportHelpGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'On contacts.google.com tap Export, choose vCard or Google CSV, and save the file.'**
+  String get exportHelpGoogle;
+
+  /// No description provided for @exportHelpIcloudTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to export from iCloud'**
+  String get exportHelpIcloudTitle;
+
+  /// No description provided for @exportHelpIcloud.
+  ///
+  /// In en, this message translates to:
+  /// **'On icloud.com/contacts on a computer, select all contacts (Ctrl+A or ⌘A), click the share button and choose Export vCard.'**
+  String get exportHelpIcloud;
+
+  /// No description provided for @exportHelpOutlookTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to export from Outlook'**
+  String get exportHelpOutlookTitle;
+
+  /// No description provided for @exportHelpOutlook.
+  ///
+  /// In en, this message translates to:
+  /// **'On outlook.com open People, then Manage contacts, Export contacts, All contacts. In Outlook for Windows use File, Open & Export, Import/Export, Export to a file, Comma Separated Values.'**
+  String get exportHelpOutlook;
+
+  /// No description provided for @exportHelpSpreadsheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'From a spreadsheet'**
+  String get exportHelpSpreadsheetTitle;
+
+  /// No description provided for @exportHelpSpreadsheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Save it as CSV with a header row such as Name, Phone, Email. Company, Address, Birthday and Notes columns are read too, in English or Hebrew.'**
+  String get exportHelpSpreadsheet;
+
+  /// No description provided for @noContactsFoundIn.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts found in {source}.'**
+  String noContactsFoundIn(String source);
+
+  /// No description provided for @importAContactsFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a contacts file'**
+  String get importAContactsFile;
+
+  /// No description provided for @aVcfOrCsvFile.
+  ///
+  /// In en, this message translates to:
+  /// **'A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet'**
+  String get aVcfOrCsvFile;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {
