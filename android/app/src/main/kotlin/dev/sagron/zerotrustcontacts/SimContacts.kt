@@ -28,9 +28,9 @@ object SimContacts {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+: the official SIM phonebook, for the default SIM.
-            val subId = SubscriptionManager.getDefaultSubscriptionId()
-            if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            // Android 12+: the official SIM phonebook, for every SIM in the
+            // phone (dual-SIM phones can use any subscription ids).
+            for (subId in simSubscriptionIds(context)) {
                 try {
                     val uri = SimPhonebookContract.SimRecords.getContentUri(
                         subId,
@@ -53,13 +53,14 @@ object SimContacts {
                 } catch (error: SecurityException) {
                     throw error
                 } catch (ignored: Exception) {
-                    // Not supported on this phone: fall back below.
+                    // This SIM can't be read: try the others, then fall back below.
                 }
             }
         }
 
-        // The older provider most phones still have (also covers dual-SIM
-        // phones where the default SIM above is empty).
+        // The older provider for Android 9-11 (and phones whose SIM
+        // phonebook above is missing). Without the phone-state permission the
+        // subscription ids can't be listed, so the usual ones are tried.
         for (uri in listOf("content://icc/adn", "content://icc/adn/subId/1", "content://icc/adn/subId/2")) {
             try {
                 context.contentResolver.query(Uri.parse(uri), null, null, null, null)?.use { cursor ->
@@ -85,6 +86,39 @@ object SimContacts {
             }
         }
         return found.values.toList()
+    }
+
+    /** The subscription ids of the SIMs that have a contacts phonebook (ADN). */
+    private fun simSubscriptionIds(context: Context): List<Int> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return emptyList()
+        val ids = linkedSetOf<Int>()
+        try {
+            context.contentResolver.query(
+                SimPhonebookContract.ElementaryFiles.CONTENT_URI,
+                arrayOf(
+                    SimPhonebookContract.ElementaryFiles.SUBSCRIPTION_ID,
+                    SimPhonebookContract.ElementaryFiles.EF_TYPE,
+                ),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    if (cursor.getInt(1) == SimPhonebookContract.ElementaryFiles.EF_ADN) {
+                        ids.add(cursor.getInt(0))
+                    }
+                }
+            }
+        } catch (error: SecurityException) {
+            throw error
+        } catch (ignored: Exception) {
+            // Listing isn't supported: use the default SIM below.
+        }
+        if (ids.isEmpty()) {
+            val subId = SubscriptionManager.getDefaultSubscriptionId()
+            if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) ids.add(subId)
+        }
+        return ids.toList()
     }
 
     private fun Cursor.text(index: Int): String =

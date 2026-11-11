@@ -213,9 +213,13 @@ class CsvContactsParser {
               .where((String s) => s.isNotEmpty)
               .join(', ');
       // Google gives both the formatted address and its parts.
-      final String folded = address.toLowerCase().replaceAll(RegExp(r'\W'), '');
+      final String folded = address.toLowerCase().replaceAll(
+        _notLetterOrDigit,
+        '',
+      );
       final bool known = addresses.any(
-        (String a) => a.toLowerCase().replaceAll(RegExp(r'\W'), '') == folded,
+        (String a) =>
+            a.toLowerCase().replaceAll(_notLetterOrDigit, '') == folded,
       );
       if (address.isNotEmpty && !known) {
         addTyped(addresses, 'address', address, addressTypes[e.key]);
@@ -297,6 +301,10 @@ class CsvContactsParser {
     return 'other';
   }
 }
+
+/// Everything but letters and digits in any script (`\W` would also drop
+/// Hebrew letters).
+final RegExp _notLetterOrDigit = RegExp(r'[^\p{L}\p{N}]', unicode: true);
 
 String _key(String header) => header
     .replaceAll('﻿', '')

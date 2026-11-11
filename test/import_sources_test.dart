@@ -140,6 +140,15 @@ void main() {
     });
   });
 
+  test('two Hebrew addresses stay two addresses', () {
+    const String csv =
+        'שם,רחוב בבית,עיר בבית,רחוב בעבודה,עיר בעבודה\n'
+        'דנה,הרצל 1,תל אביב,הנביאים 1,חיפה\n';
+    final VaultContact c = only(const CsvContactsParser().parse(csv));
+    expect(c.addresses, <String>['הרצל 1, תל אביב', 'הנביאים 1, חיפה']);
+    expect(c.typeOf('address', 'הנביאים 1, חיפה'), 'work');
+  });
+
   group('plain spreadsheets', () {
     test('semicolons, a full-name column and UTF-8 with a BOM', () {
       final List<int> bytes = <int>[

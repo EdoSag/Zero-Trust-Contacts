@@ -167,8 +167,9 @@ class MainActivity : FlutterFragmentActivity() {
 
                     "getAccountContacts" -> {
                         val accountType = call.argument<String>("accountType") ?: googleAccountType
+                        // An empty name is valid: contacts saved on the phone with no account.
                         val accountName = call.argument<String>("accountName")
-                        if (accountName.isNullOrBlank()) {
+                        if (accountName == null) {
                             result.error("invalid_argument", "Missing account name.", null)
                             return@setMethodCallHandler
                         }
