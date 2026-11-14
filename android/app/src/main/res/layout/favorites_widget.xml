@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Favourites (W7) in the shared Zero-Trust widget look
+  (Zero-Trust-Core/android-widget-kit): header, then a grid of starred
+  contacts that gains columns as the widget grows and scrolls when full.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/ZtWidget.Root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/favorites_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ImageView
+            android:layout_width="@dimen/zt_widget_header_icon"
+            android:layout_height="@dimen/zt_widget_header_icon"
+            android:src="@mipmap/ic_launcher"
+            android:importantForAccessibility="no"/>
+        <TextView
+            style="@style/ZtWidget.Title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/fw_title"/>
+        <TextView
+            android:id="@+id/favorites_caption"
+            style="@style/ZtWidget.Caption"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:gravity="end"
+            android:text="@string/fw_tap_call"/>
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp">
+        <GridView
+            android:id="@+id/favorites_grid"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:numColumns="auto_fit"
+            android:columnWidth="72dp"
+            android:stretchMode="columnWidth"
+            android:verticalSpacing="4dp"
+            android:gravity="center"
+            android:scrollbars="none"/>
+        <TextView
+            android:id="@+id/favorites_empty"
+            style="@style/ZtWidget.Caption"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:maxLines="3"
+            android:text="@string/fw_empty"
+            android:visibility="gone"/>
+    </FrameLayout>
+</LinearLayout>

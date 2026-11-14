@@ -73,5 +73,6 @@ flutter {
 }
 
 dependencies {
-    
+    // Scrolling home screen widget grids (RemoteCollectionItems before Android 12).
+    implementation("androidx.core:core-remoteviews:1.1.0")
 }

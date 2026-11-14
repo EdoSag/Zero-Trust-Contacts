@@ -1,0 +1,27 @@
+Most apps on your phone can read your address book. Zero-Trust Contacts keeps your contacts in an end-to-end encrypted vault instead, and you choose which ones, if any, the rest of the phone gets to see.
+
+WHAT IT DOES
+• A proper editor: several phones, emails and addresses with Mobile, Work and Home labels, birthdays, notes and photos.
+• Labels (groups): create, rename, and email or text a whole label.
+• Quick actions: call, text, email, Signal, WhatsApp and directions; share as vCard or QR code.
+• Optional caller ID: show chosen contacts in the phone's dialer and messaging apps.
+• Scan a business card with on-device text recognition (English and Hebrew).
+• Duplicate warnings and a merge tool, plus multi-select to label, share or delete.
+• A to Z fast scroll, sorting by first or last name, and correct Hebrew and English ordering.
+• Trash that keeps deleted contacts for 30 days, and undo for changes.
+• Import from Google, the phone's accounts, the SIM card, iCloud or Outlook vCards and CSV files.
+• Open .vcf files and contact QR codes, export to vCard, and encrypted backups.
+• Home-screen widget for your favourite people.
+
+WHY ZERO-TRUST
+• End-to-end encrypted: everything is encrypted on your phone before it syncs. We can't read it, and neither can anyone who breaks into the server.
+• One private account for every Zero-Trust app, unlocked with your fingerprint or face.
+• Works offline and syncs across your devices when you're back online.
+• No ads, no trackers, no analytics, no data sold. Ever.
+• Open source (AGPL-3.0), so anyone can check what the app does.
+• English and Hebrew, with full right-to-left support.
+
+Part of the Zero-Trust suite: Notes, Tasks, Calendar, Contacts, Phone, Fitness, Meds, Time and Browser. One account opens them all.
+
+Privacy policy: https://zerotrust.bz/privacy/
+Support: support@zerotrust.bz

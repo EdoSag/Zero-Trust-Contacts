@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One favourite: round photo or initials, first name below. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fav_tile"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="76dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
+    android:gravity="center"
+    android:orientation="vertical">
+    <FrameLayout
+        android:layout_width="48dp"
+        android:layout_height="48dp">
+        <TextView
+            android:id="@+id/fav_initials"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/zt_widget_accent_circle"
+            android:gravity="center"
+            android:textColor="@color/zt_widget_on_accent"
+            android:textSize="18sp"
+            android:fontFamily="sans-serif-medium"
+            android:importantForAccessibility="no"/>
+        <ImageView
+            android:id="@+id/fav_photo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            android:importantForAccessibility="no"/>
+    </FrameLayout>
+    <TextView
+        android:id="@+id/fav_name"
+        style="@style/ZtWidget.Caption"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center"
+        android:textColor="@color/zt_widget_on_surface"
+        android:importantForAccessibility="no"/>
+</LinearLayout>
