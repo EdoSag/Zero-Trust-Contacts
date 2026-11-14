@@ -22,4 +22,22 @@
     <string name="cw_tap_pick">הקשה לבחירת אדם</string>
     <string name="cw_tap_call">הקשה להתקשרות</string>
     <string name="cw_tap_open">הקשה לפתיחה</string>
+    <string name="fw_label">מועדפים</string>
+    <string name="fw_title">מועדפים</string>
+    <string name="fw_description">אנשי הקשר המסומנים בכוכב, כרשת של תמונות. הקשה על אחד מהם מתקשרת או שולחת הודעה</string>
+    <string name="fw_tap_call">הקשה לשיחה</string>
+    <string name="fw_tap_message">הקשה להודעה</string>
+    <string name="fw_empty">כדי לראות כאן אנשי קשר, יש לסמן אותם בכוכב ב-ZT Contacts</string>
+    <string name="fw_permission">יש לפתוח את ZT Contacts ולאשר גישה לאנשי הקשר</string>
+    <string name="fw_mode_title">הקשה על מועדף</string>
+    <string name="fw_mode_call">מתקשרת</string>
+    <string name="fw_mode_message">שולחת הודעה</string>
+    <string name="fw_call">שיחה</string>
+    <string name="fw_message">שליחת הודעה</string>
+    <string name="fw_call_named">שיחה אל %1$s</string>
+    <string name="fw_message_named">הודעה אל %1$s</string>
+    <string name="fw_open_named">פתיחת %1$s</string>
+    <string name="fw_preview_1">אלכס</string>
+    <string name="fw_preview_2">בת</string>
+    <string name="fw_preview_3">כריס</string>
 </resources>
