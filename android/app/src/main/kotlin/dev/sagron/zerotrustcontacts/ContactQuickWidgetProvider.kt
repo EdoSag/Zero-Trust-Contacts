@@ -8,13 +8,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.Rect
 import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
@@ -139,6 +132,10 @@ class ContactQuickWidgetProvider : AppWidgetProvider() {
         /** From about two cells wide, the name sits beside the photo. */
         private const val WIDE_MIN_WIDTH_DP = 140
 
+        /** From about 2x2: big photo, name, number, Call and Message buttons (W7). */
+        private const val LARGE_MIN_WIDTH_DP = 110
+        private const val LARGE_MIN_HEIGHT_DP = 150
+
         /**
          * Below this height there is only room for the round photo (44dp plus
          * padding), so the name is hidden and the initials identify the contact.
@@ -156,14 +153,20 @@ class ContactQuickWidgetProvider : AppWidgetProvider() {
             val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
             // 0 means the launcher has not reported a size yet: assume it fits.
             val tall = height == 0 || height >= LABEL_MIN_HEIGHT_DP
-            val wide = tall && width >= WIDE_MIN_WIDTH_DP
+            val large = height >= LARGE_MIN_HEIGHT_DP && width >= LARGE_MIN_WIDTH_DP
+            val wide = tall && width >= WIDE_MIN_WIDTH_DP && !large
             val views = RemoteViews(
                 context.packageName,
-                if (wide) R.layout.contact_quick_widget_wide else R.layout.contact_quick_widget,
+                when {
+                    large -> R.layout.contact_quick_widget_large
+                    wide -> R.layout.contact_quick_widget_wide
+                    else -> R.layout.contact_quick_widget
+                },
             )
             if (configuration == null) {
                 views.setTextViewText(R.id.widget_label, context.getString(R.string.cw_choose))
-                if (wide) views.setTextViewText(R.id.widget_caption, context.getString(R.string.cw_tap_pick))
+                if (wide || large) views.setTextViewText(R.id.widget_caption, context.getString(R.string.cw_tap_pick))
+                if (large) views.setViewVisibility(R.id.widget_actions, View.GONE)
                 views.setTextViewText(R.id.widget_initials, "+")
                 views.setViewVisibility(R.id.widget_photo, View.GONE)
                 views.setViewVisibility(R.id.widget_icon, View.GONE)
@@ -180,18 +183,24 @@ class ContactQuickWidgetProvider : AppWidgetProvider() {
                 val calls = configuration.actionMode == ACTION_MODE_CALL
                 views.setTextViewText(
                     R.id.widget_label,
-                    if (wide) configuration.contactName else firstName(configuration.contactName),
+                    if (wide || large) configuration.contactName else firstName(configuration.contactName),
                 )
                 if (wide) views.setTextViewText(R.id.widget_caption, context.getString(if (calls) R.string.cw_tap_call else R.string.cw_tap_open))
                 views.setTextViewText(R.id.widget_initials, initials(configuration.contactName))
-                val photo = loadPhoto(context, configuration)
+                if (large) bindLarge(context, views, appWidgetId, configuration)
+                val photo = ContactWidgetPhotos.circlePhoto(
+                    context,
+                    configuration.contactId,
+                    if (large) 256 else 192,
+                    highRes = large,
+                )
                 if (photo != null) {
                     views.setImageViewBitmap(R.id.widget_photo, photo)
                     views.setViewVisibility(R.id.widget_photo, View.VISIBLE)
                 } else {
                     views.setViewVisibility(R.id.widget_photo, View.GONE)
                 }
-                views.setViewVisibility(R.id.widget_icon, if (calls) View.VISIBLE else View.GONE)
+                if (!large) views.setViewVisibility(R.id.widget_icon, if (calls) View.VISIBLE else View.GONE)
                 val tapIntent = Intent(context, ContactQuickWidgetProvider::class.java)
                     .setAction(ACTION_WIDGET_TAP)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
@@ -204,57 +213,41 @@ class ContactQuickWidgetProvider : AppWidgetProvider() {
                 views.setOnClickPendingIntent(R.id.widget_root, tapPendingIntent)
             }
 
-            if (!wide) {
+            if (!wide && !large) {
                 views.setViewVisibility(R.id.widget_label, if (tall) View.VISIBLE else View.GONE)
             }
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
 
-        private fun firstName(name: String): String =
-            name.trim().split(Regex("\\s+")).firstOrNull()?.ifEmpty { null } ?: name
+        private fun firstName(name: String): String = ContactWidgetPhotos.firstName(name)
 
         /** "Dana Levi" -> "DL"; one name -> its first letter. */
-        internal fun initials(name: String): String {
-            val parts = name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-            val letters = when {
-                parts.isEmpty() -> "?"
-                parts.size == 1 -> parts[0].take(1)
-                else -> parts.first().take(1) + parts.last().take(1)
-            }
-            return letters.uppercase()
-        }
+        internal fun initials(name: String): String = ContactWidgetPhotos.initials(name)
 
-        /** The address book photo, cut to a circle; null when there is none or no permission. */
-        private fun loadPhoto(context: Context, configuration: ContactWidgetConfig): Bitmap? {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                return null
-            }
-            return try {
-                val uri = android.content.ContentUris.withAppendedId(
-                    ContactsContract.Contacts.CONTENT_URI,
-                    configuration.contactId,
-                )
-                ContactsContract.Contacts.openContactPhotoInputStream(context.contentResolver, uri, false)
-                    ?.use { BitmapFactory.decodeStream(it) }
-                    ?.let { circle(it) }
-            } catch (e: Exception) {
-                null
-            }
-        }
-
-        private fun circle(source: Bitmap): Bitmap {
-            val size = minOf(source.width, source.height, 192)
-            val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(out)
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            canvas.drawOval(0f, 0f, size.toFloat(), size.toFloat(), paint)
-            paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-            val side = minOf(source.width, source.height)
-            val src = Rect((source.width - side) / 2, (source.height - side) / 2, (source.width + side) / 2, (source.height + side) / 2)
-            canvas.drawBitmap(source, src, Rect(0, 0, size, size), paint)
-            return out
+        /** Number under the name, and Call / Message buttons when it has one. */
+        private fun bindLarge(
+            context: Context,
+            views: RemoteViews,
+            appWidgetId: Int,
+            configuration: ContactWidgetConfig,
+        ) {
+            val phone = configuration.phoneNumber
+                ?: ContactWidgetPhotos.primaryPhone(context, configuration.contactId)
+            views.setTextViewText(R.id.widget_caption, phone ?: "")
+            views.setViewVisibility(R.id.widget_caption, if (phone == null) View.GONE else View.VISIBLE)
+            views.setViewVisibility(R.id.widget_actions, if (phone == null) View.GONE else View.VISIBLE)
+            if (phone == null) return
+            fun action(action: String, requestCode: Int) = PendingIntent.getActivity(
+                context,
+                requestCode,
+                ContactActionActivity.intent(context, action, phone, configuration.contactId, configuration.lookupUri)
+                    .setData(Uri.parse("ztcontacts://widget/$appWidgetId/$action")),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            views.setOnClickPendingIntent(R.id.widget_call, action(ContactActionActivity.ACTION_CALL, appWidgetId * 4 + 1))
+            views.setOnClickPendingIntent(R.id.widget_message, action(ContactActionActivity.ACTION_MESSAGE, appWidgetId * 4 + 2))
+            views.setContentDescription(R.id.widget_call, context.getString(R.string.fw_call_named, configuration.contactName))
+            views.setContentDescription(R.id.widget_message, context.getString(R.string.fw_message_named, configuration.contactName))
         }
 
         fun updateAllWidgets(context: Context) {
