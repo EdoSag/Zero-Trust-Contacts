@@ -55,6 +55,19 @@ class FavoritesWidgetProvider : AppWidgetProvider() {
                 .forEach { update(context, manager, it) }
         }
 
+        /**
+         * Called when the app comes to the front: once contacts may be read
+         * (also when allowed in system settings), placed widgets drop the
+         * permission message and start following address book changes.
+         */
+        fun refreshIfPlaced(context: Context) {
+            val ids = AppWidgetManager.getInstance(context)
+                .getAppWidgetIds(ComponentName(context, FavoritesWidgetProvider::class.java))
+            if (ids.isEmpty() || !ContactWidgetPhotos.canRead(context)) return
+            FavoritesRefreshJob.schedule(context)
+            updateAll(context)
+        }
+
         private data class Favorite(val id: Long, val name: String, val lookupUri: String?)
 
         private fun favorites(context: Context): List<Favorite> {

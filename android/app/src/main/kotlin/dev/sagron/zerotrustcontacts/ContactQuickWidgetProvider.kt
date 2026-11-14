@@ -132,9 +132,13 @@ class ContactQuickWidgetProvider : AppWidgetProvider() {
         /** From about two cells wide, the name sits beside the photo. */
         private const val WIDE_MIN_WIDTH_DP = 140
 
-        /** From about 2x2: big photo, name, number, Call and Message buttons (W7). */
+        /**
+         * From about 2x2 (W7): big photo, name, number, Call and Message
+         * buttons. They need about 185dp at the default font size, so the
+         * large layout starts a little above that.
+         */
         private const val LARGE_MIN_WIDTH_DP = 110
-        private const val LARGE_MIN_HEIGHT_DP = 150
+        private const val LARGE_MIN_HEIGHT_DP = 190
 
         /**
          * Below this height there is only room for the round photo (44dp plus
