@@ -221,6 +221,11 @@ class MainActivity : FlutterFragmentActivity() {
         flushPendingOpenedContact()
     }
 
+    override fun onResume() {
+        super.onResume()
+        FavoritesWidgetProvider.refreshIfPlaced(this)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
