@@ -22,4 +22,22 @@
     <string name="cw_tap_pick">Tap to pick someone</string>
     <string name="cw_tap_call">Tap to call</string>
     <string name="cw_tap_open">Tap to open</string>
+    <string name="fw_label">Favourites</string>
+    <string name="fw_title">Favourites</string>
+    <string name="fw_description">Your starred contacts as a grid of photos. Tap one to call or send a message</string>
+    <string name="fw_tap_call">Tap to call</string>
+    <string name="fw_tap_message">Tap to message</string>
+    <string name="fw_empty">Star contacts in ZT Contacts to see them here</string>
+    <string name="fw_permission">Open ZT Contacts and allow access to contacts</string>
+    <string name="fw_mode_title">Tap a favourite to</string>
+    <string name="fw_mode_call">Call</string>
+    <string name="fw_mode_message">Send a message</string>
+    <string name="fw_call">Call</string>
+    <string name="fw_message">Send a message</string>
+    <string name="fw_call_named">Call %1$s</string>
+    <string name="fw_message_named">Message %1$s</string>
+    <string name="fw_open_named">Open %1$s</string>
+    <string name="fw_preview_1">Alex</string>
+    <string name="fw_preview_2">Bea</string>
+    <string name="fw_preview_3">Chris</string>
 </resources>
