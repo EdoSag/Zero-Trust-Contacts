@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/app/app_gate.dart';
 import 'package:zerotrust_contacts/l10n/l10n.dart';
+import 'app/email_links.dart';
 
 const ZtAppConfig contactsAppConfig = ZtAppConfig(
   appId: 'contacts',
@@ -18,6 +20,7 @@ Future<void> main() async {
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+  unawaited(EmailLinks.listen());
   // The language picked in Settings, so the first frame is already in it.
   await ZtLanguageController.preload();
   runApp(
