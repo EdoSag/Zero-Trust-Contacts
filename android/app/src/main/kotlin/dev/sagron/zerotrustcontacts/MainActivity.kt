@@ -812,6 +812,9 @@ class MainActivity : FlutterFragmentActivity() {
         }
 
         val contactUri = intent.data ?: return null
+        // Web links (the password-reset email, see EmailLinks) aren't
+        // contacts; app_links passes them to the Dart side.
+        if (contactUri.scheme == "https" || contactUri.scheme == "http") return null
         return buildOpenedContact(contactUri)
     }
 
