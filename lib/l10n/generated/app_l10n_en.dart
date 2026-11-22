@@ -1668,4 +1668,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get birthdaysAndReminders => 'Upcoming birthdays and reminders';
+
+  @override
+  String get pickAContactToSeeItHere => 'Pick a contact to see it here';
 }

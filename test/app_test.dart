@@ -11,6 +11,7 @@ import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/legacy/legacy_contacts_crypto.dart';
 import 'package:zerotrust_contacts/main.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/pages/create_contact_page.dart';
 
 import 'legacy_import_test.dart' show contact, oldBlob;
@@ -359,6 +360,54 @@ void main() {
     expect(find.widgetWithText(TextField, 'שם פרטי'), findsOneWidget);
     expect(find.text('נייד'), findsOneWidget); // "Mobile"
     expect(tester.takeException(), isNull);
+    container.read(vaultControllerProvider.notifier).lock();
+    await settle(tester);
+  });
+
+  testWidgets('tablet: tabs on a rail, the contact opens beside the list',
+      (WidgetTester tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Create a Zero-Trust account'));
+    await tester.pump();
+    await tester.enterText(find.widgetWithText(TextFormField, 'Email'), email);
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Password'), password);
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Confirm password'), password);
+    await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+    await settle(tester);
+    await confirmRecoveryKey(tester);
+    final repo = await container.read(vaultRepositoryProvider.future);
+    final Future<void> saving = repo.upsertSavedContact(contact('c1', 'Ada'));
+    await settle(tester);
+    await saving;
+
+    // A landscape tablet: 1280 x 800.
+    tester.view.physicalSize = const Size(2560, 1600);
+    tester.view.devicePixelRatio = 2;
+    await settle(tester);
+    expect(find.byKey(const Key('home_rail')), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.text('Pick a contact to see it here'), findsOneWidget);
+
+    await tester.tap(find.text('Ada').first);
+    await settle(tester);
+    // The list stays, and the contact's page fills the right side.
+    final Rect row = tester.getRect(find
+        .ancestor(of: find.text('Ada').first, matching: find.byType(ListTile))
+        .first);
+    final Rect page = tester.getRect(find.byType(ContactDetailPage));
+    expect(row.right, lessThanOrEqualTo(page.left + 1));
+    expect(page.width, greaterThan(500));
+    expect(find.text('Pick a contact to see it here'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    // A phone: back to the bottom bar.
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.5;
+    await settle(tester);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byKey(const Key('home_rail')), findsNothing);
     container.read(vaultControllerProvider.notifier).lock();
     await settle(tester);
   });

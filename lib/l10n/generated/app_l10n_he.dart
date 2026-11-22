@@ -1652,4 +1652,7 @@ class AppL10nHe extends AppL10n {
 
   @override
   String get birthdaysAndReminders => 'ימי הולדת קרובים ותזכורות';
+
+  @override
+  String get pickAContactToSeeItHere => 'אפשר לבחור איש קשר כדי לראות אותו כאן';
 }

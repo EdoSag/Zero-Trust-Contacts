@@ -44,6 +44,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   StreamSubscription<Set<String>>? _storeChanges;
   Timer? _reloadDebounce;
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
 
   int _tabIndex = 0;
   bool _loading = true;
@@ -68,6 +69,19 @@ class _HomePageState extends ConsumerState<HomePage> {
   StreamSubscription<void>? _incomingSubscription;
   StreamSubscription<String>? _reminderTaps;
   bool _handlingIncoming = false;
+
+  /// Width from which the list and the open contact sit side by side
+  /// (Material's "expanded" size: tablets, unfolded foldables).
+  static const double twoPaneWidth = 840;
+
+  /// Width from which the tabs move to a rail on the side.
+  static const double railWidth = 600;
+
+  bool get _twoPane => MediaQuery.sizeOf(context).width >= twoPaneWidth;
+
+  /// The contact open in the side pane, on wide screens.
+  String? _paneContactId;
+  final GlobalKey<NavigatorState> _paneNavigator = GlobalKey<NavigatorState>();
 
   List<VaultContact> _savedContacts = <VaultContact>[];
   List<VaultContact> _deviceContacts = <VaultContact>[];
@@ -151,6 +165,31 @@ class _HomePageState extends ConsumerState<HomePage> {
         if (mounted) await _openContact(contact);
         return;
       }
+    }
+  }
+
+  /// Opens what a home screen shortcut (C22) or the birthdays widget asked
+  /// for, once the vault is unlocked.
+  Future<void> _openTarget(String target) async {
+    switch (target) {
+      case BirthdaysPage.openTarget:
+        await _openBirthdays();
+      case 'new_contact':
+        await _createContact();
+      case 'search':
+        _selectTab(0);
+        _searchFocus.requestFocus();
+      case 'scan_card':
+        if (ref.read(cardScannerProvider).isSupported) {
+          final VaultContact? saved = await scanBusinessCard(context, ref);
+          if (saved != null && mounted) await _loadContacts(quiet: true);
+        }
+      case 'scan_qr':
+        if (QrScanPage.isSupported &&
+            await QrScanPage.scanAndImport(context) &&
+            mounted) {
+          await _loadContacts(quiet: true);
+        }
     }
   }
 
@@ -282,9 +321,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       final NavigatorState navigator = Navigator.of(context);
       switch (request) {
         case IncomingOpenPage(:final String target):
-          if (target == BirthdaysPage.openTarget) {
-            await _openBirthdays();
-          }
+          await _openTarget(target);
         case IncomingTextPick():
           final String? picked = await navigator.push<String>(
             MaterialPageRoute<String>(
@@ -426,6 +463,22 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _openContact(VaultContact contact) async {
+    final NavigatorState? pane = _paneNavigator.currentState;
+    if (_twoPane && _tabIndex == 0 && pane != null) {
+      // Tablet: the contact opens beside the list (C22).
+      setState(() => _paneContactId = contact.id);
+      final Future<bool?> closed = pane.pushAndRemoveUntil<bool>(
+        MaterialPageRoute<bool>(
+            builder: (_) => ContactDetailPage(contact: contact)),
+        (Route<dynamic> route) => route.isFirst,
+      );
+      await closed;
+      if (mounted && _paneContactId == contact.id) {
+        setState(() => _paneContactId = null);
+        await _loadContacts(quiet: true);
+      }
+      return;
+    }
     await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
           builder: (_) => ContactDetailPage(contact: contact)),
@@ -457,6 +510,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Expanded(
                 child: TextField(
                   controller: _searchController,
+                  focusNode: _searchFocus,
                   decoration: InputDecoration(
                     hintText: context.l10n.searchNamePhoneEmailNotes,
                     prefixIcon: const Icon(Icons.search),
@@ -599,7 +653,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final bool hasPhone = contact.phones.isNotEmpty;
     return ListTile(
       contentPadding: contentPadding,
-      selected: selected,
+      selected: selected || (_twoPane && _paneContactId == contact.id),
       selectedTileColor: colorScheme.secondaryContainer.withValues(alpha: 0.5),
       onTap: () {
         if (_selected.isEmpty) {
@@ -1330,47 +1384,141 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Future<void> _createContact() async {
+    final VaultContact? created = await Navigator.of(context)
+        .push<VaultContact>(MaterialPageRoute<VaultContact>(
+            builder: (_) => CreateContactPage()));
+    if (created != null && mounted) {
+      await _loadContacts();
+    }
+  }
+
+  void _selectTab(int value) {
+    setState(() {
+      _tabIndex = value;
+      _selected.clear();
+    });
+  }
+
+  /// The contacts list, and on wide screens the open contact beside it.
+  Widget _buildContactsPane() {
+    if (!_twoPane) return _buildContactsTab();
+    return Row(
+      children: <Widget>[
+        SizedBox(width: 400, child: _buildContactsTab()),
+        const VerticalDivider(width: 1),
+        Expanded(
+          child: Navigator(
+            key: _paneNavigator,
+            onGenerateRoute: (RouteSettings settings) =>
+                MaterialPageRoute<void>(
+              settings: settings,
+              builder: (BuildContext context) => Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(Icons.person_outline,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.outline),
+                      const SizedBox(height: 12),
+                      Text(context.l10n.pickAContactToSeeItHere),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildScaffold(bool selecting) {
+    final bool rail = MediaQuery.sizeOf(context).width >= railWidth;
+    final List<({IconData icon, IconData selected, String label})> tabs =
+        <({IconData icon, IconData selected, String label})>[
+      (
+        icon: Icons.people_alt_outlined,
+        selected: Icons.people_alt,
+        label: context.l10n.contacts,
+      ),
+      (
+        icon: Icons.star_outline,
+        selected: Icons.star,
+        label: context.l10n.highlights,
+      ),
+      (
+        icon: Icons.folder_open_outlined,
+        selected: Icons.folder_open,
+        label: context.l10n.organize,
+      ),
+    ];
+    final Widget pages = IndexedStack(
+      index: _tabIndex,
+      children: [
+        _buildContactsPane(),
+        _buildHighlightsTab(),
+        _buildOrganizeTab(),
+      ],
+    );
     return Scaffold(
       appBar: selecting ? _buildSelectionBar() : null,
       body: SafeArea(
-        child: IndexedStack(
-          index: _tabIndex,
-          children: [
-            _buildContactsTab(),
-            _buildHighlightsTab(),
-            _buildOrganizeTab(),
-          ],
-        ),
+        child: rail
+            ? Row(
+                children: <Widget>[
+                  NavigationRail(
+                    key: const Key('home_rail'),
+                    selectedIndex: _tabIndex,
+                    onDestinationSelected: _selectTab,
+                    labelType: NavigationRailLabelType.all,
+                    leading: selecting
+                        ? null
+                        : Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: FloatingActionButton(
+                              heroTag: 'rail_new_contact',
+                              tooltip: context.l10n.newContact,
+                              onPressed: _createContact,
+                              child: const Icon(Icons.add),
+                            ),
+                          ),
+                    destinations: <NavigationRailDestination>[
+                      for (final tab in tabs)
+                        NavigationRailDestination(
+                          icon: Icon(tab.icon),
+                          selectedIcon: Icon(tab.selected),
+                          label: Text(tab.label),
+                        ),
+                    ],
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: pages),
+                ],
+              )
+            : pages,
       ),
-      floatingActionButton: selecting ? null : FloatingActionButton.large(
-        onPressed: () async {
-          final VaultContact? created = await Navigator.of(context)
-              .push<VaultContact>(MaterialPageRoute<VaultContact>(
-                  builder: (_) => CreateContactPage()));
-          if (created != null && mounted) {
-            await _loadContacts();
-          }
-        },
-        child: Icon(Icons.add),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tabIndex,
-        onDestinationSelected: (int value) {
-          setState(() {
-            _tabIndex = value;
-            _selected.clear();
-          });
-        },
-        destinations: [
-          NavigationDestination(
-              icon: Icon(Icons.people_alt_outlined), label: context.l10n.contacts),
-          NavigationDestination(
-              icon: Icon(Icons.star_outline), label: context.l10n.highlights),
-          NavigationDestination(
-              icon: Icon(Icons.folder_open_outlined), label: context.l10n.organize),
-        ],
-      ),
+      floatingActionButton: selecting || rail
+          ? null
+          : FloatingActionButton.large(
+              tooltip: context.l10n.newContact,
+              onPressed: _createContact,
+              child: Icon(Icons.add),
+            ),
+      bottomNavigationBar: rail
+          ? null
+          : NavigationBar(
+              selectedIndex: _tabIndex,
+              onDestinationSelected: _selectTab,
+              destinations: [
+                for (final tab in tabs)
+                  NavigationDestination(
+                      icon: Icon(tab.icon),
+                      selectedIcon: Icon(tab.selected),
+                      label: tab.label),
+              ],
+            ),
     );
   }
 
@@ -1382,6 +1530,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     _storeChanges?.cancel();
     _reloadDebounce?.cancel();
     _searchController.dispose();
+    _searchFocus.dispose();
     _listScroll.dispose();
     super.dispose();
   }

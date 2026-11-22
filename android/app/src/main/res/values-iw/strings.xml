@@ -53,4 +53,10 @@
     <string name="bw_years_married">%1$d שנות נישואין</string>
     <string name="bw_hidden_birthday">יום הולדת</string>
     <string name="bw_hidden_anniversary">יום נישואין</string>
+    <string name="sc_new_contact">איש קשר חדש</string>
+    <string name="sc_search">חיפוש</string>
+    <string name="sc_search_long">חיפוש באנשי הקשר</string>
+    <string name="sc_scan_card">סריקת כרטיס</string>
+    <string name="sc_scan_card_long">סריקת כרטיס ביקור</string>
+    <string name="sc_birthdays">ימי הולדת</string>
 </resources>
