@@ -38,6 +38,18 @@ sign-in, unlock, settings and look.
   locked, so the app leaves the widget a snapshot of the dates; names only
   when "Show names in the birthdays widget" is on (off by default).
 
+### Activity and keeping in touch
+- Each contact's page shows what you did together in the other Zero-Trust
+  apps: calls from ZT Phone (when its call history backup is on, or private
+  calls), events from ZT Calendar (linked to the contact or inviting one of
+  their emails) and tasks from ZT Tasks linked to them. "See all" lists it
+  by month. Read only: Contacts never changes the other apps' data.
+- Keep in touch: pick "every week" up to "every 6 months" on a contact. A
+  reminder comes on the day the next talk is due, at the birthday reminder
+  time; an answered call in ZT Phone or a call or message started from
+  Contacts moves it on. Organize → Keep in touch lists who is due. Goals are
+  their own synced items, so older app versions can't drop them.
+
 ### Shortcuts and big screens
 - Long-press the app icon: New contact, Search, Scan card, Birthdays. Each
   opens once the vault is unlocked.

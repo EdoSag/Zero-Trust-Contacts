@@ -6,6 +6,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/app/contact_sorting.dart';
 import 'package:zerotrust_contacts/app/contacts_collection.dart';
+import 'package:zerotrust_contacts/timeline/keep_in_touch.dart';
 import 'package:zerotrust_contacts/import/contact_import_planner.dart';
 import 'package:zerotrust_contacts/import/vcard_parser.dart';
 import 'package:zerotrust_contacts/import/vcard_writer.dart';
@@ -204,6 +205,25 @@ class VaultRepository {
       details: '${existing != null ? 'Updated' : 'Created'} '
           '${contact.displayName}',
     );
+  }
+
+  /// Every "keep in touch" goal (C-3).
+  Future<List<KeepInTouch>> loadKeepInTouch() =>
+      keepInTouchCollection.list(_store);
+
+  /// Sets how often to keep in touch with [contactId]; null turns it off.
+  Future<void> setKeepInTouch(String contactId, int? everyDays) async {
+    if (everyDays == null) {
+      if (await keepInTouchCollection.get(
+              _store, KeepInTouch.itemIdFor(contactId)) !=
+          null) {
+        await keepInTouchCollection.delete(
+            _sync, KeepInTouch.itemIdFor(contactId));
+      }
+      return;
+    }
+    await keepInTouchCollection.save(
+        _sync, _store, KeepInTouch(contactId: contactId, everyDays: everyDays));
   }
 
   /// Moves a contact to the trash, where it stays for

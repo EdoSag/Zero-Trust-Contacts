@@ -1059,5 +1059,96 @@
   "nextThirtyDays": "Next 30 days",
   "laterThisYear": "Later",
   "birthdaysAndReminders": "Upcoming birthdays and reminders",
-  "pickAContactToSeeItHere": "Pick a contact to see it here"
+  "pickAContactToSeeItHere": "Pick a contact to see it here",
+  "keepInTouchReminder": "Time to catch up with {name}",
+  "@keepInTouchReminder": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keepInTouchReminderHidden": "Time to catch up with someone",
+  "keepInTouchReminderBody": "You wanted to keep in touch. Call or send a message?",
+  "everyWeek": "Every week",
+  "everyTwoWeeks": "Every 2 weeks",
+  "everyMonth": "Every month",
+  "everyThreeMonths": "Every 3 months",
+  "everySixMonths": "Every 6 months",
+  "everyNDays": "Every {days} days",
+  "@everyNDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "callMinutes": "{minutes} min",
+  "@callMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "callSeconds": "{seconds} s",
+  "@callSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "incomingCall": "Incoming call",
+  "outgoingCall": "Outgoing call",
+  "missedCall": "Missed call",
+  "event": "Event",
+  "task": "Task",
+  "keepInTouchWith": "Keep in touch with {name}",
+  "@keepInTouchWith": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keepInTouchOff": "Off",
+  "keepInTouch": "Keep in touch",
+  "keepInTouchHint": "Get a nudge when it's been too long",
+  "lastTalkedDaysAgo": "{days, plural, =0{Talked today} =1{Last talked yesterday} other{Last talked {days} days ago}}",
+  "@lastTalkedDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "noTalksYet": "No calls yet",
+  "dueNow": "Due",
+  "activity": "Activity",
+  "activityEmpty": "Calls in ZT Phone, events in ZT Calendar and tasks in ZT Tasks with {name} show up here. Calls need ZT Phone's call history backup.",
+  "@activityEmpty": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "seeAllActivity": "See all ({count})",
+  "@seeAllActivity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keepInTouchEmpty": "No one yet. Open a contact and tap Keep in touch to get a nudge when it's been too long.",
+  "keepInTouchDue": "Keep in touch ({count} due)",
+  "@keepInTouchDue": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
