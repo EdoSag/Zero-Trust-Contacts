@@ -50,6 +50,20 @@ sign-in, unlock, settings and look.
   Contacts moves it on. Organize → Keep in touch lists who is due. Goals are
   their own synced items, so older app versions can't drop them.
 
+### Shared address books
+- Organize → Shared address books: keep contacts together with family or a
+  team (the babysitter, the plumber, the kids' friends' parents). Make one,
+  copy some of your own contacts in, and invite people by link or QR code;
+  they join from the link (https://zerotrust.bz/join/contacts#…) after
+  comparing a short code with you. Everyone in it adds and edits contacts;
+  only owners rename it.
+- Built on the shared spaces of the core (Z24): end-to-end encrypted with a
+  key only the members' phones hold. The server sees member ids and
+  encrypted blobs, never names or numbers. Photos, favourites and pins stay
+  personal and aren't shared.
+- Shared contacts stay out of your own address book; "Save to my contacts"
+  makes your own copy.
+
 ### Shortcuts and big screens
 - Long-press the app icon: New contact, Search, Scan card, Birthdays. Each
   opens once the vault is unlocked.

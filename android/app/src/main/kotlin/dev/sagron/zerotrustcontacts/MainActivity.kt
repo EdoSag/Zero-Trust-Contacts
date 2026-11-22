@@ -22,6 +22,9 @@ class MainActivity : FlutterFragmentActivity() {
          * birthdays widget). Anyone may ask; it only picks the first page shown.
          */
         const val EXTRA_OPEN = "dev.sagron.zerotrustcontacts.OPEN"
+
+        /// The last invite link handed to the app, so it isn't offered twice.
+        private var lastJoinLink: String? = null
     }
 
     private val channelName = "zerotrust_contacts/device_contacts"
@@ -872,6 +875,20 @@ class MainActivity : FlutterFragmentActivity() {
             // Taken once, so turning the phone doesn't open the page again.
             intent.removeExtra(EXTRA_OPEN)
             pendingIncoming = mapOf("kind" to "open", "target" to open)
+            return
+        }
+        val join = intent?.data
+        if (intent?.action == Intent.ACTION_VIEW && join != null &&
+            join.scheme == "https" && join.host == "zerotrust.bz" &&
+            (join.path ?: "").startsWith("/join/contacts")
+        ) {
+            // A shared address book invite: kept until the unlocked app takes
+            // it. The same intent comes back after a rotation; once is enough.
+            val link = join.toString()
+            if (link != lastJoinLink) {
+                lastJoinLink = link
+                pendingIncoming = mapOf("kind" to "join", "link" to link)
+            }
             return
         }
         val incoming = try {

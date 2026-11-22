@@ -169,6 +169,8 @@ class _ContactsHomeState extends ConsumerState<_ContactsHome> {
     // contacts (if turned on) up to date.
     ref.watch(ztSyncControllerProvider);
     ref.watch(phoneSyncProvider);
+    // And every shared address book (on unlock, live, every 5 minutes).
+    ref.watch(ztSpacesProvider);
 
     return switch (ref.watch(vaultRepositoryProvider)) {
       AsyncData() => const HomePage(),

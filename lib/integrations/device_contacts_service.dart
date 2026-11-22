@@ -121,6 +121,9 @@ sealed class IncomingRequest {
       case 'open':
         final String target = '${map['target'] ?? ''}';
         return target.isEmpty ? null : IncomingOpenPage(target);
+      case 'join':
+        final String link = '${map['link'] ?? ''}';
+        return link.isEmpty ? null : IncomingJoinLink(link);
       case 'insert':
         return IncomingNewContact(
           contact: contactFromInsertRequest(map),
@@ -205,6 +208,13 @@ class IncomingOpenPage extends IncomingRequest {
   const IncomingOpenPage(this.target);
 
   final String target;
+}
+
+/// A shared address book invite (https://zerotrust.bz/join/contacts#…).
+class IncomingJoinLink extends IncomingRequest {
+  const IncomingJoinLink(this.link);
+
+  final String link;
 }
 
 /// ZT Keyboard asks the user to pick a number, email or address to type.

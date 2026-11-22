@@ -10,6 +10,9 @@ import 'package:zerotrust_contacts/app/contact_sorting.dart';
 import 'package:zerotrust_contacts/birthdays/birthday_reminders.dart';
 import 'package:zerotrust_contacts/birthdays/birthdays_page.dart';
 import 'package:zerotrust_contacts/linked/linked_apps.dart';
+import 'package:zerotrust_contacts/sharing/shared_book_pages.dart';
+import 'package:zerotrust_contacts/sharing/shared_books.dart';
+import 'package:zt_sharing_ui/zt_sharing_ui.dart';
 import 'package:zerotrust_contacts/timeline/keep_in_touch.dart';
 import 'package:zerotrust_contacts/timeline/person_activity.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
@@ -337,6 +340,8 @@ class _HomePageState extends ConsumerState<HomePage> {
       switch (request) {
         case IncomingOpenPage(:final String target):
           await _openTarget(target);
+        case IncomingJoinLink(:final String link):
+          await joinSharedBook(context, initialLink: link);
         case IncomingTextPick():
           final String? picked = await navigator.push<String>(
             MaterialPageRoute<String>(
@@ -1200,6 +1205,27 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Widget _buildSharedBooksTile() {
+    final SharedBooksState shared = ref.watch(sharedBooksProvider);
+    final int joins =
+        (ref.watch(ztPendingJoinsProvider).value ?? const <PendingJoin>[])
+            .length;
+    return ListTile(
+      key: const Key('organize_shared_books'),
+      leading: Badge(
+        isLabelVisible: joins > 0,
+        label: Text('$joins'),
+        child: const Icon(Icons.group_outlined),
+      ),
+      title: Text(context.l10n.sharedBooksTile(shared.books.length)),
+      subtitle: Text(context.l10n.sharedBooksHint),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => SharedBooksPage(myContacts: _savedContacts),
+      )),
+    );
+  }
+
   Widget _buildKeepInTouchTile() {
     final DateTime now = DateTime.now();
     final int due = touchStatuses(
@@ -1241,6 +1267,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   MaterialPageRoute<void>(builder: (_) => const TrashPage())),
             ),
           ),
+          const SizedBox(height: 12),
+          Card(child: _buildSharedBooksTile()),
           if (QrScanPage.isSupported) ...[
             const SizedBox(height: 12),
             Card(

@@ -1766,4 +1766,152 @@ class AppL10nHe extends AppL10n {
   String keepInTouchDue(int count) {
     return 'שמירה על קשר ($count ממתינים)';
   }
+
+  @override
+  String get search => 'חיפוש';
+
+  @override
+  String get addContact => 'הוספת איש קשר';
+
+  @override
+  String get sharedBooks => 'ספרי כתובות משותפים';
+
+  @override
+  String sharedBooksTile(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ספרי כתובות משותפים',
+      one: 'ספר כתובות משותף אחד',
+      zero: 'ספרי כתובות משותפים',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharedBooksHint =>
+      'אנשי קשר משותפים עם המשפחה או הצוות, בהצפנה מקצה לקצה';
+
+  @override
+  String get sharedBooksEmpty =>
+      'עדיין אין ספרי כתובות משותפים. צרו אחד כדי לשמור אנשי קשר יחד עם המשפחה או הצוות (בייביסיטר, אינסטלטור, הורים של חברים של הילדים), או הצטרפו לאחד עם הזמנה.';
+
+  @override
+  String get newSharedBook => 'ספר כתובות משותף חדש';
+
+  @override
+  String get joinSharedBook => 'הצטרפות עם הזמנה';
+
+  @override
+  String get bookName => 'שם ספר הכתובות';
+
+  @override
+  String get renameBook => 'שינוי שם ספר הכתובות';
+
+  @override
+  String get sharedBookE2e =>
+      'רק האנשים כאן יכולים לקרוא את אנשי הקשר האלה: הם מוצפנים מקצה לקצה, והשרת לעולם לא רואה שמות או מספרים.';
+
+  @override
+  String get sharingNeedsInternet =>
+      'שיתוף דורש חיבור לאינטרנט. נסו שוב כשתהיו מחוברים.';
+
+  @override
+  String get waitingToJoin => 'ממתין להצטרפות';
+
+  @override
+  String get waitingToJoinHint =>
+      'אחד מבעלי ספר הכתובות צריך לאשר את הכניסה שלכם.';
+
+  @override
+  String waitingToJoinCode(String code) {
+    return 'אמרו לבעלים את הקוד: $code';
+  }
+
+  @override
+  String sharedBookSummary(int contacts, int people) {
+    String _temp0 = intl.Intl.pluralLogic(
+      contacts,
+      locale: localeName,
+      other: '$contacts אנשי קשר',
+      one: 'איש קשר אחד',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      people,
+      locale: localeName,
+      other: '$people אנשים',
+      one: 'אדם אחד',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String get sharedBookPeople => 'אנשים';
+
+  @override
+  String get copyMyContactsIn => 'העתקה מאנשי הקשר שלי';
+
+  @override
+  String copiedToBook(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count אנשי קשר הועתקו',
+      one: 'איש קשר אחד הועתק',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String copyN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'העתקת $count',
+      zero: 'העתקה',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharedBookGone => 'אתם כבר לא בספר הכתובות הזה.';
+
+  @override
+  String get sharedContactGone => 'איש הקשר הזה הוסר מספר הכתובות.';
+
+  @override
+  String sharedWith(String names) {
+    return 'משותף עם $names';
+  }
+
+  @override
+  String get searchThisBook => 'חיפוש בספר הכתובות';
+
+  @override
+  String get sharedBookEmpty =>
+      'עדיין אין כאן אנשי קשר. הוסיפו אחד, או העתיקו מאנשי הקשר שלכם.';
+
+  @override
+  String get saveToMyContacts => 'שמירה באנשי הקשר שלי';
+
+  @override
+  String get savedToMyContacts => 'נשמר באנשי הקשר שלכם';
+
+  @override
+  String get removeFromBook => 'הסרה מספר הכתובות';
+
+  @override
+  String removeFromBookQ(String name) {
+    return 'להסיר את $name?';
+  }
+
+  @override
+  String removeFromBookBody(String book) {
+    return 'איש הקשר יוסר מ\"$book\" לכל מי שבו.';
+  }
+
+  @override
+  String inSharedBook(String book) {
+    return 'ב\"$book\"';
+  }
 }

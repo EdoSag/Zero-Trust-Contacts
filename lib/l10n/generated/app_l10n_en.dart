@@ -1782,4 +1782,153 @@ class AppL10nEn extends AppL10n {
   String keepInTouchDue(int count) {
     return 'Keep in touch ($count due)';
   }
+
+  @override
+  String get search => 'Search';
+
+  @override
+  String get addContact => 'Add contact';
+
+  @override
+  String get sharedBooks => 'Shared address books';
+
+  @override
+  String sharedBooksTile(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count shared address books',
+      one: '1 shared address book',
+      zero: 'Shared address books',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharedBooksHint =>
+      'Keep contacts together with family or a team, end-to-end encrypted';
+
+  @override
+  String get sharedBooksEmpty =>
+      'No shared address books yet. Make one to keep contacts together with family or a team (a babysitter, the plumber, the kids\' friends\' parents), or join one with an invite.';
+
+  @override
+  String get newSharedBook => 'New shared address book';
+
+  @override
+  String get joinSharedBook => 'Join with an invite';
+
+  @override
+  String get bookName => 'Address book name';
+
+  @override
+  String get renameBook => 'Rename address book';
+
+  @override
+  String get sharedBookE2e =>
+      'Only the people here can read these contacts: they are end-to-end encrypted, and the server never sees names or numbers.';
+
+  @override
+  String get sharingNeedsInternet =>
+      'Sharing needs an internet connection. Try again when you\'re online.';
+
+  @override
+  String get waitingToJoin => 'Waiting to join';
+
+  @override
+  String get waitingToJoinHint =>
+      'An owner of the address book needs to let you in.';
+
+  @override
+  String waitingToJoinCode(String code) {
+    return 'Tell the owner this code: $code';
+  }
+
+  @override
+  String sharedBookSummary(int contacts, int people) {
+    String _temp0 = intl.Intl.pluralLogic(
+      contacts,
+      locale: localeName,
+      other: '$contacts contacts',
+      one: '1 contact',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      people,
+      locale: localeName,
+      other: '$people people',
+      one: '1 person',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String get sharedBookPeople => 'People';
+
+  @override
+  String get copyMyContactsIn => 'Copy from my contacts';
+
+  @override
+  String copiedToBook(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count contacts copied',
+      one: '1 contact copied',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String copyN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Copy $count',
+      zero: 'Copy',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharedBookGone => 'You\'re no longer in this address book.';
+
+  @override
+  String get sharedContactGone =>
+      'This contact was removed from the address book.';
+
+  @override
+  String sharedWith(String names) {
+    return 'Shared with $names';
+  }
+
+  @override
+  String get searchThisBook => 'Search this address book';
+
+  @override
+  String get sharedBookEmpty =>
+      'No contacts here yet. Add one, or copy some from your own contacts.';
+
+  @override
+  String get saveToMyContacts => 'Save to my contacts';
+
+  @override
+  String get savedToMyContacts => 'Saved to your contacts';
+
+  @override
+  String get removeFromBook => 'Remove from address book';
+
+  @override
+  String removeFromBookQ(String name) {
+    return 'Remove $name?';
+  }
+
+  @override
+  String removeFromBookBody(String book) {
+    return 'This contact goes from \"$book\" for everyone in it.';
+  }
+
+  @override
+  String inSharedBook(String book) {
+    return 'In \"$book\"';
+  }
 }

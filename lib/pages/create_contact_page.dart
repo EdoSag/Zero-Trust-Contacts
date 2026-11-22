@@ -26,6 +26,7 @@ class CreateContactPage extends ConsumerStatefulWidget {
     this.existing,
     this.prefill,
     this.createActivity = 'contact_create',
+    this.saveTo,
   });
 
   /// A saved contact to change.
@@ -36,6 +37,11 @@ class CreateContactPage extends ConsumerStatefulWidget {
 
   /// What the activity log calls saving a new contact from here.
   final String createActivity;
+
+  /// Saves somewhere other than the account's own contacts (a shared
+  /// address book). Photos can't be added there: they live in this
+  /// account's encrypted photo store, which the others can't open.
+  final Future<void> Function(VaultContact contact)? saveTo;
 
   @override
   ConsumerState<CreateContactPage> createState() => _CreateContactPageState();
@@ -313,6 +319,21 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
       return;
     }
     setState(() => _isSaving = true);
+    final Future<void> Function(VaultContact contact)? saveTo = widget.saveTo;
+    if (saveTo != null) {
+      try {
+        await saveTo(contact);
+        if (mounted) Navigator.of(context).pop(contact);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(context.l10n.failedToSaveContact('$e'))));
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
+      return;
+    }
     try {
       final VaultRepository repo = requireRepository(ref);
       String activity = _editing ? 'contact_edit' : widget.createActivity;
@@ -641,6 +662,7 @@ class _CreateContactPageState extends ConsumerState<CreateContactPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: <Widget>[
+            if (widget.saveTo == null)
             Center(
               child: GestureDetector(
                 onTap: _pickPhoto,
