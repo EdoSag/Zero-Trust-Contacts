@@ -1504,4 +1504,13 @@ class AppL10nEn extends AppL10n {
   @override
   String get aVcfOrCsvFile =>
       'A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet';
+
+  @override
+  String get insertIntoKeyboard => 'Insert into ZT Keyboard';
+
+  @override
+  String get insertPickHint => 'Tap a contact, then what to type.';
+
+  @override
+  String get insertNothingToInsert => 'No contacts match.';
 }

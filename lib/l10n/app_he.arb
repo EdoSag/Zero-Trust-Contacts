@@ -396,5 +396,8 @@
   "exportHelpSpreadsheet": "שומרים כ-CSV עם שורת כותרות כמו שם, טלפון, דוא\"ל. גם עמודות חברה, כתובת, יום הולדת והערות נקראות, באנגלית או בעברית.",
   "noContactsFoundIn": "לא נמצאו אנשי קשר ב-{source}.",
   "importAContactsFile": "ייבוא קובץ אנשי קשר",
-  "aVcfOrCsvFile": "קובץ ‎.vcf או ‎.csv מ-iCloud, ‏Outlook, ‏Google או מגיליון"
+  "aVcfOrCsvFile": "קובץ ‎.vcf או ‎.csv מ-iCloud, ‏Outlook, ‏Google או מגיליון",
+  "insertIntoKeyboard": "הוספה ל-ZT Keyboard",
+  "insertPickHint": "בוחרים איש קשר ואז מה להקליד.",
+  "insertNothingToInsert": "אין אנשי קשר מתאימים."
 }

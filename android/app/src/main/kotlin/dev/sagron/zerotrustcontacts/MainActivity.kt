@@ -28,8 +28,21 @@ class MainActivity : FlutterFragmentActivity() {
     /** A vCard file or an "add a contact" request from another app. */
     private var pendingIncoming: Map<String, Any?>? = null
 
+    /** ZT Keyboard is waiting for the user to pick a text here (see [TextPick]). */
+    private var pickingText = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (TextPick.isPick(intent)) {
+            // Only another Zero-Trust app may ask; anyone else gets nothing.
+            if (TextPick.callerAllowed(this)) {
+                pickingText = true
+                pendingIncoming = mapOf("kind" to "pick")
+            } else {
+                TextPick.answer(this, null)
+            }
+            return
+        }
         cacheContactFromIntent(intent)
     }
 
@@ -56,6 +69,14 @@ class MainActivity : FlutterFragmentActivity() {
                     "consumePendingIncoming" -> {
                         result.success(pendingIncoming)
                         pendingIncoming = null
+                    }
+                    "finishTextPick" -> {
+                        // Answers only the screen the keyboard itself opened.
+                        if (pickingText) {
+                            pickingText = false
+                            TextPick.answer(this, call.argument<String>("text"))
+                        }
+                        result.success(null)
                     }
                     "launchDialer" -> {
                         val phoneNumber = call.argument<String>("phoneNumber")
@@ -228,6 +249,9 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // A pick request is only honoured when it opens its own screen (onCreate), where
+        // Android tells who is asking.
+        if (TextPick.isPick(intent)) return
         setIntent(intent)
         cacheContactFromIntent(intent)
         flushPendingOpenedContact()
