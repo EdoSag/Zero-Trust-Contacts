@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zerotrust_contacts/import/android_account_contacts.dart';
 import 'package:zerotrust_contacts/l10n/l10n.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
 
@@ -63,13 +64,44 @@ List<VaultContact> pickMatches(List<VaultContact> contacts, String query) {
         a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()));
 }
 
+/// A contact of the phone's address book (not in the vault) with every
+/// field read from the phone: the list only carries its name and first
+/// number (C-8). [fields] is what the Android side returns for it; the
+/// list's own name and id are kept.
+VaultContact withPhoneDetails(VaultContact listed, Map<String, dynamic>? fields) {
+  if (fields == null) return listed;
+  final VaultContact full = accountImportFromFields(
+      <Map<String, dynamic>>[fields]).contacts.single;
+  List<String> union(List<String> a, List<String> b) =>
+      <String>{...a, ...b}.toList();
+  return listed.copyWith(
+    phones: union(listed.phones, full.phones),
+    emails: full.emails,
+    addresses: full.addresses,
+    company: listed.company.isEmpty ? full.company : listed.company,
+    valueTypes: full.valueTypes,
+  );
+}
+
+/// Contacts in the picker that come from the phone, not the vault.
+bool isPhoneOnly(VaultContact contact) => contact.id.startsWith('device_');
+
 /// Opened by ZT Keyboard's "Insert from ZT apps" key, after the vault was
 /// unlocked: the user taps a contact and then the one thing to type. Pops
 /// with that text, or with nothing when the user goes back.
 class PickForKeyboardPage extends StatefulWidget {
-  const PickForKeyboardPage({super.key, required this.contacts});
+  const PickForKeyboardPage({
+    super.key,
+    required this.contacts,
+    this.loadPhoneDetails,
+  });
 
   final List<VaultContact> contacts;
+
+  /// Reads every field of a phone-only contact (by its Android id, the
+  /// part after `device_`). Null: only what the list holds.
+  final Future<Map<String, dynamic>?> Function(String deviceId)?
+      loadPhoneDetails;
 
   @override
   State<PickForKeyboardPage> createState() => _PickForKeyboardPageState();
@@ -95,7 +127,19 @@ class _PickForKeyboardPageState extends State<PickForKeyboardPage> {
         _ => Icons.place_outlined,
       };
 
-  Future<void> _open(VaultContact contact) async {
+  Future<void> _open(VaultContact listed) async {
+    VaultContact contact = listed;
+    final Future<Map<String, dynamic>?> Function(String)? load =
+        widget.loadPhoneDetails;
+    if (load != null && isPhoneOnly(listed)) {
+      try {
+        contact = withPhoneDetails(
+            listed, await load(listed.id.substring('device_'.length)));
+      } on Object {
+        // Not readable now: offer what the list has.
+      }
+      if (!mounted) return;
+    }
     final List<PickValue> values = pickValuesOf(contact);
     final String? picked = await showModalBottomSheet<String>(
       context: context,

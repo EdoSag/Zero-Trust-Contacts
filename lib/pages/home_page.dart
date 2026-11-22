@@ -325,7 +325,11 @@ class _HomePageState extends ConsumerState<HomePage> {
         case IncomingTextPick():
           final String? picked = await navigator.push<String>(
             MaterialPageRoute<String>(
-              builder: (_) => PickForKeyboardPage(contacts: _allContacts),
+              builder: (_) => PickForKeyboardPage(
+                contacts: _allContacts,
+                loadPhoneDetails:
+                    _deviceContactsService.loadDeviceContactDetails,
+              ),
             ),
           );
           await _deviceContactsService.finishTextPick(picked);

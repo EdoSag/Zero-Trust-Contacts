@@ -228,6 +228,16 @@ class MainActivity : FlutterFragmentActivity() {
                         }.start()
                     }
 
+                    "getDeviceContactDetails" -> {
+                        // Every number, email and address of one phone-only contact,
+                        // for ZT Keyboard's picker (C-8).
+                        val id = call.argument<String>("id")?.toLongOrNull()
+                        try {
+                            result.success(id?.let { getDeviceContactDetails(it) })
+                        } catch (error: SecurityException) {
+                            result.success(null)
+                        }
+                    }
                     "getRawContactPhoto" -> {
                         val rawId = call.argument<Number>("rawContactId")?.toLong()
                         if (rawId == null) {
@@ -688,6 +698,44 @@ class MainActivity : FlutterFragmentActivity() {
             } || (contact["phones"] as List<*>).isNotEmpty() ||
                 (contact["emails"] as List<*>).isNotEmpty()
         }
+    }
+
+    /** One contact of the phone's address book with all its fields, or null. */
+    private fun getDeviceContactDetails(contactId: Long): Map<String, Any>? {
+        ensureContactsPermission()
+        val contact = mutableMapOf<String, Any>(
+            "phones" to mutableListOf<String>(),
+            "emails" to mutableListOf<String>(),
+            "addresses" to mutableListOf<String>(),
+            "labels" to mutableListOf<String>(),
+            "birthdays" to mutableListOf<String>(),
+            "other" to mutableListOf<String>(),
+            "types" to mutableMapOf<String, String>(),
+        )
+        var found = false
+        contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            arrayOf(
+                ContactsContract.Data.RAW_CONTACT_ID,
+                ContactsContract.Data.MIMETYPE,
+                ContactsContract.Data.DATA1,
+                ContactsContract.Data.DATA2,
+                ContactsContract.Data.DATA3,
+                ContactsContract.Data.DATA4,
+                ContactsContract.Data.DATA5,
+            ),
+            "${ContactsContract.Data.CONTACT_ID} = ?",
+            arrayOf(contactId.toString()),
+            null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                found = true
+                val mimeType = cursor.getString(1) ?: continue
+                val data1 = cursor.getString(2)?.trim().orEmpty()
+                applyDataRow(contact, mimeType, data1, cursor, emptyMap())
+            }
+        }
+        return if (found) contact else null
     }
 
     @Suppress("UNCHECKED_CAST")
