@@ -1497,4 +1497,159 @@ class AppL10nHe extends AppL10n {
 
   @override
   String get insertNothingToInsert => 'אין אנשי קשר מתאימים.';
+
+  @override
+  String get birthdayReminderBody => 'אפשר להקיש כדי לראות את הפרטים ולאחל.';
+
+  @override
+  String get birthdayReminderHiddenBody =>
+      'כדי לראות למי, צריך לפתוח את ZT אנשי קשר.';
+
+  @override
+  String get reminderHiddenBirthdayToday => 'יום הולדת היום';
+
+  @override
+  String get reminderHiddenAnniversaryToday => 'יום נישואין היום';
+
+  @override
+  String get reminderHiddenBirthdayTomorrow => 'יום הולדת מחר';
+
+  @override
+  String get reminderHiddenAnniversaryTomorrow => 'יום נישואין מחר';
+
+  @override
+  String reminderHiddenBirthdayInDays(int days) {
+    return 'יום הולדת בעוד $days ימים';
+  }
+
+  @override
+  String reminderHiddenAnniversaryInDays(int days) {
+    return 'יום נישואין בעוד $days ימים';
+  }
+
+  @override
+  String reminderBirthdayToday(String name) {
+    return 'היום יום ההולדת של $name';
+  }
+
+  @override
+  String reminderBirthdayTodayTurns(String name, int years) {
+    return '$name חוגג/ת $years היום';
+  }
+
+  @override
+  String reminderBirthdayTomorrow(String name) {
+    return 'מחר יום ההולדת של $name';
+  }
+
+  @override
+  String reminderBirthdayTomorrowTurns(String name, int years) {
+    return '$name חוגג/ת $years מחר';
+  }
+
+  @override
+  String reminderBirthdayInDays(String name, int days) {
+    return 'יום ההולדת של $name בעוד $days ימים';
+  }
+
+  @override
+  String reminderAnniversaryToday(String name) {
+    return 'היום יום הנישואין של $name';
+  }
+
+  @override
+  String reminderAnniversaryTomorrow(String name) {
+    return 'מחר יום הנישואין של $name';
+  }
+
+  @override
+  String reminderAnniversaryInDays(String name, int days) {
+    return 'יום הנישואין של $name בעוד $days ימים';
+  }
+
+  @override
+  String get birthdayRemindersChannel => 'תזכורות ימי הולדת';
+
+  @override
+  String get birthdayRemindersChannelDescription =>
+      'ימי הולדת וימי נישואין של אנשי הקשר שלך';
+
+  @override
+  String get notificationsAreOffForZt =>
+      'ההתראות של ZT אנשי קשר כבויות. כדי לקבל תזכורות צריך להפעיל אותן בהגדרות הטלפון.';
+
+  @override
+  String get birthdayReminders => 'תזכורות ימי הולדת';
+
+  @override
+  String get birthdayRemindersSubtitle => 'התראה בטלפון הזה על כל יום הולדת';
+
+  @override
+  String get remindOnTheDay => 'ביום עצמו';
+
+  @override
+  String get remindTheDayBefore => 'יום לפני';
+
+  @override
+  String get remindAWeekBefore => 'שבוע לפני';
+
+  @override
+  String get reminderTime => 'שעה';
+
+  @override
+  String get remindAnniversariesToo => 'גם ימי נישואין';
+
+  @override
+  String get showNamesInReminders => 'הצגת שמות בתזכורות';
+
+  @override
+  String get showNamesInRemindersSubtitle =>
+      'כבוי: התזכורת אומרת רק \"יום הולדת היום\" עד לפתיחת האפליקציה';
+
+  @override
+  String get showNamesOnHomeScreen => 'הצגת שמות בווידג\'ט ימי ההולדת';
+
+  @override
+  String get showNamesOnHomeScreenSubtitle =>
+      'כבוי: הווידג\'ט במסך הבית מראה רק מתי, לא של מי';
+
+  @override
+  String get today => 'היום';
+
+  @override
+  String get tomorrow => 'מחר';
+
+  @override
+  String inDays(int days) {
+    return 'בעוד $days ימים';
+  }
+
+  @override
+  String get anniversary => 'יום נישואין';
+
+  @override
+  String turnsYears(int years) {
+    return 'בן/בת $years';
+  }
+
+  @override
+  String anniversaryYears(int years) {
+    return '$years שנות נישואין';
+  }
+
+  @override
+  String get birthdaysAndAnniversaries => 'ימי הולדת';
+
+  @override
+  String get noBirthdaysYet =>
+      'עדיין אין ימי הולדת. אפשר להוסיף יום הולדת בדף של איש קשר והוא יופיע כאן.';
+
+  @override
+  String get nextThirtyDays => 'ב-30 הימים הקרובים';
+
+  @override
+  String get laterThisYear => 'בהמשך';
+
+  @override
+  String get birthdaysAndReminders => 'ימי הולדת קרובים ותזכורות';
 }

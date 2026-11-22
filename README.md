@@ -27,6 +27,17 @@ sign-in, unlock, settings and look.
 - Interaction tracking (calls/messages increment usage metrics).
 - Search + source filtering + sorting (A-Z, recent, source).
 
+### Birthdays
+- Birthdays page (Organize → Birthdays soon, or the widget): every birthday
+  and anniversary, soonest first, with the age they turn.
+- Reminders on this phone: on the day, the day before and/or a week before,
+  at a chosen time; anniversaries too. Set each time the app is unlocked for
+  the coming year. "Show names in reminders" off keeps the name out of the
+  notification ("A birthday today").
+- Upcoming birthdays home screen widget. The vault can't be read while
+  locked, so the app leaves the widget a snapshot of the dates; names only
+  when "Show names in the birthdays widget" is on (off by default).
+
 ### Highlights and organization
 - Highlights tab for pinned, favorites, and frequent contacts.
 - Organize tab with:

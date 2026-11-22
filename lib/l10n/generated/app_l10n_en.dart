@@ -1513,4 +1513,159 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get insertNothingToInsert => 'No contacts match.';
+
+  @override
+  String get birthdayReminderBody => 'Tap to see their details and say hello.';
+
+  @override
+  String get birthdayReminderHiddenBody => 'Unlock ZT Contacts to see who.';
+
+  @override
+  String get reminderHiddenBirthdayToday => 'A birthday today';
+
+  @override
+  String get reminderHiddenAnniversaryToday => 'An anniversary today';
+
+  @override
+  String get reminderHiddenBirthdayTomorrow => 'A birthday tomorrow';
+
+  @override
+  String get reminderHiddenAnniversaryTomorrow => 'An anniversary tomorrow';
+
+  @override
+  String reminderHiddenBirthdayInDays(int days) {
+    return 'A birthday in $days days';
+  }
+
+  @override
+  String reminderHiddenAnniversaryInDays(int days) {
+    return 'An anniversary in $days days';
+  }
+
+  @override
+  String reminderBirthdayToday(String name) {
+    return '$name\'s birthday is today';
+  }
+
+  @override
+  String reminderBirthdayTodayTurns(String name, int years) {
+    return '$name turns $years today';
+  }
+
+  @override
+  String reminderBirthdayTomorrow(String name) {
+    return '$name\'s birthday is tomorrow';
+  }
+
+  @override
+  String reminderBirthdayTomorrowTurns(String name, int years) {
+    return '$name turns $years tomorrow';
+  }
+
+  @override
+  String reminderBirthdayInDays(String name, int days) {
+    return '$name\'s birthday is in $days days';
+  }
+
+  @override
+  String reminderAnniversaryToday(String name) {
+    return '$name\'s anniversary is today';
+  }
+
+  @override
+  String reminderAnniversaryTomorrow(String name) {
+    return '$name\'s anniversary is tomorrow';
+  }
+
+  @override
+  String reminderAnniversaryInDays(String name, int days) {
+    return '$name\'s anniversary is in $days days';
+  }
+
+  @override
+  String get birthdayRemindersChannel => 'Birthday reminders';
+
+  @override
+  String get birthdayRemindersChannelDescription =>
+      'Birthdays and anniversaries of your contacts';
+
+  @override
+  String get notificationsAreOffForZt =>
+      'Notifications are off for ZT Contacts. Turn them on in the phone\'s settings to get reminders.';
+
+  @override
+  String get birthdayReminders => 'Birthday reminders';
+
+  @override
+  String get birthdayRemindersSubtitle =>
+      'A notification on this phone for each birthday';
+
+  @override
+  String get remindOnTheDay => 'On the day';
+
+  @override
+  String get remindTheDayBefore => 'The day before';
+
+  @override
+  String get remindAWeekBefore => 'A week before';
+
+  @override
+  String get reminderTime => 'Time';
+
+  @override
+  String get remindAnniversariesToo => 'Anniversaries too';
+
+  @override
+  String get showNamesInReminders => 'Show names in reminders';
+
+  @override
+  String get showNamesInRemindersSubtitle =>
+      'Off: the reminder says only \"A birthday today\" until you unlock';
+
+  @override
+  String get showNamesOnHomeScreen => 'Show names in the birthdays widget';
+
+  @override
+  String get showNamesOnHomeScreenSubtitle =>
+      'Off: the widget on the home screen shows only when, not who';
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get tomorrow => 'Tomorrow';
+
+  @override
+  String inDays(int days) {
+    return 'In $days days';
+  }
+
+  @override
+  String get anniversary => 'Anniversary';
+
+  @override
+  String turnsYears(int years) {
+    return 'Turns $years';
+  }
+
+  @override
+  String anniversaryYears(int years) {
+    return '$years years married';
+  }
+
+  @override
+  String get birthdaysAndAnniversaries => 'Birthdays';
+
+  @override
+  String get noBirthdaysYet =>
+      'No birthdays yet. Add one on a contact\'s page and it shows up here.';
+
+  @override
+  String get nextThirtyDays => 'Next 30 days';
+
+  @override
+  String get laterThisYear => 'Later';
+
+  @override
+  String get birthdaysAndReminders => 'Upcoming birthdays and reminders';
 }

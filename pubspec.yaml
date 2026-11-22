@@ -1,7 +1,7 @@
 name: zerotrust_contacts
 description: "Zero-Trust Contacts: an end-to-end encrypted address book."
 publish_to: none
-version: 1.7.0+15
+version: 1.8.0+16
 
 environment:
   sdk: ^3.9.0
@@ -44,6 +44,10 @@ dependencies:
   qr_flutter: ^4.1.0
   qr_code_scanner_plus: ">=2.1.2 <2.2.0"
   flutter_contacts: ">=1.1.9 <2.0.0"
+  # Birthday and anniversary reminders (C6), same plugin as ZT Calendar.
+  # 22.x: 23 needs Android Gradle plugin 9 and compileSdk 37.
+  flutter_local_notifications: ^22.0.0
+  timezone: ^0.11.2
 
 dev_dependencies:
   # Release checks every Zero-Trust app runs in CI (keys, sync, sign-in, app

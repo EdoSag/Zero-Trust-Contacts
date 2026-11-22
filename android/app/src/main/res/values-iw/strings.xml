@@ -40,4 +40,17 @@
     <string name="fw_preview_1">אלכס</string>
     <string name="fw_preview_2">בת</string>
     <string name="fw_preview_3">כריס</string>
+    <string name="bw_label">ימי הולדת</string>
+    <string name="bw_title">ימי הולדת</string>
+    <string name="bw_description">ימי ההולדת וימי הנישואין הקרובים של אנשי הקשר, הקרוב ביותר ראשון</string>
+    <string name="bw_empty">כדי לראות כאן ימי הולדת קרובים, יש לפתוח את ZT Contacts</string>
+    <string name="bw_today">היום</string>
+    <string name="bw_tomorrow">מחר</string>
+    <string name="bw_in_days">בעוד %1$d ימים</string>
+    <string name="bw_birthday">יום הולדת</string>
+    <string name="bw_anniversary">יום נישואין</string>
+    <string name="bw_turns">בן/בת %1$d</string>
+    <string name="bw_years_married">%1$d שנות נישואין</string>
+    <string name="bw_hidden_birthday">יום הולדת</string>
+    <string name="bw_hidden_anniversary">יום נישואין</string>
 </resources>

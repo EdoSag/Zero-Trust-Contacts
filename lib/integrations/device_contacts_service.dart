@@ -118,6 +118,9 @@ sealed class IncomingRequest {
         );
       case 'pick':
         return const IncomingTextPick();
+      case 'open':
+        final String target = '${map['target'] ?? ''}';
+        return target.isEmpty ? null : IncomingOpenPage(target);
       case 'insert':
         return IncomingNewContact(
           contact: contactFromInsertRequest(map),
@@ -194,6 +197,14 @@ class IncomingVCard extends IncomingRequest {
 
   final String text;
   final String name;
+}
+
+/// A page to open: "birthdays" from the birthdays widget, or a home
+/// screen shortcut.
+class IncomingOpenPage extends IncomingRequest {
+  const IncomingOpenPage(this.target);
+
+  final String target;
 }
 
 /// ZT Keyboard asks the user to pick a number, email or address to type.
