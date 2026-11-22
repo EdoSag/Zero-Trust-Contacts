@@ -16,6 +16,14 @@ import io.flutter.plugin.common.MethodChannel
 import java.util.Locale
 
 class MainActivity : FlutterFragmentActivity() {
+    companion object {
+        /**
+         * A page of the app to open once it is unlocked: "birthdays" (the
+         * birthdays widget). Anyone may ask; it only picks the first page shown.
+         */
+        const val EXTRA_OPEN = "dev.sagron.zerotrustcontacts.OPEN"
+    }
+
     private val channelName = "zerotrust_contacts/device_contacts"
     private val googleAccountType = "com.google"
     private val requestCodeReadContacts = 2001
@@ -69,6 +77,10 @@ class MainActivity : FlutterFragmentActivity() {
                     "consumePendingIncoming" -> {
                         result.success(pendingIncoming)
                         pendingIncoming = null
+                    }
+                    "updateBirthdaysWidget" -> {
+                        BirthdaysWidgetProvider.save(this, call.argument<String>("json") ?: "{}")
+                        result.success(null)
                     }
                     "finishTextPick" -> {
                         // Answers only the screen the keyboard itself opened.
@@ -807,6 +819,13 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun cacheContactFromIntent(intent: Intent?) {
+        val open = intent?.getStringExtra(EXTRA_OPEN)
+        if (intent != null && open != null) {
+            // Taken once, so turning the phone doesn't open the page again.
+            intent.removeExtra(EXTRA_OPEN)
+            pendingIncoming = mapOf("kind" to "open", "target" to open)
+            return
+        }
         val incoming = try {
             IncomingIntents.read(this, intent)
         } catch (error: Exception) {

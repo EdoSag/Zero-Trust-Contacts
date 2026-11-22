@@ -914,5 +914,149 @@
   "aVcfOrCsvFile": "A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet",
   "insertIntoKeyboard": "Insert into ZT Keyboard",
   "insertPickHint": "Tap a contact, then what to type.",
-  "insertNothingToInsert": "No contacts match."
+  "insertNothingToInsert": "No contacts match.",
+  "birthdayReminderBody": "Tap to see their details and say hello.",
+  "birthdayReminderHiddenBody": "Unlock ZT Contacts to see who.",
+  "reminderHiddenBirthdayToday": "A birthday today",
+  "reminderHiddenAnniversaryToday": "An anniversary today",
+  "reminderHiddenBirthdayTomorrow": "A birthday tomorrow",
+  "reminderHiddenAnniversaryTomorrow": "An anniversary tomorrow",
+  "reminderHiddenBirthdayInDays": "A birthday in {days} days",
+  "@reminderHiddenBirthdayInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderHiddenAnniversaryInDays": "An anniversary in {days} days",
+  "@reminderHiddenAnniversaryInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderBirthdayToday": "{name}'s birthday is today",
+  "@reminderBirthdayToday": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reminderBirthdayTodayTurns": "{name} turns {years} today",
+  "@reminderBirthdayTodayTurns": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderBirthdayTomorrow": "{name}'s birthday is tomorrow",
+  "@reminderBirthdayTomorrow": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reminderBirthdayTomorrowTurns": "{name} turns {years} tomorrow",
+  "@reminderBirthdayTomorrowTurns": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderBirthdayInDays": "{name}'s birthday is in {days} days",
+  "@reminderBirthdayInDays": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderAnniversaryToday": "{name}'s anniversary is today",
+  "@reminderAnniversaryToday": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reminderAnniversaryTomorrow": "{name}'s anniversary is tomorrow",
+  "@reminderAnniversaryTomorrow": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reminderAnniversaryInDays": "{name}'s anniversary is in {days} days",
+  "@reminderAnniversaryInDays": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "birthdayRemindersChannel": "Birthday reminders",
+  "birthdayRemindersChannelDescription": "Birthdays and anniversaries of your contacts",
+  "notificationsAreOffForZt": "Notifications are off for ZT Contacts. Turn them on in the phone's settings to get reminders.",
+  "birthdayReminders": "Birthday reminders",
+  "birthdayRemindersSubtitle": "A notification on this phone for each birthday",
+  "remindOnTheDay": "On the day",
+  "remindTheDayBefore": "The day before",
+  "remindAWeekBefore": "A week before",
+  "reminderTime": "Time",
+  "remindAnniversariesToo": "Anniversaries too",
+  "showNamesInReminders": "Show names in reminders",
+  "showNamesInRemindersSubtitle": "Off: the reminder says only \"A birthday today\" until you unlock",
+  "showNamesOnHomeScreen": "Show names in the birthdays widget",
+  "showNamesOnHomeScreenSubtitle": "Off: the widget on the home screen shows only when, not who",
+  "today": "Today",
+  "tomorrow": "Tomorrow",
+  "inDays": "In {days} days",
+  "@inDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "anniversary": "Anniversary",
+  "turnsYears": "Turns {years}",
+  "@turnsYears": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "anniversaryYears": "{years} years married",
+  "@anniversaryYears": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "birthdaysAndAnniversaries": "Birthdays",
+  "noBirthdaysYet": "No birthdays yet. Add one on a contact's page and it shows up here.",
+  "nextThirtyDays": "Next 30 days",
+  "laterThisYear": "Later",
+  "birthdaysAndReminders": "Upcoming birthdays and reminders"
 }

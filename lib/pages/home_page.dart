@@ -7,6 +7,8 @@ import 'dart:convert';
 
 import 'package:share_plus/share_plus.dart';
 import 'package:zerotrust_contacts/app/contact_sorting.dart';
+import 'package:zerotrust_contacts/birthdays/birthday_reminders.dart';
+import 'package:zerotrust_contacts/birthdays/birthdays_page.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/app/text_direction.dart';
 import 'package:zerotrust_contacts/widgets/alphabet_index.dart';
@@ -64,6 +66,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   double _listHeaderHeight = 0;
   StreamSubscription<VaultContact>? _openedContactSubscription;
   StreamSubscription<void>? _incomingSubscription;
+  StreamSubscription<String>? _reminderTaps;
   bool _handlingIncoming = false;
 
   List<VaultContact> _savedContacts = <VaultContact>[];
@@ -135,8 +138,26 @@ class _HomePageState extends ConsumerState<HomePage> {
         if (mounted) _loadContacts(quiet: true);
       });
     });
+    // A tapped birthday reminder opens that contact (once unlocked).
+    _reminderTaps =
+        ref.read(birthdayNotifierProvider).taps.listen(_openContactById);
     _loadContacts();
     _loadSortMode();
+  }
+
+  Future<void> _openContactById(String id) async {
+    for (final VaultContact contact in _savedContacts) {
+      if (contact.id == id) {
+        if (mounted) await _openContact(contact);
+        return;
+      }
+    }
+  }
+
+  Future<void> _openBirthdays() async {
+    await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+      builder: (_) => BirthdaysPage(contacts: _savedContacts),
+    ));
   }
 
   Future<void> _loadSortMode() async {
@@ -221,6 +242,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         _labelCounts = labelCounts;
         _loading = false;
       });
+      // Reminders and the birthdays widget follow every change (C6, W8).
+      unawaited(syncBirthdays(ref, saved).catchError((Object _) {}));
       await _consumePendingOpenedContact();
       await _consumeIncoming();
     } catch (error) {
@@ -258,6 +281,10 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
       final NavigatorState navigator = Navigator.of(context);
       switch (request) {
+        case IncomingOpenPage(:final String target):
+          if (target == BirthdaysPage.openTarget) {
+            await _openBirthdays();
+          }
         case IncomingTextPick():
           final String? picked = await navigator.push<String>(
             MaterialPageRoute<String>(
@@ -1217,11 +1244,15 @@ class _HomePageState extends ConsumerState<HomePage> {
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   ListTile(
+                    key: const Key('organize_birthdays'),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.cake_outlined),
                     title: Text(
                         context.l10n.birthdaysSoon(_healthSummary.upcomingBirthdays.length)),
+                    subtitle: Text(context.l10n.birthdaysAndReminders),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _openBirthdays,
                   ),
                   ListTile(
                     dense: true,
@@ -1347,6 +1378,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   void dispose() {
     _openedContactSubscription?.cancel();
     _incomingSubscription?.cancel();
+    _reminderTaps?.cancel();
     _storeChanges?.cancel();
     _reloadDebounce?.cancel();
     _searchController.dispose();

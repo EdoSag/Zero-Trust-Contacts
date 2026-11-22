@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Upcoming birthdays (W8): from 2x1 to the whole screen, scrolls when full.
+     Redrawn every hour so "Today" and "Tomorrow" move on by themselves. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/bw_description"
+    android:initialLayout="@layout/birthdays_widget"
+    android:previewLayout="@layout/birthdays_widget_preview"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="60dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="3600000"
+    android:widgetCategory="home_screen" />

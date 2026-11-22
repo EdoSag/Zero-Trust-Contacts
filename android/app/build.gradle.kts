@@ -22,7 +22,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-        
+        // flutter_local_notifications (birthday reminders) uses java.time.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -75,4 +76,5 @@ flutter {
 dependencies {
     // Scrolling home screen widget grids (RemoteCollectionItems before Android 12).
     implementation("androidx.core:core-remoteviews:1.1.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

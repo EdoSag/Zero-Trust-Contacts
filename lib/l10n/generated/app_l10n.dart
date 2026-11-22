@@ -2496,6 +2496,252 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'No contacts match.'**
   String get insertNothingToInsert;
+
+  /// No description provided for @birthdayReminderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to see their details and say hello.'**
+  String get birthdayReminderBody;
+
+  /// No description provided for @birthdayReminderHiddenBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock ZT Contacts to see who.'**
+  String get birthdayReminderHiddenBody;
+
+  /// No description provided for @reminderHiddenBirthdayToday.
+  ///
+  /// In en, this message translates to:
+  /// **'A birthday today'**
+  String get reminderHiddenBirthdayToday;
+
+  /// No description provided for @reminderHiddenAnniversaryToday.
+  ///
+  /// In en, this message translates to:
+  /// **'An anniversary today'**
+  String get reminderHiddenAnniversaryToday;
+
+  /// No description provided for @reminderHiddenBirthdayTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'A birthday tomorrow'**
+  String get reminderHiddenBirthdayTomorrow;
+
+  /// No description provided for @reminderHiddenAnniversaryTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'An anniversary tomorrow'**
+  String get reminderHiddenAnniversaryTomorrow;
+
+  /// No description provided for @reminderHiddenBirthdayInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'A birthday in {days} days'**
+  String reminderHiddenBirthdayInDays(int days);
+
+  /// No description provided for @reminderHiddenAnniversaryInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'An anniversary in {days} days'**
+  String reminderHiddenAnniversaryInDays(int days);
+
+  /// No description provided for @reminderBirthdayToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s birthday is today'**
+  String reminderBirthdayToday(String name);
+
+  /// No description provided for @reminderBirthdayTodayTurns.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} turns {years} today'**
+  String reminderBirthdayTodayTurns(String name, int years);
+
+  /// No description provided for @reminderBirthdayTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s birthday is tomorrow'**
+  String reminderBirthdayTomorrow(String name);
+
+  /// No description provided for @reminderBirthdayTomorrowTurns.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} turns {years} tomorrow'**
+  String reminderBirthdayTomorrowTurns(String name, int years);
+
+  /// No description provided for @reminderBirthdayInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s birthday is in {days} days'**
+  String reminderBirthdayInDays(String name, int days);
+
+  /// No description provided for @reminderAnniversaryToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s anniversary is today'**
+  String reminderAnniversaryToday(String name);
+
+  /// No description provided for @reminderAnniversaryTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s anniversary is tomorrow'**
+  String reminderAnniversaryTomorrow(String name);
+
+  /// No description provided for @reminderAnniversaryInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s anniversary is in {days} days'**
+  String reminderAnniversaryInDays(String name, int days);
+
+  /// No description provided for @birthdayRemindersChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthday reminders'**
+  String get birthdayRemindersChannel;
+
+  /// No description provided for @birthdayRemindersChannelDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthdays and anniversaries of your contacts'**
+  String get birthdayRemindersChannelDescription;
+
+  /// No description provided for @notificationsAreOffForZt.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off for ZT Contacts. Turn them on in the phone\'s settings to get reminders.'**
+  String get notificationsAreOffForZt;
+
+  /// No description provided for @birthdayReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthday reminders'**
+  String get birthdayReminders;
+
+  /// No description provided for @birthdayRemindersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A notification on this phone for each birthday'**
+  String get birthdayRemindersSubtitle;
+
+  /// No description provided for @remindOnTheDay.
+  ///
+  /// In en, this message translates to:
+  /// **'On the day'**
+  String get remindOnTheDay;
+
+  /// No description provided for @remindTheDayBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'The day before'**
+  String get remindTheDayBefore;
+
+  /// No description provided for @remindAWeekBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'A week before'**
+  String get remindAWeekBefore;
+
+  /// No description provided for @reminderTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get reminderTime;
+
+  /// No description provided for @remindAnniversariesToo.
+  ///
+  /// In en, this message translates to:
+  /// **'Anniversaries too'**
+  String get remindAnniversariesToo;
+
+  /// No description provided for @showNamesInReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Show names in reminders'**
+  String get showNamesInReminders;
+
+  /// No description provided for @showNamesInRemindersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: the reminder says only \"A birthday today\" until you unlock'**
+  String get showNamesInRemindersSubtitle;
+
+  /// No description provided for @showNamesOnHomeScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Show names in the birthdays widget'**
+  String get showNamesOnHomeScreen;
+
+  /// No description provided for @showNamesOnHomeScreenSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: the widget on the home screen shows only when, not who'**
+  String get showNamesOnHomeScreenSubtitle;
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
+
+  /// No description provided for @tomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get tomorrow;
+
+  /// No description provided for @inDays.
+  ///
+  /// In en, this message translates to:
+  /// **'In {days} days'**
+  String inDays(int days);
+
+  /// No description provided for @anniversary.
+  ///
+  /// In en, this message translates to:
+  /// **'Anniversary'**
+  String get anniversary;
+
+  /// No description provided for @turnsYears.
+  ///
+  /// In en, this message translates to:
+  /// **'Turns {years}'**
+  String turnsYears(int years);
+
+  /// No description provided for @anniversaryYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{years} years married'**
+  String anniversaryYears(int years);
+
+  /// No description provided for @birthdaysAndAnniversaries.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthdays'**
+  String get birthdaysAndAnniversaries;
+
+  /// No description provided for @noBirthdaysYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No birthdays yet. Add one on a contact\'s page and it shows up here.'**
+  String get noBirthdaysYet;
+
+  /// No description provided for @nextThirtyDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Next 30 days'**
+  String get nextThirtyDays;
+
+  /// No description provided for @laterThisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get laterThisYear;
+
+  /// No description provided for @birthdaysAndReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming birthdays and reminders'**
+  String get birthdaysAndReminders;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

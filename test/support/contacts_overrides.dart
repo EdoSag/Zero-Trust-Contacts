@@ -2,10 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
+import 'package:zerotrust_contacts/birthdays/birthday_reminders.dart';
 import 'package:zerotrust_contacts/legacy/legacy_contacts_source.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
 import 'package:zerotrust_contacts/main.dart';
 import 'package:zerotrust_contacts/services/local_vault_file.dart';
+
+import 'fake_birthday_notifier.dart';
 
 /// Fast KDF for tests (the real one is 600k rounds).
 const KdfParams testKdf = KdfParams(iterations: 1000);
@@ -16,6 +19,7 @@ List<Override> contactsTestOverrides({
   required String deviceId,
   LegacyContactsSource Function(String userId)? legacySource,
   AttachmentBackend? attachmentServer,
+  BirthdayNotifier? birthdayNotifier,
 }) =>
     <Override>[
       ztAppConfigProvider.overrideWithValue(contactsAppConfig),
@@ -45,6 +49,8 @@ List<Override> contactsTestOverrides({
         if (unlocked == null) throw const VaultIsLocked();
         return InMemoryAttachmentCache();
       }),
+      birthdayNotifierProvider
+          .overrideWithValue(birthdayNotifier ?? FakeBirthdayNotifier()),
       ztBreachedPasswordCheckerProvider.overrideWithValue(const NoBreachCheck()),
       legacyContactsKdfProvider.overrideWithValue(testKdf),
       legacyContactsSourceProvider.overrideWithValue(
