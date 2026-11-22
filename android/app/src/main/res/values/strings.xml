@@ -53,4 +53,10 @@
     <string name="bw_years_married">%1$d years married</string>
     <string name="bw_hidden_birthday">A birthday</string>
     <string name="bw_hidden_anniversary">An anniversary</string>
+    <string name="sc_new_contact">New contact</string>
+    <string name="sc_search">Search</string>
+    <string name="sc_search_long">Search contacts</string>
+    <string name="sc_scan_card">Scan card</string>
+    <string name="sc_scan_card_long">Scan a business card</string>
+    <string name="sc_birthdays">Birthdays</string>
 </resources>

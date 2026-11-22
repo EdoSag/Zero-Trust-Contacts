@@ -38,6 +38,12 @@ sign-in, unlock, settings and look.
   locked, so the app leaves the widget a snapshot of the dates; names only
   when "Show names in the birthdays widget" is on (off by default).
 
+### Shortcuts and big screens
+- Long-press the app icon: New contact, Search, Scan card, Birthdays. Each
+  opens once the vault is unlocked.
+- From 600dp wide the tabs move to a side rail; from 840dp (tablets,
+  unfolded foldables) a contact opens beside the list.
+
 ### Highlights and organization
 - Highlights tab for pinned, favorites, and frequent contacts.
 - Organize tab with:

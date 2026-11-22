@@ -45,6 +45,8 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Long-press the icon: New contact, Search, Scan card, Birthdays (C22). -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts"/>
             <!-- Links are handled by the app's own code (supabase_flutter's app_links, and the
                  native link handling in MainActivity), not Flutter's router: AppGate has no
                  route for them. -->

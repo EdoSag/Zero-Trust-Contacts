@@ -2742,6 +2742,12 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Upcoming birthdays and reminders'**
   String get birthdaysAndReminders;
+
+  /// No description provided for @pickAContactToSeeItHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a contact to see it here'**
+  String get pickAContactToSeeItHere;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {
