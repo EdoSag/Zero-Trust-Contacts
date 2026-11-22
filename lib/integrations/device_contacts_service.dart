@@ -414,6 +414,22 @@ class DeviceContactsService {
         .toList();
   }
 
+  /// Every field of one contact of the phone's address book (by its
+  /// Android contact id), as [loadAccountContacts] returns them; null when
+  /// it is gone or can't be read.
+  Future<Map<String, dynamic>?> loadDeviceContactDetails(
+      String deviceContactId) async {
+    if (!Platform.isAndroid) {
+      return null;
+    }
+    final Map<dynamic, dynamic>? response =
+        await _channel.invokeMethod<Map<dynamic, dynamic>>(
+      'getDeviceContactDetails',
+      <String, dynamic>{'id': deviceContactId},
+    );
+    return response == null ? null : Map<String, dynamic>.from(response);
+  }
+
   /// The photo of one raw contact (from [loadAccountContacts]' `rawId`),
   /// as a JPEG scaled down to at most 800 px, or null when it has none.
   /// Read from the phone's contacts database, not from Google.

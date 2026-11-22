@@ -131,4 +131,65 @@ void main() {
     expect(find.text('No contacts match.'), findsOneWidget);
     expect(find.text('Adam Cohen'), findsNothing);
   });
+
+  test('a phone-only contact gets every number, email and address', () {
+    final VaultContact listed = person('device_42', 'Dana', phones: <String>['050-1111111']);
+    final VaultContact full = withPhoneDetails(listed, <String, dynamic>{
+      'displayName': 'Dana Mizrahi',
+      'phones': <String>['050-1111111', '03-7654321'],
+      'emails': <String>['dana@example.com'],
+      'addresses': <String>['5 Dizengoff, Tel Aviv'],
+      'company': 'Acme',
+      'types': <String, String>{'phone\n03-7654321': 'work'},
+    });
+    expect(full.id, 'device_42');
+    expect(full.displayName, 'Dana');
+    expect(pickValuesOf(full).map((PickValue v) => v.text), <String>[
+      'Dana', '050-1111111', '03-7654321', 'dana@example.com',
+      '5 Dizengoff, Tel Aviv',
+    ]);
+    expect(full.typeOf('phone', '03-7654321'), 'work');
+    expect(withPhoneDetails(listed, null), same(listed));
+    expect(isPhoneOnly(listed), isTrue);
+    expect(isPhoneOnly(contacts.first), isFalse);
+  });
+
+  testWidgets('tapping a phone-only contact reads its details from the phone',
+      (WidgetTester tester) async {
+    final List<String> asked = <String>[];
+    await tester.pumpWidget(MaterialApp(
+      theme: ZtTheme.light(),
+      localizationsDelegates: const <LocalizationsDelegate<Object?>>[
+        AppL10n.delegate,
+        ...ZtLanguages.delegates,
+      ],
+      supportedLocales: ZtLanguages.supported,
+      home: PickForKeyboardPage(
+        contacts: <VaultContact>[
+          ...contacts,
+          person('device_42', 'Dana', phones: <String>['050-1111111']),
+        ],
+        loadPhoneDetails: (String id) async {
+          asked.add(id);
+          return <String, dynamic>{
+            'phones': <String>['050-1111111'],
+            'emails': <String>['dana@example.com'],
+            'addresses': <String>['5 Dizengoff, Tel Aviv'],
+          };
+        },
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Noa Levi'));
+    await tester.pumpAndSettle();
+    expect(asked, isEmpty); // Vault contacts already have everything.
+    await tester.tapAt(const Offset(10, 10)); // close the sheet
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Dana'));
+    await tester.pumpAndSettle();
+    expect(asked, <String>['42']);
+    expect(find.textContaining('dana@example.com'), findsOneWidget);
+    expect(find.textContaining('5 Dizengoff, Tel Aviv'), findsOneWidget);
+  });
 }
