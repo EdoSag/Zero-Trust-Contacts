@@ -1247,5 +1247,24 @@
         "type": "String"
       }
     }
-  }
+  },
+  "copy": "Copy",
+  "desktopApps": "Desktop contacts apps",
+  "desktopAppsSubtitleOff": "Off. Let Thunderbird, Apple Contacts or Evolution read your contacts over Wi-Fi",
+  "desktopAppsSubtitleOn": "On while ZT Contacts is unlocked",
+  "desktopAppsIntro": "Your computer's contacts app can show your ZT Contacts, read-only, over your home or office Wi-Fi. The phone serves them itself: nothing goes through a server, and it stops when the app locks.",
+  "desktopAppsSwitch": "Share with computers on this Wi-Fi",
+  "desktopAppsRunning": "On. Computers with the password can read your contacts",
+  "desktopAppsStarting": "Starts when ZT Contacts is unlocked",
+  "desktopAppsOff": "Off",
+  "desktopAppsFailed": "Couldn't start",
+  "desktopAppsServer": "Server address (CardDAV)",
+  "desktopAppsNoWifi": "Connect the phone to Wi-Fi to see its address",
+  "desktopAppsUser": "User name",
+  "desktopAppsPassword": "Password",
+  "desktopAppsFingerprint": "Certificate fingerprint (SHA-256)",
+  "desktopAppsHowTo": "In your contacts app, add a CardDAV account (Thunderbird: New Address Book, Add CardDAV Address Book; Apple Contacts: Add Account, Other Contacts Account, CardDAV, Manual) with this address, user name and password. The app warns that the certificate isn't trusted: check that its fingerprint matches the one above, then trust it. The computer and phone must be on the same Wi-Fi, and the computer refreshes while ZT Contacts is open and unlocked.",
+  "desktopAppsNewPassword": "Make a new password",
+  "desktopAppsNewPasswordHint": "Computers using the old one lose access",
+  "desktopAppsPrivacy": "Only computers on a local network (home or office Wi-Fi) are answered, only with the password, and only to read. Traffic is encrypted with this phone's own certificate. A computer keeps the copy it last read, unencrypted, in its contacts app: turn this on only for computers you trust. Blocked contacts, the trash and shared address books are not shared."
 }

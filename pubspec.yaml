@@ -1,7 +1,7 @@
 name: zerotrust_contacts
 description: "Zero-Trust Contacts: an end-to-end encrypted address book."
 publish_to: none
-version: 1.8.0+20
+version: 1.8.0+21
 
 environment:
   sdk: ^3.9.0
@@ -40,6 +40,9 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   sqlite3: ^3.7.0
   cryptography: ^2.7.0
+  # The desktop bridge's TLS certificate (C10), and its ETags.
+  basic_utils: ^5.8.2
+  crypto: ^3.0.6
   path_provider: ^2.1.4
   image_picker: ^1.1.2
   # Tesseract: open-source text recognition that runs fully on the phone.

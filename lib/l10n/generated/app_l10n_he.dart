@@ -1914,4 +1914,67 @@ class AppL10nHe extends AppL10n {
   String inSharedBook(String book) {
     return 'ב\"$book\"';
   }
+
+  @override
+  String get copy => 'העתקה';
+
+  @override
+  String get desktopApps => 'אפליקציות אנשי קשר במחשב';
+
+  @override
+  String get desktopAppsSubtitleOff =>
+      'כבוי. מאפשר ל־Thunderbird, לאנשי הקשר של Apple או ל־Evolution לקרוא את אנשי הקשר דרך Wi-Fi';
+
+  @override
+  String get desktopAppsSubtitleOn => 'פועל כל עוד ZT Contacts פתוח';
+
+  @override
+  String get desktopAppsIntro =>
+      'אפליקציית אנשי הקשר במחשב יכולה להציג את אנשי הקשר של ZT Contacts, לקריאה בלבד, דרך ה־Wi-Fi בבית או במשרד. הטלפון מגיש אותם בעצמו: שום דבר לא עובר דרך שרת, והגישה נעצרת כשהאפליקציה ננעלת.';
+
+  @override
+  String get desktopAppsSwitch => 'שיתוף עם מחשבים ב־Wi-Fi הזה';
+
+  @override
+  String get desktopAppsRunning =>
+      'פועל. מחשבים עם הסיסמה יכולים לקרוא את אנשי הקשר';
+
+  @override
+  String get desktopAppsStarting => 'יתחיל כש־ZT Contacts ייפתח';
+
+  @override
+  String get desktopAppsOff => 'כבוי';
+
+  @override
+  String get desktopAppsFailed => 'לא הצליח להתחיל';
+
+  @override
+  String get desktopAppsServer => 'כתובת השרת (CardDAV)';
+
+  @override
+  String get desktopAppsNoWifi =>
+      'יש לחבר את הטלפון ל־Wi-Fi כדי לראות את הכתובת שלו';
+
+  @override
+  String get desktopAppsUser => 'שם משתמש';
+
+  @override
+  String get desktopAppsPassword => 'סיסמה';
+
+  @override
+  String get desktopAppsFingerprint => 'טביעת האצבע של האישור (SHA-256)';
+
+  @override
+  String get desktopAppsHowTo =>
+      'באפליקציית אנשי הקשר יש להוסיף חשבון CardDAV (ב־Thunderbird: פנקס כתובות חדש, הוספת פנקס כתובות CardDAV; באנשי הקשר של Apple: הוספת חשבון, חשבון אנשי קשר אחר, CardDAV, ידני) עם הכתובת, שם המשתמש והסיסמה האלה. האפליקציה תזהיר שהאישור לא מהימן: יש לבדוק שטביעת האצבע זהה לזו שלמעלה ואז לאשר. המחשב והטלפון צריכים להיות באותה רשת Wi-Fi, והמחשב מתעדכן כל עוד ZT Contacts פתוח ולא נעול.';
+
+  @override
+  String get desktopAppsNewPassword => 'יצירת סיסמה חדשה';
+
+  @override
+  String get desktopAppsNewPasswordHint => 'מחשבים עם הסיסמה הישנה יאבדו גישה';
+
+  @override
+  String get desktopAppsPrivacy =>
+      'רק מחשבים ברשת מקומית (Wi-Fi בבית או במשרד) מקבלים תשובה, רק עם הסיסמה, ורק לקריאה. התעבורה מוצפנת עם אישור של הטלפון הזה. מחשב שומר את העותק האחרון שקרא, בלי הצפנה, באפליקציית אנשי הקשר שלו: כדאי להפעיל רק למחשבים שסומכים עליהם. אנשי קשר חסומים, סל המחזור וספרי כתובות משותפים לא משותפים.';
 }
