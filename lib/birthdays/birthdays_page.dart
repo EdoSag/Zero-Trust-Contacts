@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:zero_trust_core/zero_trust_core.dart';
+import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/birthdays/birthday_reminders.dart';
 import 'package:zerotrust_contacts/birthdays/birthdays_widget_bridge.dart';
 import 'package:zerotrust_contacts/birthdays/occasions.dart';
@@ -11,6 +14,7 @@ import 'package:zerotrust_contacts/linked/linked_apps.dart';
 import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
 import 'package:zerotrust_contacts/timeline/keep_in_touch.dart';
 import 'package:zerotrust_contacts/timeline/person_activity.dart';
+import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
 
 /// Sets this phone's reminders and the home screen widget from [contacts]:
@@ -87,6 +91,36 @@ class BirthdaysPage extends ConsumerStatefulWidget {
 class _BirthdaysPageState extends ConsumerState<BirthdaysPage> {
   DateTime get _today => widget.today ?? DateTime.now();
 
+  /// The contacts as they are now: a contact opened from here may get a new
+  /// birthday, be blocked or be deleted, and the reminders and widget must
+  /// follow that, not the list the page was opened with.
+  late List<VaultContact> _contacts = widget.contacts;
+  StreamSubscription<Set<String>>? _changes;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(vaultRepositoryProvider.future).then((VaultRepository repo) {
+      if (!mounted) return;
+      _changes = repo.changes.listen((_) => _reload(repo));
+    }).catchError((Object _) {});
+  }
+
+  @override
+  void dispose() {
+    _changes?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _reload(VaultRepository repo) async {
+    try {
+      final List<VaultContact> now = await repo.loadSavedContacts();
+      if (mounted) setState(() => _contacts = now);
+    } on Object {
+      // Keeps the last list.
+    }
+  }
+
   Future<void> _save(BirthdayReminderSettings next) async {
     final BirthdayReminderSettings current =
         await ref.read(birthdayReminderSettingsProvider.future);
@@ -105,7 +139,7 @@ class _BirthdaysPageState extends ConsumerState<BirthdaysPage> {
       }
     }
     await ref.read(birthdayReminderSettingsProvider.notifier).save(next);
-    await syncBirthdays(ref, widget.contacts);
+    await syncBirthdays(ref, _contacts);
   }
 
   Future<void> _pickTime(BirthdayReminderSettings s) async {
@@ -119,7 +153,7 @@ class _BirthdaysPageState extends ConsumerState<BirthdaysPage> {
   }
 
   Map<String, VaultContact> get _byId => <String, VaultContact>{
-        for (final VaultContact c in widget.contacts) c.id: c,
+        for (final VaultContact c in _contacts) c.id: c,
       };
 
   Widget _settingsCard(BirthdayReminderSettings s) {
@@ -225,7 +259,7 @@ class _BirthdaysPageState extends ConsumerState<BirthdaysPage> {
         ref.watch(birthdayReminderSettingsProvider).value ??
             const BirthdayReminderSettings();
     final List<Occasion> list =
-        upcomingOccasions(occasionsOf(widget.contacts), _today);
+        upcomingOccasions(occasionsOf(_contacts), _today);
     final List<Occasion> soon =
         list.where((Occasion o) => o.daysUntil(_today) <= 30).toList();
     final List<Occasion> later =

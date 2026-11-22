@@ -116,6 +116,22 @@ void main() {
       expect(PlannedReminder.contactIdOf(r.first.payload), '1');
     });
 
+    test('a new reminder time changes the payload, so it is set again', () {
+      final PlannedReminder nine = planBirthdayReminders(
+              occasions: occasions, settings: on, now: DateTime(2027, 6, 1), l10n: en)
+          .first;
+      final PlannedReminder eight = planBirthdayReminders(
+              occasions: occasions,
+              settings: on.copyWith(hour: 8),
+              now: DateTime(2027, 6, 1),
+              l10n: en)
+          .first;
+      expect(eight.id, nine.id);
+      expect(eight.title, nine.title);
+      expect(eight.payload, isNot(nine.payload));
+      expect(PlannedReminder.contactIdOf(eight.payload), '1');
+    });
+
     test('past the time today: next year; day and week before', () {
       final List<PlannedReminder> r = planBirthdayReminders(
         occasions: occasions,

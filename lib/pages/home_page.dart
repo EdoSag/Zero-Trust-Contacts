@@ -177,7 +177,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     _loadSortMode();
   }
 
+  /// A reminder tapped while the contacts were still loading (the app was
+  /// launched by it): opened once they have.
+  String? _pendingReminderId;
+
   Future<void> _openContactById(String id) async {
+    if (_loading) {
+      _pendingReminderId = id;
+      return;
+    }
     for (final VaultContact contact in _savedContacts) {
       if (contact.id == id) {
         if (mounted) await _openContact(contact);
@@ -301,6 +309,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       });
       // Reminders and the birthdays widget follow every change (C6, W8).
       unawaited(syncBirthdays(ref, saved).catchError((Object _) {}));
+      final String? reminder = _pendingReminderId;
+      _pendingReminderId = null;
+      if (reminder != null) await _openContactById(reminder);
       await _consumePendingOpenedContact();
       await _consumeIncoming();
     } catch (error) {
