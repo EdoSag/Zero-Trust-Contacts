@@ -19,6 +19,7 @@ import 'package:zerotrust_contacts/pages/import_contacts_page.dart';
 import 'package:zerotrust_contacts/pages/labels_page.dart';
 import 'package:zerotrust_contacts/pages/qr_scan_page.dart';
 import 'package:zerotrust_contacts/pages/settings_page.dart';
+import 'package:zerotrust_contacts/pages/pick_for_keyboard_page.dart';
 import 'package:zerotrust_contacts/pages/trash_page.dart';
 import 'package:zerotrust_contacts/scan/card_scanner.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
@@ -257,6 +258,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
       final NavigatorState navigator = Navigator.of(context);
       switch (request) {
+        case IncomingTextPick():
+          final String? picked = await navigator.push<String>(
+            MaterialPageRoute<String>(
+              builder: (_) => PickForKeyboardPage(contacts: _allContacts),
+            ),
+          );
+          await _deviceContactsService.finishTextPick(picked);
         case IncomingVCard(:final String text, :final String name):
           await navigator.push<bool>(MaterialPageRoute<bool>(
             builder: (_) => ImportContactsPage(fileText: text, fileName: name),

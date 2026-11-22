@@ -911,5 +911,8 @@
     }
   },
   "importAContactsFile": "Import a contacts file",
-  "aVcfOrCsvFile": "A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet"
+  "aVcfOrCsvFile": "A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet",
+  "insertIntoKeyboard": "Insert into ZT Keyboard",
+  "insertPickHint": "Tap a contact, then what to type.",
+  "insertNothingToInsert": "No contacts match."
 }

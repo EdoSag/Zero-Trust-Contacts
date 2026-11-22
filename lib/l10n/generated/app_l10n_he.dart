@@ -1488,4 +1488,13 @@ class AppL10nHe extends AppL10n {
   @override
   String get aVcfOrCsvFile =>
       'קובץ ‎.vcf או ‎.csv מ-iCloud, ‏Outlook, ‏Google או מגיליון';
+
+  @override
+  String get insertIntoKeyboard => 'הוספה ל-ZT Keyboard';
+
+  @override
+  String get insertPickHint => 'בוחרים איש קשר ואז מה להקליד.';
+
+  @override
+  String get insertNothingToInsert => 'אין אנשי קשר מתאימים.';
 }

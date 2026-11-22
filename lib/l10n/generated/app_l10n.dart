@@ -2478,6 +2478,24 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet'**
   String get aVcfOrCsvFile;
+
+  /// No description provided for @insertIntoKeyboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert into ZT Keyboard'**
+  String get insertIntoKeyboard;
+
+  /// No description provided for @insertPickHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a contact, then what to type.'**
+  String get insertPickHint;
+
+  /// No description provided for @insertNothingToInsert.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts match.'**
+  String get insertNothingToInsert;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

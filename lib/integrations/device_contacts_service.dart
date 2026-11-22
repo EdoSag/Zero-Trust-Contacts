@@ -116,6 +116,8 @@ sealed class IncomingRequest {
           text: utf8.decode(bytes, allowMalformed: true),
           name: '${map['name'] ?? 'contacts.vcf'}',
         );
+      case 'pick':
+        return const IncomingTextPick();
       case 'insert':
         return IncomingNewContact(
           contact: contactFromInsertRequest(map),
@@ -194,6 +196,11 @@ class IncomingVCard extends IncomingRequest {
   final String name;
 }
 
+/// ZT Keyboard asks the user to pick a number, email or address to type.
+class IncomingTextPick extends IncomingRequest {
+  const IncomingTextPick();
+}
+
 /// "Create new contact" or "Add to contacts" from another app.
 class IncomingNewContact extends IncomingRequest {
   const IncomingNewContact({required this.contact, required this.allowExisting});
@@ -239,6 +246,18 @@ class DeviceContactsService {
       'consumePendingIncoming',
     );
     return raw is Map ? IncomingRequest.fromMap(raw) : null;
+  }
+
+  /// Answers ZT Keyboard with the [text] the user picked (null: nothing) and
+  /// closes the pick screen.
+  Future<void> finishTextPick(String? text) async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+    await _channel.invokeMethod<void>(
+      'finishTextPick',
+      <String, Object?>{'text': text},
+    );
   }
 
   void _ensureHandlerRegistered() {

@@ -64,6 +64,13 @@
                 <data android:scheme="content" android:host="com.android.contacts"/>
                 <data android:scheme="content" android:host="contacts"/>
             </intent-filter>
+            <!-- ZT Keyboard's "Insert from ZT apps" key: pick a number, email or address to
+                 type. MainActivity only answers a caller signed with this app's own key
+                 (see TextPick). -->
+            <intent-filter>
+                <action android:name="bz.zerotrust.action.PICK_TEXT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
             <!-- "Create new contact" / "Add to contacts" from the dialer,
                  messaging and other apps: opens the editor filled in. -->
             <intent-filter android:label="Save to ZT Contacts">
