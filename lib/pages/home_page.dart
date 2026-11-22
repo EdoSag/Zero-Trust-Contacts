@@ -9,6 +9,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:zerotrust_contacts/app/contact_sorting.dart';
 import 'package:zerotrust_contacts/birthdays/birthday_reminders.dart';
 import 'package:zerotrust_contacts/birthdays/birthdays_page.dart';
+import 'package:zerotrust_contacts/linked/linked_apps.dart';
+import 'package:zerotrust_contacts/timeline/keep_in_touch.dart';
+import 'package:zerotrust_contacts/timeline/person_activity.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/app/text_direction.dart';
 import 'package:zerotrust_contacts/widgets/alphabet_index.dart';
@@ -68,6 +71,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   StreamSubscription<VaultContact>? _openedContactSubscription;
   StreamSubscription<void>? _incomingSubscription;
   StreamSubscription<String>? _reminderTaps;
+  ProviderSubscription<Object?>? _phoneCalls;
+  ProviderSubscription<Object?>? _goals;
   bool _handlingIncoming = false;
 
   /// Width from which the list and the open contact sit side by side
@@ -152,6 +157,16 @@ class _HomePageState extends ConsumerState<HomePage> {
         if (mounted) _loadContacts(quiet: true);
       });
     });
+    // Calls made in ZT Phone move keep-in-touch reminders on (C-3).
+    // and so do new or changed goals.
+    void resync(Object? _, Object? _) {
+      if (!_loading) {
+        unawaited(syncBirthdays(ref, _savedContacts).catchError((Object _) {}));
+      }
+    }
+
+    _phoneCalls = ref.listenManual(linkedItemsProvider(LinkedApp.phone), resync);
+    _goals = ref.listenManual(keepInTouchGoalsProvider, resync);
     // A tapped birthday reminder opens that contact (once unlocked).
     _reminderTaps =
         ref.read(birthdayNotifierProvider).taps.listen(_openContactById);
@@ -1185,6 +1200,28 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Widget _buildKeepInTouchTile() {
+    final DateTime now = DateTime.now();
+    final int due = touchStatuses(
+      goals: ref.watch(keepInTouchGoalsProvider).value ??
+          const <KeepInTouch>[],
+      contacts: _savedContacts,
+      phoneItems: linkedItems(ref, LinkedApp.phone),
+      now: now,
+    ).where((TouchStatus s) => s.isDue(now)).length;
+    return ListTile(
+      key: const Key('organize_keep_in_touch'),
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.favorite_border),
+      title: Text(context.l10n.keepInTouchDue(due)),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => KeepInTouchPage(contacts: _savedContacts),
+      )),
+    );
+  }
+
   Widget _buildOrganizeTab() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
@@ -1312,6 +1349,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _openBirthdays,
                   ),
+                  _buildKeepInTouchTile(),
                   ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -1531,6 +1569,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     _openedContactSubscription?.cancel();
     _incomingSubscription?.cancel();
     _reminderTaps?.cancel();
+    _phoneCalls?.close();
+    _goals?.close();
     _storeChanges?.cancel();
     _reloadDebounce?.cancel();
     _searchController.dispose();

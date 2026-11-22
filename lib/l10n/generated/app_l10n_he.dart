@@ -1655,4 +1655,115 @@ class AppL10nHe extends AppL10n {
 
   @override
   String get pickAContactToSeeItHere => 'אפשר לבחור איש קשר כדי לראות אותו כאן';
+
+  @override
+  String keepInTouchReminder(String name) {
+    return 'הגיע הזמן לדבר עם $name';
+  }
+
+  @override
+  String get keepInTouchReminderHidden => 'הגיע הזמן לדבר עם מישהו';
+
+  @override
+  String get keepInTouchReminderBody =>
+      'רצית לשמור על קשר. להתקשר או לשלוח הודעה?';
+
+  @override
+  String get everyWeek => 'כל שבוע';
+
+  @override
+  String get everyTwoWeeks => 'כל שבועיים';
+
+  @override
+  String get everyMonth => 'כל חודש';
+
+  @override
+  String get everyThreeMonths => 'כל 3 חודשים';
+
+  @override
+  String get everySixMonths => 'כל חצי שנה';
+
+  @override
+  String everyNDays(int days) {
+    return 'כל $days ימים';
+  }
+
+  @override
+  String callMinutes(int minutes) {
+    return '$minutes דק׳';
+  }
+
+  @override
+  String callSeconds(int seconds) {
+    return '$seconds שנ׳';
+  }
+
+  @override
+  String get incomingCall => 'שיחה נכנסת';
+
+  @override
+  String get outgoingCall => 'שיחה יוצאת';
+
+  @override
+  String get missedCall => 'שיחה שלא נענתה';
+
+  @override
+  String get event => 'אירוע';
+
+  @override
+  String get task => 'משימה';
+
+  @override
+  String keepInTouchWith(String name) {
+    return 'שמירה על קשר עם $name';
+  }
+
+  @override
+  String get keepInTouchOff => 'כבוי';
+
+  @override
+  String get keepInTouch => 'שמירה על קשר';
+
+  @override
+  String get keepInTouchHint => 'תזכורת כשעבר יותר מדי זמן';
+
+  @override
+  String lastTalkedDaysAgo(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'דיברתם לפני $days ימים',
+      one: 'דיברתם אתמול',
+      zero: 'דיברתם היום',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noTalksYet => 'עדיין אין שיחות';
+
+  @override
+  String get dueNow => 'הגיע הזמן';
+
+  @override
+  String get activity => 'פעילות';
+
+  @override
+  String activityEmpty(String name) {
+    return 'שיחות ב-ZT טלפון, אירועים ב-ZT יומן ומשימות ב-ZT משימות עם $name יופיעו כאן. שיחות דורשות את גיבוי היסטוריית השיחות ב-ZT טלפון.';
+  }
+
+  @override
+  String seeAllActivity(int count) {
+    return 'הצגת הכול ($count)';
+  }
+
+  @override
+  String get keepInTouchEmpty =>
+      'עדיין אין אף אחד. אפשר לפתוח איש קשר ולהקיש על \"שמירה על קשר\" כדי לקבל תזכורת כשעבר יותר מדי זמן.';
+
+  @override
+  String keepInTouchDue(int count) {
+    return 'שמירה על קשר ($count ממתינים)';
+  }
 }

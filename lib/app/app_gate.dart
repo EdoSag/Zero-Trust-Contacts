@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zero_trust_core/zero_trust_core.dart';
+import 'package:zerotrust_contacts/linked/linked_apps.dart';
 import 'package:zerotrust_contacts/app/auth_providers.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
@@ -63,9 +64,20 @@ class _AppGateState extends ConsumerState<AppGate> with WidgetsBindingObserver {
       return;
     }
     setState(() => _signingIn = false);
+    _unlock(result);
+  }
+
+  /// Opens the vault, and derives the keys of the sibling apps whose items
+  /// a contact's timeline shows (ZT Phone, Calendar, Tasks; read only)
+  /// while the account key is at hand.
+  void _unlock(UnlockResult result) {
     ref
-        .read(vaultControllerProvider.notifier)
-        .unlock(result.dek, legacyDek: result.legacyDek);
+        .read(linkedKeysProvider.notifier)
+        .deriveFrom(result.dek)
+        .catchError((Object _) {})
+        .whenComplete(() => ref
+            .read(vaultControllerProvider.notifier)
+            .unlock(result.dek, legacyDek: result.legacyDek));
   }
 
   void _forgotPassword() => Navigator.of(context).push(
@@ -94,9 +106,7 @@ class _AppGateState extends ConsumerState<AppGate> with WidgetsBindingObserver {
         recoveryKey: pending.newRecoveryKey!,
         onDone: () {
           setState(() => _awaitingRecoveryKey = null);
-          ref
-              .read(vaultControllerProvider.notifier)
-              .unlock(pending.dek, legacyDek: pending.legacyDek);
+          _unlock(pending);
         },
       );
     }

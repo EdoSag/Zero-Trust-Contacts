@@ -1671,4 +1671,115 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get pickAContactToSeeItHere => 'Pick a contact to see it here';
+
+  @override
+  String keepInTouchReminder(String name) {
+    return 'Time to catch up with $name';
+  }
+
+  @override
+  String get keepInTouchReminderHidden => 'Time to catch up with someone';
+
+  @override
+  String get keepInTouchReminderBody =>
+      'You wanted to keep in touch. Call or send a message?';
+
+  @override
+  String get everyWeek => 'Every week';
+
+  @override
+  String get everyTwoWeeks => 'Every 2 weeks';
+
+  @override
+  String get everyMonth => 'Every month';
+
+  @override
+  String get everyThreeMonths => 'Every 3 months';
+
+  @override
+  String get everySixMonths => 'Every 6 months';
+
+  @override
+  String everyNDays(int days) {
+    return 'Every $days days';
+  }
+
+  @override
+  String callMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String callSeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String get incomingCall => 'Incoming call';
+
+  @override
+  String get outgoingCall => 'Outgoing call';
+
+  @override
+  String get missedCall => 'Missed call';
+
+  @override
+  String get event => 'Event';
+
+  @override
+  String get task => 'Task';
+
+  @override
+  String keepInTouchWith(String name) {
+    return 'Keep in touch with $name';
+  }
+
+  @override
+  String get keepInTouchOff => 'Off';
+
+  @override
+  String get keepInTouch => 'Keep in touch';
+
+  @override
+  String get keepInTouchHint => 'Get a nudge when it\'s been too long';
+
+  @override
+  String lastTalkedDaysAgo(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Last talked $days days ago',
+      one: 'Last talked yesterday',
+      zero: 'Talked today',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noTalksYet => 'No calls yet';
+
+  @override
+  String get dueNow => 'Due';
+
+  @override
+  String get activity => 'Activity';
+
+  @override
+  String activityEmpty(String name) {
+    return 'Calls in ZT Phone, events in ZT Calendar and tasks in ZT Tasks with $name show up here. Calls need ZT Phone\'s call history backup.';
+  }
+
+  @override
+  String seeAllActivity(int count) {
+    return 'See all ($count)';
+  }
+
+  @override
+  String get keepInTouchEmpty =>
+      'No one yet. Open a contact and tap Keep in touch to get a nudge when it\'s been too long.';
+
+  @override
+  String keepInTouchDue(int count) {
+    return 'Keep in touch ($count due)';
+  }
 }

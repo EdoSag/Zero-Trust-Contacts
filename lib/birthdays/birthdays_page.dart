@@ -7,27 +7,52 @@ import 'package:zerotrust_contacts/birthdays/birthdays_widget_bridge.dart';
 import 'package:zerotrust_contacts/birthdays/occasions.dart';
 import 'package:zerotrust_contacts/l10n/l10n.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
+import 'package:zerotrust_contacts/linked/linked_apps.dart';
 import 'package:zerotrust_contacts/pages/contact_detail_page.dart';
+import 'package:zerotrust_contacts/timeline/keep_in_touch.dart';
+import 'package:zerotrust_contacts/timeline/person_activity.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
 
-/// Sets this phone's reminders and the home screen widget from [contacts]
-/// (C6, W8). Called whenever the address book or the settings change while
+/// Sets this phone's reminders and the home screen widget from [contacts]:
+/// birthdays and anniversaries (C6, W8) and keep-in-touch goals (C-3).
+/// Called whenever the address book, the goals or the settings change while
 /// the app is unlocked; nothing about a contact reaches the phone at any
-/// other time.
+/// other time. One call sets every reminder the app has, so none is lost.
 Future<void> syncBirthdays(
   WidgetRef ref,
   List<VaultContact> contacts, {
   DateTime? now,
 }) async {
+  final DateTime at = now ?? DateTime.now();
   final BirthdayReminderSettings settings =
       await ref.read(birthdayReminderSettingsProvider.future);
   final List<Occasion> occasions = occasionsOf(contacts);
-  try {
-    await ref.read(birthdayNotifierProvider).sync(planBirthdayReminders(
-          occasions: occasions,
+  // Goals as last loaded; HomePage syncs again whenever they change. Only
+  // once unlocked: before that nothing can be read.
+  final bool unlocked = ref.read(linkedKeysProvider).containsKey(LinkedApp.phone);
+  final List<PlannedReminder> touch = !unlocked
+      ? const <PlannedReminder>[]
+      : planKeepInTouchReminders(
+          statuses: touchStatuses(
+            goals: ref.read(keepInTouchGoalsProvider).value ??
+                const <KeepInTouch>[],
+            contacts: contacts,
+            phoneItems: ref.read(linkedItemsProvider(LinkedApp.phone)).value ??
+                const <Map<String, Object?>>[],
+            now: at,
+          ),
           settings: settings,
-          now: now ?? DateTime.now(),
-        ));
+          now: at,
+        );
+  try {
+    await ref.read(birthdayNotifierProvider).sync(<PlannedReminder>[
+      ...planBirthdayReminders(
+        occasions: occasions,
+        settings: settings,
+        now: at,
+      ),
+      ...touch,
+    ]);
   } on Object {
     // Notifications not allowed or unavailable; the list still works.
   }

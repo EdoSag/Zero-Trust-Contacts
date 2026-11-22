@@ -2748,6 +2748,174 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Pick a contact to see it here'**
   String get pickAContactToSeeItHere;
+
+  /// No description provided for @keepInTouchReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to catch up with {name}'**
+  String keepInTouchReminder(String name);
+
+  /// No description provided for @keepInTouchReminderHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to catch up with someone'**
+  String get keepInTouchReminderHidden;
+
+  /// No description provided for @keepInTouchReminderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You wanted to keep in touch. Call or send a message?'**
+  String get keepInTouchReminderBody;
+
+  /// No description provided for @everyWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Every week'**
+  String get everyWeek;
+
+  /// No description provided for @everyTwoWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 2 weeks'**
+  String get everyTwoWeeks;
+
+  /// No description provided for @everyMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Every month'**
+  String get everyMonth;
+
+  /// No description provided for @everyThreeMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 3 months'**
+  String get everyThreeMonths;
+
+  /// No description provided for @everySixMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 6 months'**
+  String get everySixMonths;
+
+  /// No description provided for @everyNDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {days} days'**
+  String everyNDays(int days);
+
+  /// No description provided for @callMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String callMinutes(int minutes);
+
+  /// No description provided for @callSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s'**
+  String callSeconds(int seconds);
+
+  /// No description provided for @incomingCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming call'**
+  String get incomingCall;
+
+  /// No description provided for @outgoingCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Outgoing call'**
+  String get outgoingCall;
+
+  /// No description provided for @missedCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed call'**
+  String get missedCall;
+
+  /// No description provided for @event.
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get event;
+
+  /// No description provided for @task.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get task;
+
+  /// No description provided for @keepInTouchWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep in touch with {name}'**
+  String keepInTouchWith(String name);
+
+  /// No description provided for @keepInTouchOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get keepInTouchOff;
+
+  /// No description provided for @keepInTouch.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep in touch'**
+  String get keepInTouch;
+
+  /// No description provided for @keepInTouchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a nudge when it\'s been too long'**
+  String get keepInTouchHint;
+
+  /// No description provided for @lastTalkedDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =0{Talked today} =1{Last talked yesterday} other{Last talked {days} days ago}}'**
+  String lastTalkedDaysAgo(int days);
+
+  /// No description provided for @noTalksYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No calls yet'**
+  String get noTalksYet;
+
+  /// No description provided for @dueNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Due'**
+  String get dueNow;
+
+  /// No description provided for @activity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activity;
+
+  /// No description provided for @activityEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Calls in ZT Phone, events in ZT Calendar and tasks in ZT Tasks with {name} show up here. Calls need ZT Phone\'s call history backup.'**
+  String activityEmpty(String name);
+
+  /// No description provided for @seeAllActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'See all ({count})'**
+  String seeAllActivity(int count);
+
+  /// No description provided for @keepInTouchEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No one yet. Open a contact and tap Keep in touch to get a nudge when it\'s been too long.'**
+  String get keepInTouchEmpty;
+
+  /// No description provided for @keepInTouchDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep in touch ({count} due)'**
+  String keepInTouchDue(int count);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {
