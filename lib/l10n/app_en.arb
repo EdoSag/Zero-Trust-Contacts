@@ -1150,5 +1150,102 @@
         "type": "int"
       }
     }
+  },
+  "search": "Search",
+  "addContact": "Add contact",
+  "sharedBooks": "Shared address books",
+  "sharedBooksTile": "{count, plural, =0{Shared address books} =1{1 shared address book} other{{count} shared address books}}",
+  "@sharedBooksTile": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedBooksHint": "Keep contacts together with family or a team, end-to-end encrypted",
+  "sharedBooksEmpty": "No shared address books yet. Make one to keep contacts together with family or a team (a babysitter, the plumber, the kids' friends' parents), or join one with an invite.",
+  "newSharedBook": "New shared address book",
+  "joinSharedBook": "Join with an invite",
+  "bookName": "Address book name",
+  "renameBook": "Rename address book",
+  "sharedBookE2e": "Only the people here can read these contacts: they are end-to-end encrypted, and the server never sees names or numbers.",
+  "sharingNeedsInternet": "Sharing needs an internet connection. Try again when you're online.",
+  "waitingToJoin": "Waiting to join",
+  "waitingToJoinHint": "An owner of the address book needs to let you in.",
+  "waitingToJoinCode": "Tell the owner this code: {code}",
+  "@waitingToJoinCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedBookSummary": "{contacts, plural, =1{1 contact} other{{contacts} contacts}} · {people, plural, =1{1 person} other{{people} people}}",
+  "@sharedBookSummary": {
+    "placeholders": {
+      "contacts": {
+        "type": "int"
+      },
+      "people": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedBookPeople": "People",
+  "copyMyContactsIn": "Copy from my contacts",
+  "copiedToBook": "{count, plural, =1{1 contact copied} other{{count} contacts copied}}",
+  "@copiedToBook": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "copyN": "{count, plural, =0{Copy} other{Copy {count}}}",
+  "@copyN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedBookGone": "You're no longer in this address book.",
+  "sharedContactGone": "This contact was removed from the address book.",
+  "sharedWith": "Shared with {names}",
+  "@sharedWith": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "searchThisBook": "Search this address book",
+  "sharedBookEmpty": "No contacts here yet. Add one, or copy some from your own contacts.",
+  "saveToMyContacts": "Save to my contacts",
+  "savedToMyContacts": "Saved to your contacts",
+  "removeFromBook": "Remove from address book",
+  "removeFromBookQ": "Remove {name}?",
+  "@removeFromBookQ": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeFromBookBody": "This contact goes from \"{book}\" for everyone in it.",
+  "@removeFromBookBody": {
+    "placeholders": {
+      "book": {
+        "type": "String"
+      }
+    }
+  },
+  "inSharedBook": "In \"{book}\"",
+  "@inSharedBook": {
+    "placeholders": {
+      "book": {
+        "type": "String"
+      }
+    }
   }
 }

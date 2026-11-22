@@ -2916,6 +2916,192 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Keep in touch ({count} due)'**
   String keepInTouchDue(int count);
+
+  /// No description provided for @search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get search;
+
+  /// No description provided for @addContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Add contact'**
+  String get addContact;
+
+  /// No description provided for @sharedBooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared address books'**
+  String get sharedBooks;
+
+  /// No description provided for @sharedBooksTile.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Shared address books} =1{1 shared address book} other{{count} shared address books}}'**
+  String sharedBooksTile(int count);
+
+  /// No description provided for @sharedBooksHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep contacts together with family or a team, end-to-end encrypted'**
+  String get sharedBooksHint;
+
+  /// No description provided for @sharedBooksEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No shared address books yet. Make one to keep contacts together with family or a team (a babysitter, the plumber, the kids\' friends\' parents), or join one with an invite.'**
+  String get sharedBooksEmpty;
+
+  /// No description provided for @newSharedBook.
+  ///
+  /// In en, this message translates to:
+  /// **'New shared address book'**
+  String get newSharedBook;
+
+  /// No description provided for @joinSharedBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Join with an invite'**
+  String get joinSharedBook;
+
+  /// No description provided for @bookName.
+  ///
+  /// In en, this message translates to:
+  /// **'Address book name'**
+  String get bookName;
+
+  /// No description provided for @renameBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename address book'**
+  String get renameBook;
+
+  /// No description provided for @sharedBookE2e.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the people here can read these contacts: they are end-to-end encrypted, and the server never sees names or numbers.'**
+  String get sharedBookE2e;
+
+  /// No description provided for @sharingNeedsInternet.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing needs an internet connection. Try again when you\'re online.'**
+  String get sharingNeedsInternet;
+
+  /// No description provided for @waitingToJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to join'**
+  String get waitingToJoin;
+
+  /// No description provided for @waitingToJoinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'An owner of the address book needs to let you in.'**
+  String get waitingToJoinHint;
+
+  /// No description provided for @waitingToJoinCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell the owner this code: {code}'**
+  String waitingToJoinCode(String code);
+
+  /// No description provided for @sharedBookSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{contacts, plural, =1{1 contact} other{{contacts} contacts}} · {people, plural, =1{1 person} other{{people} people}}'**
+  String sharedBookSummary(int contacts, int people);
+
+  /// No description provided for @sharedBookPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get sharedBookPeople;
+
+  /// No description provided for @copyMyContactsIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy from my contacts'**
+  String get copyMyContactsIn;
+
+  /// No description provided for @copiedToBook.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 contact copied} other{{count} contacts copied}}'**
+  String copiedToBook(int count);
+
+  /// No description provided for @copyN.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Copy} other{Copy {count}}}'**
+  String copyN(int count);
+
+  /// No description provided for @sharedBookGone.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re no longer in this address book.'**
+  String get sharedBookGone;
+
+  /// No description provided for @sharedContactGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This contact was removed from the address book.'**
+  String get sharedContactGone;
+
+  /// No description provided for @sharedWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with {names}'**
+  String sharedWith(String names);
+
+  /// No description provided for @searchThisBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Search this address book'**
+  String get searchThisBook;
+
+  /// No description provided for @sharedBookEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts here yet. Add one, or copy some from your own contacts.'**
+  String get sharedBookEmpty;
+
+  /// No description provided for @saveToMyContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to my contacts'**
+  String get saveToMyContacts;
+
+  /// No description provided for @savedToMyContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your contacts'**
+  String get savedToMyContacts;
+
+  /// No description provided for @removeFromBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from address book'**
+  String get removeFromBook;
+
+  /// No description provided for @removeFromBookQ.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String removeFromBookQ(String name);
+
+  /// No description provided for @removeFromBookBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This contact goes from \"{book}\" for everyone in it.'**
+  String removeFromBookBody(String book);
+
+  /// No description provided for @inSharedBook.
+  ///
+  /// In en, this message translates to:
+  /// **'In \"{book}\"'**
+  String inSharedBook(String book);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {
