@@ -1,7 +1,7 @@
 name: zerotrust_contacts
 description: "Zero-Trust Contacts: an end-to-end encrypted address book."
 publish_to: none
-version: 1.8.0+22
+version: 1.8.1+23
 
 environment:
   sdk: ^3.9.0
@@ -25,13 +25,17 @@ dependencies:
     git:
       url: https://github.com/EdoSag/Zero-Trust-Core.git
       path: packages/zero_trust_core
-      ref: 08eccf33e5989c0efceba67d351159b979ae0740
+      # The core commit this app used before, plus the import-freeze fix of
+      # Core PR #89 and #90. It lives on the Core branch
+      # backport/import-freeze-fix-on-core-08eccf3: keep that branch until
+      # this pin moves to a core that has the fix.
+      ref: 323528666f3b3b0047a7a69202a39d769a494594
   # The shared invite, join and people screens (shared address books, C11).
   zt_sharing_ui:
     git:
       url: https://github.com/EdoSag/Zero-Trust-Core.git
       path: packages/zt_sharing_ui
-      ref: 08eccf33e5989c0efceba67d351159b979ae0740
+      ref: 323528666f3b3b0047a7a69202a39d769a494594
   flutter_riverpod: ^3.5.0
   supabase_flutter: ^2.9.0
   # Reset links from account emails (EmailLinks).
