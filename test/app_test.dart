@@ -255,12 +255,55 @@ void main() {
     expect(find.text('Zero-Trust Contacts is locked'), findsOneWidget);
   });
 
+  /// A pre-core account as it is live today: upgraded to the core's keys
+  /// (its old key is the data key, `legacy_dek`), signing in with the
+  /// derived secret, never the raw password (Z21).
+  Future<void> seedUpgradedPreCoreAccount() async {
+    final NewAccountKeys keys = await KeyHierarchy.migrateLegacyAccount(
+      password: password,
+      legacySalt: legacySalt,
+      salt: await Kdf.saltForEmail(email),
+      legacyParams: testKdf,
+      params: testKdf,
+    );
+    backend.authPasswords[email] = keys.authSecret;
+    backend.profiles[email] = ProfileRecord(
+      legacySalt: legacySalt,
+      authUpgraded: true,
+      keys: StoredKeys(
+        kdfSalt: Uint8List.fromList(keys.stored.kdfSalt),
+        kdfParams: keys.stored.kdfParams.toJson(),
+        wrappedDek: keys.stored.wrappedDek,
+        recoveryWrappedDek: keys.stored.recoveryWrappedDek,
+        legacyDek: true,
+      ),
+    );
+  }
+
   testWidgets(
-      'pre-core account: signs in, upgrades, and brings over its contacts '
-      'and photo', (WidgetTester tester) async {
-    // An account from before the core, with contacts in encrypted_contacts.
+      'never-upgraded pre-core account is refused without sending the raw '
+      'password (Z21)', (WidgetTester tester) async {
     backend.authPasswords[email] = password;
     backend.profiles[email] = const ProfileRecord(legacySalt: legacySalt);
+
+    await pumpApp(tester);
+    await tester.enterText(find.widgetWithText(TextFormField, 'Email'), email);
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Password'), password);
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await settle(tester);
+
+    expect(container.read(currentUserProvider), isNull);
+    expect(backend.authPasswords[email], password,
+        reason: 'nothing was changed on the server');
+  });
+
+  testWidgets(
+      'upgraded pre-core account: signs in with its old key and brings over '
+      'its contacts and photo', (WidgetTester tester) async {
+    // An account from before the core, with contacts in encrypted_contacts,
+    // upgraded to the core's keys in an earlier sign-in.
+    await seedUpgradedPreCoreAccount();
     final Uint8List oldKey = await LegacyContactsCrypto.deriveKey(
         password: password, legacySalt: legacySalt, kdf: testKdf);
     final VaultContact ada =
@@ -277,9 +320,9 @@ void main() {
         find.widgetWithText(TextFormField, 'Password'), password);
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await settle(tester);
-    // Upgraded to the core's keys: a recovery key comes first.
-    await confirmRecoveryKey(tester);
-    expect(backend.authPasswords[email], isNot(password));
+    // Already upgraded: no new recovery key, straight into the app.
+    expect(find.text('Save your recovery key'), findsNothing);
+    expect(container.read(currentUserProvider)?.email, email);
 
     // This phone never had Contacts, so the old key needs the password.
     expect(find.text('Bring over your contacts from before the update'),

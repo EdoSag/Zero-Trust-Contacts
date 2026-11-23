@@ -53,7 +53,7 @@ class ZeroTrustContactsApp extends ConsumerWidget {
         locale: ref.watch(ztLanguageProvider),
         supportedLocales: ZtLanguages.supported,
         localizationsDelegates: const [AppL10n.delegate, ...ZtLanguages.delegates],
-        home: const AppGate(),
+        home: const ZtSignInHandoffScope(child: AppGate()),
         // Any touch on any screen, including ones pushed over the list
         // (editor, settings, imports), counts as activity for auto-lock.
         builder: (BuildContext context, Widget? child) => Listener(
