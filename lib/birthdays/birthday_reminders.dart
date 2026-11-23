@@ -139,7 +139,13 @@ class PlannedReminder {
   /// Opened when the reminder is tapped (after unlocking).
   final String contactId;
 
-  String get payload => jsonEncode(<String, String>{'c': contactId});
+  /// The time is in it too, so a reminder whose time changed (a new
+  /// reminder time in settings) differs from the one already set, and
+  /// [BirthdayNotifier.sync] sets it again.
+  String get payload => jsonEncode(<String, String>{
+        'c': contactId,
+        't': '${at.millisecondsSinceEpoch}',
+      });
 
   static String? contactIdOf(String? payload) {
     if (payload == null || payload.isEmpty) return null;
