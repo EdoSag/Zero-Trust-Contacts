@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
+import 'package:zerotrust_contacts/carddav/carddav_bridge.dart';
+import 'package:zerotrust_contacts/pages/desktop_bridge_page.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_banner.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
 import 'package:zerotrust_contacts/import/contact_file_text.dart';
@@ -135,6 +137,15 @@ class ContactsSettingsPage extends ConsumerWidget {
             icon: const Icon(Icons.copy_outlined),
             onPressed: () => _exportVCard(context, ref, toFile: false),
           ),
+        ),
+        ListTile(
+          key: const ValueKey<String>('settings_desktop_apps'),
+          leading: const Icon(Icons.computer),
+          title: Text(context.l10n.desktopApps),
+          subtitle: Text(ref.watch(desktopBridgeProvider).enabled
+              ? context.l10n.desktopAppsSubtitleOn
+              : context.l10n.desktopAppsSubtitleOff),
+          onTap: () => push(const DesktopBridgePage()),
         ),
         ListTile(
           leading: const Icon(Icons.contact_mail_outlined),

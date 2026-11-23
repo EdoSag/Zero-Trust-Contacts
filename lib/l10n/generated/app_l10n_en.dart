@@ -1931,4 +1931,68 @@ class AppL10nEn extends AppL10n {
   String inSharedBook(String book) {
     return 'In \"$book\"';
   }
+
+  @override
+  String get copy => 'Copy';
+
+  @override
+  String get desktopApps => 'Desktop contacts apps';
+
+  @override
+  String get desktopAppsSubtitleOff =>
+      'Off. Let Thunderbird, Apple Contacts or Evolution read your contacts over Wi-Fi';
+
+  @override
+  String get desktopAppsSubtitleOn => 'On while ZT Contacts is unlocked';
+
+  @override
+  String get desktopAppsIntro =>
+      'Your computer\'s contacts app can show your ZT Contacts, read-only, over your home or office Wi-Fi. The phone serves them itself: nothing goes through a server, and it stops when the app locks.';
+
+  @override
+  String get desktopAppsSwitch => 'Share with computers on this Wi-Fi';
+
+  @override
+  String get desktopAppsRunning =>
+      'On. Computers with the password can read your contacts';
+
+  @override
+  String get desktopAppsStarting => 'Starts when ZT Contacts is unlocked';
+
+  @override
+  String get desktopAppsOff => 'Off';
+
+  @override
+  String get desktopAppsFailed => 'Couldn\'t start';
+
+  @override
+  String get desktopAppsServer => 'Server address (CardDAV)';
+
+  @override
+  String get desktopAppsNoWifi =>
+      'Connect the phone to Wi-Fi to see its address';
+
+  @override
+  String get desktopAppsUser => 'User name';
+
+  @override
+  String get desktopAppsPassword => 'Password';
+
+  @override
+  String get desktopAppsFingerprint => 'Certificate fingerprint (SHA-256)';
+
+  @override
+  String get desktopAppsHowTo =>
+      'In your contacts app, add a CardDAV account (Thunderbird: New Address Book, Add CardDAV Address Book; Apple Contacts: Add Account, Other Contacts Account, CardDAV, Manual) with this address, user name and password. The app warns that the certificate isn\'t trusted: check that its fingerprint matches the one above, then trust it. The computer and phone must be on the same Wi-Fi, and the computer refreshes while ZT Contacts is open and unlocked.';
+
+  @override
+  String get desktopAppsNewPassword => 'Make a new password';
+
+  @override
+  String get desktopAppsNewPasswordHint =>
+      'Computers using the old one lose access';
+
+  @override
+  String get desktopAppsPrivacy =>
+      'Only computers on a local network (home or office Wi-Fi) are answered, only with the password, and only to read. Traffic is encrypted with this phone\'s own certificate. A computer keeps the copy it last read, unencrypted, in its contacts app: turn this on only for computers you trust. Blocked contacts, the trash and shared address books are not shared.';
 }

@@ -101,6 +101,12 @@ sign-in, unlock, settings and look.
 - Secure one-contact share package generation (encrypted payload + passphrase + expiry).
 - Current UI uses clipboard for export/share flows.
 
+### Desktop contacts apps
+
+- Settings, Desktop contacts apps: the phone itself serves the address book, read-only, to a computer's contacts app over CardDAV (Thunderbird, Apple Contacts, GNOME Evolution, DAVx5). No server is involved.
+- HTTPS with the phone's own self-signed certificate (its SHA-256 fingerprint is shown to check), a random password, five tries per address, and only local-network addresses (home or office Wi-Fi) are answered. Port 8444, so ZT Calendar's bridge (8443) can run beside it.
+- Runs only while the app is unlocked and stops on lock. The switch belongs to the account that turned it on. Blocked contacts, the trash and shared address books are left out, and every write is refused.
+
 ### Android integrations
 - Reads Android device contacts via platform channel.
 - Classifies contact source (`Account`, `SIM card`, `Phone`).

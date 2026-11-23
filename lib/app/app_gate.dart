@@ -4,6 +4,7 @@ import 'package:zero_trust_core/zero_trust_core.dart';
 import 'package:zerotrust_contacts/linked/linked_apps.dart';
 import 'package:zerotrust_contacts/app/auth_providers.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
+import 'package:zerotrust_contacts/carddav/carddav_bridge.dart';
 import 'package:zerotrust_contacts/legacy/legacy_import_controller.dart';
 import 'package:zerotrust_contacts/pages/home_page.dart';
 import 'package:zerotrust_contacts/phone_sync/phone_sync_controller.dart';
@@ -171,6 +172,8 @@ class _ContactsHomeState extends ConsumerState<_ContactsHome> {
     ref.watch(phoneSyncProvider);
     // And every shared address book (on unlock, live, every 5 minutes).
     ref.watch(ztSpacesProvider);
+    // And the desktop contacts bridge, if this account turned it on.
+    ref.watch(desktopBridgeProvider);
 
     return switch (ref.watch(vaultRepositoryProvider)) {
       AsyncData() => const HomePage(),
