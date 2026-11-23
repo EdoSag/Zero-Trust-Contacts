@@ -116,6 +116,14 @@ sealed class IncomingRequest {
           text: utf8.decode(bytes, allowMalformed: true),
           name: '${map['name'] ?? 'contacts.vcf'}',
         );
+      case 'pick':
+        return const IncomingTextPick();
+      case 'open':
+        final String target = '${map['target'] ?? ''}';
+        return target.isEmpty ? null : IncomingOpenPage(target);
+      case 'join':
+        final String link = '${map['link'] ?? ''}';
+        return link.isEmpty ? null : IncomingJoinLink(link);
       case 'insert':
         return IncomingNewContact(
           contact: contactFromInsertRequest(map),
@@ -194,6 +202,26 @@ class IncomingVCard extends IncomingRequest {
   final String name;
 }
 
+/// A page to open: "birthdays" from the birthdays widget, or a home
+/// screen shortcut.
+class IncomingOpenPage extends IncomingRequest {
+  const IncomingOpenPage(this.target);
+
+  final String target;
+}
+
+/// A shared address book invite (https://zerotrust.bz/join/contacts#…).
+class IncomingJoinLink extends IncomingRequest {
+  const IncomingJoinLink(this.link);
+
+  final String link;
+}
+
+/// ZT Keyboard asks the user to pick a number, email or address to type.
+class IncomingTextPick extends IncomingRequest {
+  const IncomingTextPick();
+}
+
 /// "Create new contact" or "Add to contacts" from another app.
 class IncomingNewContact extends IncomingRequest {
   const IncomingNewContact({required this.contact, required this.allowExisting});
@@ -239,6 +267,18 @@ class DeviceContactsService {
       'consumePendingIncoming',
     );
     return raw is Map ? IncomingRequest.fromMap(raw) : null;
+  }
+
+  /// Answers ZT Keyboard with the [text] the user picked (null: nothing) and
+  /// closes the pick screen.
+  Future<void> finishTextPick(String? text) async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+    await _channel.invokeMethod<void>(
+      'finishTextPick',
+      <String, Object?>{'text': text},
+    );
   }
 
   void _ensureHandlerRegistered() {
@@ -382,6 +422,22 @@ class DeviceContactsService {
         .whereType<Map<dynamic, dynamic>>()
         .map((Map<dynamic, dynamic> item) => Map<String, dynamic>.from(item))
         .toList();
+  }
+
+  /// Every field of one contact of the phone's address book (by its
+  /// Android contact id), as [loadAccountContacts] returns them; null when
+  /// it is gone or can't be read.
+  Future<Map<String, dynamic>?> loadDeviceContactDetails(
+      String deviceContactId) async {
+    if (!Platform.isAndroid) {
+      return null;
+    }
+    final Map<dynamic, dynamic>? response =
+        await _channel.invokeMethod<Map<dynamic, dynamic>>(
+      'getDeviceContactDetails',
+      <String, dynamic>{'id': deviceContactId},
+    );
+    return response == null ? null : Map<String, dynamic>.from(response);
   }
 
   /// The photo of one raw contact (from [loadAccountContacts]' `rawId`),

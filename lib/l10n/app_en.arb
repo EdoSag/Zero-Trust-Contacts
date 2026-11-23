@@ -911,5 +911,360 @@
     }
   },
   "importAContactsFile": "Import a contacts file",
-  "aVcfOrCsvFile": "A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet"
+  "aVcfOrCsvFile": "A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet",
+  "insertIntoKeyboard": "Insert into ZT Keyboard",
+  "insertPickHint": "Tap a contact, then what to type.",
+  "insertNothingToInsert": "No contacts match.",
+  "birthdayReminderBody": "Tap to see their details and say hello.",
+  "birthdayReminderHiddenBody": "Unlock ZT Contacts to see who.",
+  "reminderHiddenBirthdayToday": "A birthday today",
+  "reminderHiddenAnniversaryToday": "An anniversary today",
+  "reminderHiddenBirthdayTomorrow": "A birthday tomorrow",
+  "reminderHiddenAnniversaryTomorrow": "An anniversary tomorrow",
+  "reminderHiddenBirthdayInDays": "A birthday in {days} days",
+  "@reminderHiddenBirthdayInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderHiddenAnniversaryInDays": "An anniversary in {days} days",
+  "@reminderHiddenAnniversaryInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderBirthdayToday": "{name}'s birthday is today",
+  "@reminderBirthdayToday": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reminderBirthdayTodayTurns": "{name} turns {years} today",
+  "@reminderBirthdayTodayTurns": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderBirthdayTomorrow": "{name}'s birthday is tomorrow",
+  "@reminderBirthdayTomorrow": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reminderBirthdayTomorrowTurns": "{name} turns {years} tomorrow",
+  "@reminderBirthdayTomorrowTurns": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderBirthdayInDays": "{name}'s birthday is in {days} days",
+  "@reminderBirthdayInDays": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderAnniversaryToday": "{name}'s anniversary is today",
+  "@reminderAnniversaryToday": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reminderAnniversaryTomorrow": "{name}'s anniversary is tomorrow",
+  "@reminderAnniversaryTomorrow": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reminderAnniversaryInDays": "{name}'s anniversary is in {days} days",
+  "@reminderAnniversaryInDays": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "birthdayRemindersChannel": "Birthday reminders",
+  "birthdayRemindersChannelDescription": "Birthdays and anniversaries of your contacts",
+  "notificationsAreOffForZt": "Notifications are off for ZT Contacts. Turn them on in the phone's settings to get reminders.",
+  "birthdayReminders": "Birthday reminders",
+  "birthdayRemindersSubtitle": "A notification on this phone for each birthday",
+  "remindOnTheDay": "On the day",
+  "remindTheDayBefore": "The day before",
+  "remindAWeekBefore": "A week before",
+  "reminderTime": "Time",
+  "remindAnniversariesToo": "Anniversaries too",
+  "showNamesInReminders": "Show names in reminders",
+  "showNamesInRemindersSubtitle": "Off: the reminder says only \"A birthday today\" until you unlock",
+  "showNamesOnHomeScreen": "Show names in the birthdays widget",
+  "showNamesOnHomeScreenSubtitle": "Off: the widget on the home screen shows only when, not who",
+  "today": "Today",
+  "tomorrow": "Tomorrow",
+  "inDays": "In {days} days",
+  "@inDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "anniversary": "Anniversary",
+  "turnsYears": "Turns {years}",
+  "@turnsYears": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "anniversaryYears": "{years} years married",
+  "@anniversaryYears": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "birthdaysAndAnniversaries": "Birthdays",
+  "noBirthdaysYet": "No birthdays yet. Add one on a contact's page and it shows up here.",
+  "nextThirtyDays": "Next 30 days",
+  "laterThisYear": "Later",
+  "birthdaysAndReminders": "Upcoming birthdays and reminders",
+  "pickAContactToSeeItHere": "Pick a contact to see it here",
+  "keepInTouchReminder": "Time to catch up with {name}",
+  "@keepInTouchReminder": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keepInTouchReminderHidden": "Time to catch up with someone",
+  "keepInTouchReminderBody": "You wanted to keep in touch. Call or send a message?",
+  "everyWeek": "Every week",
+  "everyTwoWeeks": "Every 2 weeks",
+  "everyMonth": "Every month",
+  "everyThreeMonths": "Every 3 months",
+  "everySixMonths": "Every 6 months",
+  "everyNDays": "Every {days} days",
+  "@everyNDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "callMinutes": "{minutes} min",
+  "@callMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "callSeconds": "{seconds} s",
+  "@callSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "incomingCall": "Incoming call",
+  "outgoingCall": "Outgoing call",
+  "missedCall": "Missed call",
+  "event": "Event",
+  "task": "Task",
+  "keepInTouchWith": "Keep in touch with {name}",
+  "@keepInTouchWith": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keepInTouchOff": "Off",
+  "keepInTouch": "Keep in touch",
+  "keepInTouchHint": "Get a nudge when it's been too long",
+  "lastTalkedDaysAgo": "{days, plural, =0{Talked today} =1{Last talked yesterday} other{Last talked {days} days ago}}",
+  "@lastTalkedDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "noTalksYet": "No calls yet",
+  "dueNow": "Due",
+  "activity": "Activity",
+  "activityEmpty": "Calls in ZT Phone, events in ZT Calendar and tasks in ZT Tasks with {name} show up here. Calls need ZT Phone's call history backup.",
+  "@activityEmpty": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "seeAllActivity": "See all ({count})",
+  "@seeAllActivity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keepInTouchEmpty": "No one yet. Open a contact and tap Keep in touch to get a nudge when it's been too long.",
+  "keepInTouchDue": "Keep in touch ({count} due)",
+  "@keepInTouchDue": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "search": "Search",
+  "addContact": "Add contact",
+  "sharedBooks": "Shared address books",
+  "sharedBooksTile": "{count, plural, =0{Shared address books} =1{1 shared address book} other{{count} shared address books}}",
+  "@sharedBooksTile": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedBooksHint": "Keep contacts together with family or a team, end-to-end encrypted",
+  "sharedBooksEmpty": "No shared address books yet. Make one to keep contacts together with family or a team (a babysitter, the plumber, the kids' friends' parents), or join one with an invite.",
+  "newSharedBook": "New shared address book",
+  "joinSharedBook": "Join with an invite",
+  "bookName": "Address book name",
+  "renameBook": "Rename address book",
+  "sharedBookE2e": "Only the people here can read these contacts: they are end-to-end encrypted, and the server never sees names or numbers.",
+  "sharingNeedsInternet": "Sharing needs an internet connection. Try again when you're online.",
+  "waitingToJoin": "Waiting to join",
+  "waitingToJoinHint": "An owner of the address book needs to let you in.",
+  "waitingToJoinCode": "Tell the owner this code: {code}",
+  "@waitingToJoinCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedBookSummary": "{contacts, plural, =1{1 contact} other{{contacts} contacts}} · {people, plural, =1{1 person} other{{people} people}}",
+  "@sharedBookSummary": {
+    "placeholders": {
+      "contacts": {
+        "type": "int"
+      },
+      "people": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedBookPeople": "People",
+  "copyMyContactsIn": "Copy from my contacts",
+  "copiedToBook": "{count, plural, =1{1 contact copied} other{{count} contacts copied}}",
+  "@copiedToBook": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "copyN": "{count, plural, =0{Copy} other{Copy {count}}}",
+  "@copyN": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedBookGone": "You're no longer in this address book.",
+  "sharedContactGone": "This contact was removed from the address book.",
+  "sharedWith": "Shared with {names}",
+  "@sharedWith": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "searchThisBook": "Search this address book",
+  "sharedBookEmpty": "No contacts here yet. Add one, or copy some from your own contacts.",
+  "saveToMyContacts": "Save to my contacts",
+  "savedToMyContacts": "Saved to your contacts",
+  "removeFromBook": "Remove from address book",
+  "removeFromBookQ": "Remove {name}?",
+  "@removeFromBookQ": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeFromBookBody": "This contact goes from \"{book}\" for everyone in it.",
+  "@removeFromBookBody": {
+    "placeholders": {
+      "book": {
+        "type": "String"
+      }
+    }
+  },
+  "inSharedBook": "In \"{book}\"",
+  "@inSharedBook": {
+    "placeholders": {
+      "book": {
+        "type": "String"
+      }
+    }
+  },
+  "copy": "Copy",
+  "desktopApps": "Desktop contacts apps",
+  "desktopAppsSubtitleOff": "Off. Let Thunderbird, Apple Contacts or Evolution read your contacts over Wi-Fi",
+  "desktopAppsSubtitleOn": "On while ZT Contacts is unlocked",
+  "desktopAppsIntro": "Your computer's contacts app can show your ZT Contacts, read-only, over your home or office Wi-Fi. The phone serves them itself: nothing goes through a server, and it stops when the app locks.",
+  "desktopAppsSwitch": "Share with computers on this Wi-Fi",
+  "desktopAppsRunning": "On. Computers with the password can read your contacts",
+  "desktopAppsStarting": "Starts when ZT Contacts is unlocked",
+  "desktopAppsOff": "Off",
+  "desktopAppsFailed": "Couldn't start",
+  "desktopAppsServer": "Server address (CardDAV)",
+  "desktopAppsNoWifi": "Connect the phone to Wi-Fi to see its address",
+  "desktopAppsUser": "User name",
+  "desktopAppsPassword": "Password",
+  "desktopAppsFingerprint": "Certificate fingerprint (SHA-256)",
+  "desktopAppsHowTo": "In your contacts app, add a CardDAV account (Thunderbird: New Address Book, Add CardDAV Address Book; Apple Contacts: Add Account, Other Contacts Account, CardDAV, Manual) with this address, user name and password. The app warns that the certificate isn't trusted: check that its fingerprint matches the one above, then trust it. The computer and phone must be on the same Wi-Fi, and the computer refreshes while ZT Contacts is open and unlocked.",
+  "desktopAppsNewPassword": "Make a new password",
+  "desktopAppsNewPasswordHint": "Computers using the old one lose access",
+  "desktopAppsPrivacy": "Only computers on a local network (home or office Wi-Fi) are answered, only with the password, and only to read. Traffic is encrypted with this phone's own certificate. A computer keeps the copy it last read, unencrypted, in its contacts app: turn this on only for computers you trust. Blocked contacts, the trash and shared address books are not shared."
 }

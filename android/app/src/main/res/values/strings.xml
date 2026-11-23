@@ -40,4 +40,23 @@
     <string name="fw_preview_1">Alex</string>
     <string name="fw_preview_2">Bea</string>
     <string name="fw_preview_3">Chris</string>
+    <string name="bw_label">Birthdays</string>
+    <string name="bw_title">Birthdays</string>
+    <string name="bw_description">Your contacts\' coming birthdays and anniversaries, soonest first</string>
+    <string name="bw_empty">Open ZT Contacts to see coming birthdays here</string>
+    <string name="bw_today">Today</string>
+    <string name="bw_tomorrow">Tomorrow</string>
+    <string name="bw_in_days">In %1$d days</string>
+    <string name="bw_birthday">Birthday</string>
+    <string name="bw_anniversary">Anniversary</string>
+    <string name="bw_turns">Turns %1$d</string>
+    <string name="bw_years_married">%1$d years married</string>
+    <string name="bw_hidden_birthday">A birthday</string>
+    <string name="bw_hidden_anniversary">An anniversary</string>
+    <string name="sc_new_contact">New contact</string>
+    <string name="sc_search">Search</string>
+    <string name="sc_search_long">Search contacts</string>
+    <string name="sc_scan_card">Scan card</string>
+    <string name="sc_scan_card_long">Scan a business card</string>
+    <string name="sc_birthdays">Birthdays</string>
 </resources>

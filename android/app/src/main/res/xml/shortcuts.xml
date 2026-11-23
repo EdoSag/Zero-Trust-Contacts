@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon (C22). Each opens its page once the vault is
+     unlocked (MainActivity.EXTRA_OPEN). -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_contact"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_new_contact"
+        android:shortcutShortLabel="@string/sc_new_contact"
+        android:shortcutLongLabel="@string/sc_new_contact">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="dev.sagron.zerotrustcontacts"
+            android:targetClass="dev.sagron.zerotrustcontacts.MainActivity">
+            <extra android:name="dev.sagron.zerotrustcontacts.OPEN" android:value="new_contact" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="search"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_search"
+        android:shortcutShortLabel="@string/sc_search"
+        android:shortcutLongLabel="@string/sc_search_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="dev.sagron.zerotrustcontacts"
+            android:targetClass="dev.sagron.zerotrustcontacts.MainActivity">
+            <extra android:name="dev.sagron.zerotrustcontacts.OPEN" android:value="search" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="scan_card"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_scan_card"
+        android:shortcutShortLabel="@string/sc_scan_card"
+        android:shortcutLongLabel="@string/sc_scan_card_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="dev.sagron.zerotrustcontacts"
+            android:targetClass="dev.sagron.zerotrustcontacts.MainActivity">
+            <extra android:name="dev.sagron.zerotrustcontacts.OPEN" android:value="scan_card" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="birthdays"
+        android:enabled="true"
+        android:icon="@drawable/shortcut_birthdays"
+        android:shortcutShortLabel="@string/sc_birthdays"
+        android:shortcutLongLabel="@string/sc_birthdays">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="dev.sagron.zerotrustcontacts"
+            android:targetClass="dev.sagron.zerotrustcontacts.MainActivity">
+            <extra android:name="dev.sagron.zerotrustcontacts.OPEN" android:value="birthdays" />
+        </intent>
+    </shortcut>
+</shortcuts>

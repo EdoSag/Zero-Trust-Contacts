@@ -1,7 +1,7 @@
 name: zerotrust_contacts
 description: "Zero-Trust Contacts: an end-to-end encrypted address book."
 publish_to: none
-version: 1.6.3+14
+version: 1.9.0+24
 
 environment:
   sdk: ^3.9.0
@@ -25,7 +25,15 @@ dependencies:
     git:
       url: https://github.com/EdoSag/Zero-Trust-Core.git
       path: packages/zero_trust_core
-      ref: 08eccf33e5989c0efceba67d351159b979ae0740
+      # The v1.0.1 tag's commit. zt_sharing_ui reaches the core by this
+      # commit, and pub needs both to name the core the same way.
+      ref: a27adea1a4a36959fc7bdbf10dc903fcd1f30b45
+  # The shared invite, join and people screens (shared address books, C11).
+  zt_sharing_ui:
+    git:
+      url: https://github.com/EdoSag/Zero-Trust-Core.git
+      path: packages/zt_sharing_ui
+      ref: v1.0.1
   flutter_riverpod: ^3.5.0
   supabase_flutter: ^2.9.0
   # Reset links from account emails (EmailLinks).
@@ -34,6 +42,9 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   sqlite3: ^3.7.0
   cryptography: ^2.7.0
+  # The desktop bridge's TLS certificate (C10), and its ETags.
+  basic_utils: ^5.8.2
+  crypto: ^3.0.6
   path_provider: ^2.1.4
   image_picker: ^1.1.2
   # Tesseract: open-source text recognition that runs fully on the phone.
@@ -44,6 +55,10 @@ dependencies:
   qr_flutter: ^4.1.0
   qr_code_scanner_plus: ">=2.1.2 <2.2.0"
   flutter_contacts: ">=1.1.9 <2.0.0"
+  # Birthday and anniversary reminders (C6), same plugin as ZT Calendar.
+  # 22.x: 23 needs Android Gradle plugin 9 and compileSdk 37.
+  flutter_local_notifications: ^22.0.0
+  timezone: ^0.11.2
 
 dev_dependencies:
   # Release checks every Zero-Trust app runs in CI (keys, sync, sign-in, app
@@ -52,7 +67,7 @@ dev_dependencies:
     git:
       url: https://github.com/EdoSag/Zero-Trust-Core.git
       path: packages/zt_release_checks
-      ref: b43fcd045722bc364ef2eaa739db181f9dac144f
+      ref: v1.0.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0

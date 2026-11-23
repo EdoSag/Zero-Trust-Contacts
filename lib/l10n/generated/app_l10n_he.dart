@@ -1488,4 +1488,493 @@ class AppL10nHe extends AppL10n {
   @override
   String get aVcfOrCsvFile =>
       'קובץ ‎.vcf או ‎.csv מ-iCloud, ‏Outlook, ‏Google או מגיליון';
+
+  @override
+  String get insertIntoKeyboard => 'הוספה ל-ZT Keyboard';
+
+  @override
+  String get insertPickHint => 'בוחרים איש קשר ואז מה להקליד.';
+
+  @override
+  String get insertNothingToInsert => 'אין אנשי קשר מתאימים.';
+
+  @override
+  String get birthdayReminderBody => 'אפשר להקיש כדי לראות את הפרטים ולאחל.';
+
+  @override
+  String get birthdayReminderHiddenBody =>
+      'כדי לראות למי, צריך לפתוח את ZT אנשי קשר.';
+
+  @override
+  String get reminderHiddenBirthdayToday => 'יום הולדת היום';
+
+  @override
+  String get reminderHiddenAnniversaryToday => 'יום נישואין היום';
+
+  @override
+  String get reminderHiddenBirthdayTomorrow => 'יום הולדת מחר';
+
+  @override
+  String get reminderHiddenAnniversaryTomorrow => 'יום נישואין מחר';
+
+  @override
+  String reminderHiddenBirthdayInDays(int days) {
+    return 'יום הולדת בעוד $days ימים';
+  }
+
+  @override
+  String reminderHiddenAnniversaryInDays(int days) {
+    return 'יום נישואין בעוד $days ימים';
+  }
+
+  @override
+  String reminderBirthdayToday(String name) {
+    return 'היום יום ההולדת של $name';
+  }
+
+  @override
+  String reminderBirthdayTodayTurns(String name, int years) {
+    return '$name חוגג/ת $years היום';
+  }
+
+  @override
+  String reminderBirthdayTomorrow(String name) {
+    return 'מחר יום ההולדת של $name';
+  }
+
+  @override
+  String reminderBirthdayTomorrowTurns(String name, int years) {
+    return '$name חוגג/ת $years מחר';
+  }
+
+  @override
+  String reminderBirthdayInDays(String name, int days) {
+    return 'יום ההולדת של $name בעוד $days ימים';
+  }
+
+  @override
+  String reminderAnniversaryToday(String name) {
+    return 'היום יום הנישואין של $name';
+  }
+
+  @override
+  String reminderAnniversaryTomorrow(String name) {
+    return 'מחר יום הנישואין של $name';
+  }
+
+  @override
+  String reminderAnniversaryInDays(String name, int days) {
+    return 'יום הנישואין של $name בעוד $days ימים';
+  }
+
+  @override
+  String get birthdayRemindersChannel => 'תזכורות ימי הולדת';
+
+  @override
+  String get birthdayRemindersChannelDescription =>
+      'ימי הולדת וימי נישואין של אנשי הקשר שלך';
+
+  @override
+  String get notificationsAreOffForZt =>
+      'ההתראות של ZT אנשי קשר כבויות. כדי לקבל תזכורות צריך להפעיל אותן בהגדרות הטלפון.';
+
+  @override
+  String get birthdayReminders => 'תזכורות ימי הולדת';
+
+  @override
+  String get birthdayRemindersSubtitle => 'התראה בטלפון הזה על כל יום הולדת';
+
+  @override
+  String get remindOnTheDay => 'ביום עצמו';
+
+  @override
+  String get remindTheDayBefore => 'יום לפני';
+
+  @override
+  String get remindAWeekBefore => 'שבוע לפני';
+
+  @override
+  String get reminderTime => 'שעה';
+
+  @override
+  String get remindAnniversariesToo => 'גם ימי נישואין';
+
+  @override
+  String get showNamesInReminders => 'הצגת שמות בתזכורות';
+
+  @override
+  String get showNamesInRemindersSubtitle =>
+      'כבוי: התזכורת אומרת רק \"יום הולדת היום\" עד לפתיחת האפליקציה';
+
+  @override
+  String get showNamesOnHomeScreen => 'הצגת שמות בווידג\'ט ימי ההולדת';
+
+  @override
+  String get showNamesOnHomeScreenSubtitle =>
+      'כבוי: הווידג\'ט במסך הבית מראה רק מתי, לא של מי';
+
+  @override
+  String get today => 'היום';
+
+  @override
+  String get tomorrow => 'מחר';
+
+  @override
+  String inDays(int days) {
+    return 'בעוד $days ימים';
+  }
+
+  @override
+  String get anniversary => 'יום נישואין';
+
+  @override
+  String turnsYears(int years) {
+    return 'בן/בת $years';
+  }
+
+  @override
+  String anniversaryYears(int years) {
+    return '$years שנות נישואין';
+  }
+
+  @override
+  String get birthdaysAndAnniversaries => 'ימי הולדת';
+
+  @override
+  String get noBirthdaysYet =>
+      'עדיין אין ימי הולדת. אפשר להוסיף יום הולדת בדף של איש קשר והוא יופיע כאן.';
+
+  @override
+  String get nextThirtyDays => 'ב-30 הימים הקרובים';
+
+  @override
+  String get laterThisYear => 'בהמשך';
+
+  @override
+  String get birthdaysAndReminders => 'ימי הולדת קרובים ותזכורות';
+
+  @override
+  String get pickAContactToSeeItHere => 'אפשר לבחור איש קשר כדי לראות אותו כאן';
+
+  @override
+  String keepInTouchReminder(String name) {
+    return 'הגיע הזמן לדבר עם $name';
+  }
+
+  @override
+  String get keepInTouchReminderHidden => 'הגיע הזמן לדבר עם מישהו';
+
+  @override
+  String get keepInTouchReminderBody =>
+      'רצית לשמור על קשר. להתקשר או לשלוח הודעה?';
+
+  @override
+  String get everyWeek => 'כל שבוע';
+
+  @override
+  String get everyTwoWeeks => 'כל שבועיים';
+
+  @override
+  String get everyMonth => 'כל חודש';
+
+  @override
+  String get everyThreeMonths => 'כל 3 חודשים';
+
+  @override
+  String get everySixMonths => 'כל חצי שנה';
+
+  @override
+  String everyNDays(int days) {
+    return 'כל $days ימים';
+  }
+
+  @override
+  String callMinutes(int minutes) {
+    return '$minutes דק׳';
+  }
+
+  @override
+  String callSeconds(int seconds) {
+    return '$seconds שנ׳';
+  }
+
+  @override
+  String get incomingCall => 'שיחה נכנסת';
+
+  @override
+  String get outgoingCall => 'שיחה יוצאת';
+
+  @override
+  String get missedCall => 'שיחה שלא נענתה';
+
+  @override
+  String get event => 'אירוע';
+
+  @override
+  String get task => 'משימה';
+
+  @override
+  String keepInTouchWith(String name) {
+    return 'שמירה על קשר עם $name';
+  }
+
+  @override
+  String get keepInTouchOff => 'כבוי';
+
+  @override
+  String get keepInTouch => 'שמירה על קשר';
+
+  @override
+  String get keepInTouchHint => 'תזכורת כשעבר יותר מדי זמן';
+
+  @override
+  String lastTalkedDaysAgo(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'דיברתם לפני $days ימים',
+      one: 'דיברתם אתמול',
+      zero: 'דיברתם היום',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noTalksYet => 'עדיין אין שיחות';
+
+  @override
+  String get dueNow => 'הגיע הזמן';
+
+  @override
+  String get activity => 'פעילות';
+
+  @override
+  String activityEmpty(String name) {
+    return 'שיחות ב-ZT טלפון, אירועים ב-ZT יומן ומשימות ב-ZT משימות עם $name יופיעו כאן. שיחות דורשות את גיבוי היסטוריית השיחות ב-ZT טלפון.';
+  }
+
+  @override
+  String seeAllActivity(int count) {
+    return 'הצגת הכול ($count)';
+  }
+
+  @override
+  String get keepInTouchEmpty =>
+      'עדיין אין אף אחד. אפשר לפתוח איש קשר ולהקיש על \"שמירה על קשר\" כדי לקבל תזכורת כשעבר יותר מדי זמן.';
+
+  @override
+  String keepInTouchDue(int count) {
+    return 'שמירה על קשר ($count ממתינים)';
+  }
+
+  @override
+  String get search => 'חיפוש';
+
+  @override
+  String get addContact => 'הוספת איש קשר';
+
+  @override
+  String get sharedBooks => 'ספרי כתובות משותפים';
+
+  @override
+  String sharedBooksTile(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ספרי כתובות משותפים',
+      one: 'ספר כתובות משותף אחד',
+      zero: 'ספרי כתובות משותפים',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharedBooksHint =>
+      'אנשי קשר משותפים עם המשפחה או הצוות, בהצפנה מקצה לקצה';
+
+  @override
+  String get sharedBooksEmpty =>
+      'עדיין אין ספרי כתובות משותפים. צרו אחד כדי לשמור אנשי קשר יחד עם המשפחה או הצוות (בייביסיטר, אינסטלטור, הורים של חברים של הילדים), או הצטרפו לאחד עם הזמנה.';
+
+  @override
+  String get newSharedBook => 'ספר כתובות משותף חדש';
+
+  @override
+  String get joinSharedBook => 'הצטרפות עם הזמנה';
+
+  @override
+  String get bookName => 'שם ספר הכתובות';
+
+  @override
+  String get renameBook => 'שינוי שם ספר הכתובות';
+
+  @override
+  String get sharedBookE2e =>
+      'רק האנשים כאן יכולים לקרוא את אנשי הקשר האלה: הם מוצפנים מקצה לקצה, והשרת לעולם לא רואה שמות או מספרים.';
+
+  @override
+  String get sharingNeedsInternet =>
+      'שיתוף דורש חיבור לאינטרנט. נסו שוב כשתהיו מחוברים.';
+
+  @override
+  String get waitingToJoin => 'ממתין להצטרפות';
+
+  @override
+  String get waitingToJoinHint =>
+      'אחד מבעלי ספר הכתובות צריך לאשר את הכניסה שלכם.';
+
+  @override
+  String waitingToJoinCode(String code) {
+    return 'אמרו לבעלים את הקוד: $code';
+  }
+
+  @override
+  String sharedBookSummary(int contacts, int people) {
+    String _temp0 = intl.Intl.pluralLogic(
+      contacts,
+      locale: localeName,
+      other: '$contacts אנשי קשר',
+      one: 'איש קשר אחד',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      people,
+      locale: localeName,
+      other: '$people אנשים',
+      one: 'אדם אחד',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String get sharedBookPeople => 'אנשים';
+
+  @override
+  String get copyMyContactsIn => 'העתקה מאנשי הקשר שלי';
+
+  @override
+  String copiedToBook(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count אנשי קשר הועתקו',
+      one: 'איש קשר אחד הועתק',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String copyN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'העתקת $count',
+      zero: 'העתקה',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharedBookGone => 'אתם כבר לא בספר הכתובות הזה.';
+
+  @override
+  String get sharedContactGone => 'איש הקשר הזה הוסר מספר הכתובות.';
+
+  @override
+  String sharedWith(String names) {
+    return 'משותף עם $names';
+  }
+
+  @override
+  String get searchThisBook => 'חיפוש בספר הכתובות';
+
+  @override
+  String get sharedBookEmpty =>
+      'עדיין אין כאן אנשי קשר. הוסיפו אחד, או העתיקו מאנשי הקשר שלכם.';
+
+  @override
+  String get saveToMyContacts => 'שמירה באנשי הקשר שלי';
+
+  @override
+  String get savedToMyContacts => 'נשמר באנשי הקשר שלכם';
+
+  @override
+  String get removeFromBook => 'הסרה מספר הכתובות';
+
+  @override
+  String removeFromBookQ(String name) {
+    return 'להסיר את $name?';
+  }
+
+  @override
+  String removeFromBookBody(String book) {
+    return 'איש הקשר יוסר מ\"$book\" לכל מי שבו.';
+  }
+
+  @override
+  String inSharedBook(String book) {
+    return 'ב\"$book\"';
+  }
+
+  @override
+  String get copy => 'העתקה';
+
+  @override
+  String get desktopApps => 'אפליקציות אנשי קשר במחשב';
+
+  @override
+  String get desktopAppsSubtitleOff =>
+      'כבוי. מאפשר ל־Thunderbird, לאנשי הקשר של Apple או ל־Evolution לקרוא את אנשי הקשר דרך Wi-Fi';
+
+  @override
+  String get desktopAppsSubtitleOn => 'פועל כל עוד ZT Contacts פתוח';
+
+  @override
+  String get desktopAppsIntro =>
+      'אפליקציית אנשי הקשר במחשב יכולה להציג את אנשי הקשר של ZT Contacts, לקריאה בלבד, דרך ה־Wi-Fi בבית או במשרד. הטלפון מגיש אותם בעצמו: שום דבר לא עובר דרך שרת, והגישה נעצרת כשהאפליקציה ננעלת.';
+
+  @override
+  String get desktopAppsSwitch => 'שיתוף עם מחשבים ב־Wi-Fi הזה';
+
+  @override
+  String get desktopAppsRunning =>
+      'פועל. מחשבים עם הסיסמה יכולים לקרוא את אנשי הקשר';
+
+  @override
+  String get desktopAppsStarting => 'יתחיל כש־ZT Contacts ייפתח';
+
+  @override
+  String get desktopAppsOff => 'כבוי';
+
+  @override
+  String get desktopAppsFailed => 'לא הצליח להתחיל';
+
+  @override
+  String get desktopAppsServer => 'כתובת השרת (CardDAV)';
+
+  @override
+  String get desktopAppsNoWifi =>
+      'יש לחבר את הטלפון ל־Wi-Fi כדי לראות את הכתובת שלו';
+
+  @override
+  String get desktopAppsUser => 'שם משתמש';
+
+  @override
+  String get desktopAppsPassword => 'סיסמה';
+
+  @override
+  String get desktopAppsFingerprint => 'טביעת האצבע של האישור (SHA-256)';
+
+  @override
+  String get desktopAppsHowTo =>
+      'באפליקציית אנשי הקשר יש להוסיף חשבון CardDAV (ב־Thunderbird: פנקס כתובות חדש, הוספת פנקס כתובות CardDAV; באנשי הקשר של Apple: הוספת חשבון, חשבון אנשי קשר אחר, CardDAV, ידני) עם הכתובת, שם המשתמש והסיסמה האלה. האפליקציה תזהיר שהאישור לא מהימן: יש לבדוק שטביעת האצבע זהה לזו שלמעלה ואז לאשר. המחשב והטלפון צריכים להיות באותה רשת Wi-Fi, והמחשב מתעדכן כל עוד ZT Contacts פתוח ולא נעול.';
+
+  @override
+  String get desktopAppsNewPassword => 'יצירת סיסמה חדשה';
+
+  @override
+  String get desktopAppsNewPasswordHint => 'מחשבים עם הסיסמה הישנה יאבדו גישה';
+
+  @override
+  String get desktopAppsPrivacy =>
+      'רק מחשבים ברשת מקומית (Wi-Fi בבית או במשרד) מקבלים תשובה, רק עם הסיסמה, ורק לקריאה. התעבורה מוצפנת עם אישור של הטלפון הזה. מחשב שומר את העותק האחרון שקרא, בלי הצפנה, באפליקציית אנשי הקשר שלו: כדאי להפעיל רק למחשבים שסומכים עליהם. אנשי קשר חסומים, סל המחזור וספרי כתובות משותפים לא משותפים.';
 }

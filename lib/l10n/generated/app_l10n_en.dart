@@ -1504,4 +1504,495 @@ class AppL10nEn extends AppL10n {
   @override
   String get aVcfOrCsvFile =>
       'A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet';
+
+  @override
+  String get insertIntoKeyboard => 'Insert into ZT Keyboard';
+
+  @override
+  String get insertPickHint => 'Tap a contact, then what to type.';
+
+  @override
+  String get insertNothingToInsert => 'No contacts match.';
+
+  @override
+  String get birthdayReminderBody => 'Tap to see their details and say hello.';
+
+  @override
+  String get birthdayReminderHiddenBody => 'Unlock ZT Contacts to see who.';
+
+  @override
+  String get reminderHiddenBirthdayToday => 'A birthday today';
+
+  @override
+  String get reminderHiddenAnniversaryToday => 'An anniversary today';
+
+  @override
+  String get reminderHiddenBirthdayTomorrow => 'A birthday tomorrow';
+
+  @override
+  String get reminderHiddenAnniversaryTomorrow => 'An anniversary tomorrow';
+
+  @override
+  String reminderHiddenBirthdayInDays(int days) {
+    return 'A birthday in $days days';
+  }
+
+  @override
+  String reminderHiddenAnniversaryInDays(int days) {
+    return 'An anniversary in $days days';
+  }
+
+  @override
+  String reminderBirthdayToday(String name) {
+    return '$name\'s birthday is today';
+  }
+
+  @override
+  String reminderBirthdayTodayTurns(String name, int years) {
+    return '$name turns $years today';
+  }
+
+  @override
+  String reminderBirthdayTomorrow(String name) {
+    return '$name\'s birthday is tomorrow';
+  }
+
+  @override
+  String reminderBirthdayTomorrowTurns(String name, int years) {
+    return '$name turns $years tomorrow';
+  }
+
+  @override
+  String reminderBirthdayInDays(String name, int days) {
+    return '$name\'s birthday is in $days days';
+  }
+
+  @override
+  String reminderAnniversaryToday(String name) {
+    return '$name\'s anniversary is today';
+  }
+
+  @override
+  String reminderAnniversaryTomorrow(String name) {
+    return '$name\'s anniversary is tomorrow';
+  }
+
+  @override
+  String reminderAnniversaryInDays(String name, int days) {
+    return '$name\'s anniversary is in $days days';
+  }
+
+  @override
+  String get birthdayRemindersChannel => 'Birthday reminders';
+
+  @override
+  String get birthdayRemindersChannelDescription =>
+      'Birthdays and anniversaries of your contacts';
+
+  @override
+  String get notificationsAreOffForZt =>
+      'Notifications are off for ZT Contacts. Turn them on in the phone\'s settings to get reminders.';
+
+  @override
+  String get birthdayReminders => 'Birthday reminders';
+
+  @override
+  String get birthdayRemindersSubtitle =>
+      'A notification on this phone for each birthday';
+
+  @override
+  String get remindOnTheDay => 'On the day';
+
+  @override
+  String get remindTheDayBefore => 'The day before';
+
+  @override
+  String get remindAWeekBefore => 'A week before';
+
+  @override
+  String get reminderTime => 'Time';
+
+  @override
+  String get remindAnniversariesToo => 'Anniversaries too';
+
+  @override
+  String get showNamesInReminders => 'Show names in reminders';
+
+  @override
+  String get showNamesInRemindersSubtitle =>
+      'Off: the reminder says only \"A birthday today\" until you unlock';
+
+  @override
+  String get showNamesOnHomeScreen => 'Show names in the birthdays widget';
+
+  @override
+  String get showNamesOnHomeScreenSubtitle =>
+      'Off: the widget on the home screen shows only when, not who';
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get tomorrow => 'Tomorrow';
+
+  @override
+  String inDays(int days) {
+    return 'In $days days';
+  }
+
+  @override
+  String get anniversary => 'Anniversary';
+
+  @override
+  String turnsYears(int years) {
+    return 'Turns $years';
+  }
+
+  @override
+  String anniversaryYears(int years) {
+    return '$years years married';
+  }
+
+  @override
+  String get birthdaysAndAnniversaries => 'Birthdays';
+
+  @override
+  String get noBirthdaysYet =>
+      'No birthdays yet. Add one on a contact\'s page and it shows up here.';
+
+  @override
+  String get nextThirtyDays => 'Next 30 days';
+
+  @override
+  String get laterThisYear => 'Later';
+
+  @override
+  String get birthdaysAndReminders => 'Upcoming birthdays and reminders';
+
+  @override
+  String get pickAContactToSeeItHere => 'Pick a contact to see it here';
+
+  @override
+  String keepInTouchReminder(String name) {
+    return 'Time to catch up with $name';
+  }
+
+  @override
+  String get keepInTouchReminderHidden => 'Time to catch up with someone';
+
+  @override
+  String get keepInTouchReminderBody =>
+      'You wanted to keep in touch. Call or send a message?';
+
+  @override
+  String get everyWeek => 'Every week';
+
+  @override
+  String get everyTwoWeeks => 'Every 2 weeks';
+
+  @override
+  String get everyMonth => 'Every month';
+
+  @override
+  String get everyThreeMonths => 'Every 3 months';
+
+  @override
+  String get everySixMonths => 'Every 6 months';
+
+  @override
+  String everyNDays(int days) {
+    return 'Every $days days';
+  }
+
+  @override
+  String callMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String callSeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String get incomingCall => 'Incoming call';
+
+  @override
+  String get outgoingCall => 'Outgoing call';
+
+  @override
+  String get missedCall => 'Missed call';
+
+  @override
+  String get event => 'Event';
+
+  @override
+  String get task => 'Task';
+
+  @override
+  String keepInTouchWith(String name) {
+    return 'Keep in touch with $name';
+  }
+
+  @override
+  String get keepInTouchOff => 'Off';
+
+  @override
+  String get keepInTouch => 'Keep in touch';
+
+  @override
+  String get keepInTouchHint => 'Get a nudge when it\'s been too long';
+
+  @override
+  String lastTalkedDaysAgo(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Last talked $days days ago',
+      one: 'Last talked yesterday',
+      zero: 'Talked today',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noTalksYet => 'No calls yet';
+
+  @override
+  String get dueNow => 'Due';
+
+  @override
+  String get activity => 'Activity';
+
+  @override
+  String activityEmpty(String name) {
+    return 'Calls in ZT Phone, events in ZT Calendar and tasks in ZT Tasks with $name show up here. Calls need ZT Phone\'s call history backup.';
+  }
+
+  @override
+  String seeAllActivity(int count) {
+    return 'See all ($count)';
+  }
+
+  @override
+  String get keepInTouchEmpty =>
+      'No one yet. Open a contact and tap Keep in touch to get a nudge when it\'s been too long.';
+
+  @override
+  String keepInTouchDue(int count) {
+    return 'Keep in touch ($count due)';
+  }
+
+  @override
+  String get search => 'Search';
+
+  @override
+  String get addContact => 'Add contact';
+
+  @override
+  String get sharedBooks => 'Shared address books';
+
+  @override
+  String sharedBooksTile(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count shared address books',
+      one: '1 shared address book',
+      zero: 'Shared address books',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharedBooksHint =>
+      'Keep contacts together with family or a team, end-to-end encrypted';
+
+  @override
+  String get sharedBooksEmpty =>
+      'No shared address books yet. Make one to keep contacts together with family or a team (a babysitter, the plumber, the kids\' friends\' parents), or join one with an invite.';
+
+  @override
+  String get newSharedBook => 'New shared address book';
+
+  @override
+  String get joinSharedBook => 'Join with an invite';
+
+  @override
+  String get bookName => 'Address book name';
+
+  @override
+  String get renameBook => 'Rename address book';
+
+  @override
+  String get sharedBookE2e =>
+      'Only the people here can read these contacts: they are end-to-end encrypted, and the server never sees names or numbers.';
+
+  @override
+  String get sharingNeedsInternet =>
+      'Sharing needs an internet connection. Try again when you\'re online.';
+
+  @override
+  String get waitingToJoin => 'Waiting to join';
+
+  @override
+  String get waitingToJoinHint =>
+      'An owner of the address book needs to let you in.';
+
+  @override
+  String waitingToJoinCode(String code) {
+    return 'Tell the owner this code: $code';
+  }
+
+  @override
+  String sharedBookSummary(int contacts, int people) {
+    String _temp0 = intl.Intl.pluralLogic(
+      contacts,
+      locale: localeName,
+      other: '$contacts contacts',
+      one: '1 contact',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      people,
+      locale: localeName,
+      other: '$people people',
+      one: '1 person',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String get sharedBookPeople => 'People';
+
+  @override
+  String get copyMyContactsIn => 'Copy from my contacts';
+
+  @override
+  String copiedToBook(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count contacts copied',
+      one: '1 contact copied',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String copyN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Copy $count',
+      zero: 'Copy',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharedBookGone => 'You\'re no longer in this address book.';
+
+  @override
+  String get sharedContactGone =>
+      'This contact was removed from the address book.';
+
+  @override
+  String sharedWith(String names) {
+    return 'Shared with $names';
+  }
+
+  @override
+  String get searchThisBook => 'Search this address book';
+
+  @override
+  String get sharedBookEmpty =>
+      'No contacts here yet. Add one, or copy some from your own contacts.';
+
+  @override
+  String get saveToMyContacts => 'Save to my contacts';
+
+  @override
+  String get savedToMyContacts => 'Saved to your contacts';
+
+  @override
+  String get removeFromBook => 'Remove from address book';
+
+  @override
+  String removeFromBookQ(String name) {
+    return 'Remove $name?';
+  }
+
+  @override
+  String removeFromBookBody(String book) {
+    return 'This contact goes from \"$book\" for everyone in it.';
+  }
+
+  @override
+  String inSharedBook(String book) {
+    return 'In \"$book\"';
+  }
+
+  @override
+  String get copy => 'Copy';
+
+  @override
+  String get desktopApps => 'Desktop contacts apps';
+
+  @override
+  String get desktopAppsSubtitleOff =>
+      'Off. Let Thunderbird, Apple Contacts or Evolution read your contacts over Wi-Fi';
+
+  @override
+  String get desktopAppsSubtitleOn => 'On while ZT Contacts is unlocked';
+
+  @override
+  String get desktopAppsIntro =>
+      'Your computer\'s contacts app can show your ZT Contacts, read-only, over your home or office Wi-Fi. The phone serves them itself: nothing goes through a server, and it stops when the app locks.';
+
+  @override
+  String get desktopAppsSwitch => 'Share with computers on this Wi-Fi';
+
+  @override
+  String get desktopAppsRunning =>
+      'On. Computers with the password can read your contacts';
+
+  @override
+  String get desktopAppsStarting => 'Starts when ZT Contacts is unlocked';
+
+  @override
+  String get desktopAppsOff => 'Off';
+
+  @override
+  String get desktopAppsFailed => 'Couldn\'t start';
+
+  @override
+  String get desktopAppsServer => 'Server address (CardDAV)';
+
+  @override
+  String get desktopAppsNoWifi =>
+      'Connect the phone to Wi-Fi to see its address';
+
+  @override
+  String get desktopAppsUser => 'User name';
+
+  @override
+  String get desktopAppsPassword => 'Password';
+
+  @override
+  String get desktopAppsFingerprint => 'Certificate fingerprint (SHA-256)';
+
+  @override
+  String get desktopAppsHowTo =>
+      'In your contacts app, add a CardDAV account (Thunderbird: New Address Book, Add CardDAV Address Book; Apple Contacts: Add Account, Other Contacts Account, CardDAV, Manual) with this address, user name and password. The app warns that the certificate isn\'t trusted: check that its fingerprint matches the one above, then trust it. The computer and phone must be on the same Wi-Fi, and the computer refreshes while ZT Contacts is open and unlocked.';
+
+  @override
+  String get desktopAppsNewPassword => 'Make a new password';
+
+  @override
+  String get desktopAppsNewPasswordHint =>
+      'Computers using the old one lose access';
+
+  @override
+  String get desktopAppsPrivacy =>
+      'Only computers on a local network (home or office Wi-Fi) are answered, only with the password, and only to read. Traffic is encrypted with this phone\'s own certificate. A computer keeps the copy it last read, unencrypted, in its contacts app: turn this on only for computers you trust. Blocked contacts, the trash and shared address books are not shared.';
 }

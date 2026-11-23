@@ -7,6 +7,14 @@ import 'dart:convert';
 
 import 'package:share_plus/share_plus.dart';
 import 'package:zerotrust_contacts/app/contact_sorting.dart';
+import 'package:zerotrust_contacts/birthdays/birthday_reminders.dart';
+import 'package:zerotrust_contacts/birthdays/birthdays_page.dart';
+import 'package:zerotrust_contacts/linked/linked_apps.dart';
+import 'package:zerotrust_contacts/sharing/shared_book_pages.dart';
+import 'package:zerotrust_contacts/sharing/shared_books.dart';
+import 'package:zt_sharing_ui/zt_sharing_ui.dart';
+import 'package:zerotrust_contacts/timeline/keep_in_touch.dart';
+import 'package:zerotrust_contacts/timeline/person_activity.dart';
 import 'package:zerotrust_contacts/app/providers.dart';
 import 'package:zerotrust_contacts/app/text_direction.dart';
 import 'package:zerotrust_contacts/widgets/alphabet_index.dart';
@@ -19,6 +27,7 @@ import 'package:zerotrust_contacts/pages/import_contacts_page.dart';
 import 'package:zerotrust_contacts/pages/labels_page.dart';
 import 'package:zerotrust_contacts/pages/qr_scan_page.dart';
 import 'package:zerotrust_contacts/pages/settings_page.dart';
+import 'package:zerotrust_contacts/pages/pick_for_keyboard_page.dart';
 import 'package:zerotrust_contacts/pages/trash_page.dart';
 import 'package:zerotrust_contacts/scan/card_scanner.dart';
 import 'package:zerotrust_contacts/models/vault_contact.dart';
@@ -41,6 +50,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   StreamSubscription<Set<String>>? _storeChanges;
   Timer? _reloadDebounce;
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
 
   int _tabIndex = 0;
   bool _loading = true;
@@ -63,7 +73,23 @@ class _HomePageState extends ConsumerState<HomePage> {
   double _listHeaderHeight = 0;
   StreamSubscription<VaultContact>? _openedContactSubscription;
   StreamSubscription<void>? _incomingSubscription;
+  StreamSubscription<String>? _reminderTaps;
+  ProviderSubscription<Object?>? _phoneCalls;
+  ProviderSubscription<Object?>? _goals;
   bool _handlingIncoming = false;
+
+  /// Width from which the list and the open contact sit side by side
+  /// (Material's "expanded" size: tablets, unfolded foldables).
+  static const double twoPaneWidth = 840;
+
+  /// Width from which the tabs move to a rail on the side.
+  static const double railWidth = 600;
+
+  bool get _twoPane => MediaQuery.sizeOf(context).width >= twoPaneWidth;
+
+  /// The contact open in the side pane, on wide screens.
+  String? _paneContactId;
+  final GlobalKey<NavigatorState> _paneNavigator = GlobalKey<NavigatorState>();
 
   List<VaultContact> _savedContacts = <VaultContact>[];
   List<VaultContact> _deviceContacts = <VaultContact>[];
@@ -134,8 +160,69 @@ class _HomePageState extends ConsumerState<HomePage> {
         if (mounted) _loadContacts(quiet: true);
       });
     });
+    // Calls made in ZT Phone move keep-in-touch reminders on (C-3).
+    // and so do new or changed goals.
+    void resync(Object? _, Object? _) {
+      if (!_loading) {
+        unawaited(syncBirthdays(ref, _savedContacts).catchError((Object _) {}));
+      }
+    }
+
+    _phoneCalls = ref.listenManual(linkedItemsProvider(LinkedApp.phone), resync);
+    _goals = ref.listenManual(keepInTouchGoalsProvider, resync);
+    // A tapped birthday reminder opens that contact (once unlocked).
+    _reminderTaps =
+        ref.read(birthdayNotifierProvider).taps.listen(_openContactById);
     _loadContacts();
     _loadSortMode();
+  }
+
+  /// A reminder tapped while the contacts were still loading (the app was
+  /// launched by it): opened once they have.
+  String? _pendingReminderId;
+
+  Future<void> _openContactById(String id) async {
+    if (_loading) {
+      _pendingReminderId = id;
+      return;
+    }
+    for (final VaultContact contact in _savedContacts) {
+      if (contact.id == id) {
+        if (mounted) await _openContact(contact);
+        return;
+      }
+    }
+  }
+
+  /// Opens what a home screen shortcut (C22) or the birthdays widget asked
+  /// for, once the vault is unlocked.
+  Future<void> _openTarget(String target) async {
+    switch (target) {
+      case BirthdaysPage.openTarget:
+        await _openBirthdays();
+      case 'new_contact':
+        await _createContact();
+      case 'search':
+        _selectTab(0);
+        _searchFocus.requestFocus();
+      case 'scan_card':
+        if (ref.read(cardScannerProvider).isSupported) {
+          final VaultContact? saved = await scanBusinessCard(context, ref);
+          if (saved != null && mounted) await _loadContacts(quiet: true);
+        }
+      case 'scan_qr':
+        if (QrScanPage.isSupported &&
+            await QrScanPage.scanAndImport(context) &&
+            mounted) {
+          await _loadContacts(quiet: true);
+        }
+    }
+  }
+
+  Future<void> _openBirthdays() async {
+    await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+      builder: (_) => BirthdaysPage(contacts: _savedContacts),
+    ));
   }
 
   Future<void> _loadSortMode() async {
@@ -220,6 +307,11 @@ class _HomePageState extends ConsumerState<HomePage> {
         _labelCounts = labelCounts;
         _loading = false;
       });
+      // Reminders and the birthdays widget follow every change (C6, W8).
+      unawaited(syncBirthdays(ref, saved).catchError((Object _) {}));
+      final String? reminder = _pendingReminderId;
+      _pendingReminderId = null;
+      if (reminder != null) await _openContactById(reminder);
       await _consumePendingOpenedContact();
       await _consumeIncoming();
     } catch (error) {
@@ -257,6 +349,21 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
       final NavigatorState navigator = Navigator.of(context);
       switch (request) {
+        case IncomingOpenPage(:final String target):
+          await _openTarget(target);
+        case IncomingJoinLink(:final String link):
+          await joinSharedBook(context, initialLink: link);
+        case IncomingTextPick():
+          final String? picked = await navigator.push<String>(
+            MaterialPageRoute<String>(
+              builder: (_) => PickForKeyboardPage(
+                contacts: _allContacts,
+                loadPhoneDetails:
+                    _deviceContactsService.loadDeviceContactDetails,
+              ),
+            ),
+          );
+          await _deviceContactsService.finishTextPick(picked);
         case IncomingVCard(:final String text, :final String name):
           await navigator.push<bool>(MaterialPageRoute<bool>(
             builder: (_) => ImportContactsPage(fileText: text, fileName: name),
@@ -391,6 +498,22 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _openContact(VaultContact contact) async {
+    final NavigatorState? pane = _paneNavigator.currentState;
+    if (_twoPane && _tabIndex == 0 && pane != null) {
+      // Tablet: the contact opens beside the list (C22).
+      setState(() => _paneContactId = contact.id);
+      final Future<bool?> closed = pane.pushAndRemoveUntil<bool>(
+        MaterialPageRoute<bool>(
+            builder: (_) => ContactDetailPage(contact: contact)),
+        (Route<dynamic> route) => route.isFirst,
+      );
+      await closed;
+      if (mounted && _paneContactId == contact.id) {
+        setState(() => _paneContactId = null);
+        await _loadContacts(quiet: true);
+      }
+      return;
+    }
     await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
           builder: (_) => ContactDetailPage(contact: contact)),
@@ -422,6 +545,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Expanded(
                 child: TextField(
                   controller: _searchController,
+                  focusNode: _searchFocus,
                   decoration: InputDecoration(
                     hintText: context.l10n.searchNamePhoneEmailNotes,
                     prefixIcon: const Icon(Icons.search),
@@ -564,7 +688,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final bool hasPhone = contact.phones.isNotEmpty;
     return ListTile(
       contentPadding: contentPadding,
-      selected: selected,
+      selected: selected || (_twoPane && _paneContactId == contact.id),
       selectedTileColor: colorScheme.secondaryContainer.withValues(alpha: 0.5),
       onTap: () {
         if (_selected.isEmpty) {
@@ -1092,6 +1216,49 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Widget _buildSharedBooksTile() {
+    final SharedBooksState shared = ref.watch(sharedBooksProvider);
+    final int joins =
+        (ref.watch(ztPendingJoinsProvider).value ?? const <PendingJoin>[])
+            .length;
+    return ListTile(
+      key: const Key('organize_shared_books'),
+      leading: Badge(
+        isLabelVisible: joins > 0,
+        label: Text('$joins'),
+        child: const Icon(Icons.group_outlined),
+      ),
+      title: Text(context.l10n.sharedBooksTile(shared.books.length)),
+      subtitle: Text(context.l10n.sharedBooksHint),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => SharedBooksPage(myContacts: _savedContacts),
+      )),
+    );
+  }
+
+  Widget _buildKeepInTouchTile() {
+    final DateTime now = DateTime.now();
+    final int due = touchStatuses(
+      goals: ref.watch(keepInTouchGoalsProvider).value ??
+          const <KeepInTouch>[],
+      contacts: _savedContacts,
+      phoneItems: linkedItems(ref, LinkedApp.phone),
+      now: now,
+    ).where((TouchStatus s) => s.isDue(now)).length;
+    return ListTile(
+      key: const Key('organize_keep_in_touch'),
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.favorite_border),
+      title: Text(context.l10n.keepInTouchDue(due)),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => KeepInTouchPage(contacts: _savedContacts),
+      )),
+    );
+  }
+
   Widget _buildOrganizeTab() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
@@ -1111,6 +1278,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   MaterialPageRoute<void>(builder: (_) => const TrashPage())),
             ),
           ),
+          const SizedBox(height: 12),
+          Card(child: _buildSharedBooksTile()),
           if (QrScanPage.isSupported) ...[
             const SizedBox(height: 12),
             Card(
@@ -1209,12 +1378,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   ListTile(
+                    key: const Key('organize_birthdays'),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.cake_outlined),
                     title: Text(
                         context.l10n.birthdaysSoon(_healthSummary.upcomingBirthdays.length)),
+                    subtitle: Text(context.l10n.birthdaysAndReminders),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _openBirthdays,
                   ),
+                  _buildKeepInTouchTile(),
                   ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -1291,47 +1465,141 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Future<void> _createContact() async {
+    final VaultContact? created = await Navigator.of(context)
+        .push<VaultContact>(MaterialPageRoute<VaultContact>(
+            builder: (_) => CreateContactPage()));
+    if (created != null && mounted) {
+      await _loadContacts();
+    }
+  }
+
+  void _selectTab(int value) {
+    setState(() {
+      _tabIndex = value;
+      _selected.clear();
+    });
+  }
+
+  /// The contacts list, and on wide screens the open contact beside it.
+  Widget _buildContactsPane() {
+    if (!_twoPane) return _buildContactsTab();
+    return Row(
+      children: <Widget>[
+        SizedBox(width: 400, child: _buildContactsTab()),
+        const VerticalDivider(width: 1),
+        Expanded(
+          child: Navigator(
+            key: _paneNavigator,
+            onGenerateRoute: (RouteSettings settings) =>
+                MaterialPageRoute<void>(
+              settings: settings,
+              builder: (BuildContext context) => Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(Icons.person_outline,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.outline),
+                      const SizedBox(height: 12),
+                      Text(context.l10n.pickAContactToSeeItHere),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildScaffold(bool selecting) {
+    final bool rail = MediaQuery.sizeOf(context).width >= railWidth;
+    final List<({IconData icon, IconData selected, String label})> tabs =
+        <({IconData icon, IconData selected, String label})>[
+      (
+        icon: Icons.people_alt_outlined,
+        selected: Icons.people_alt,
+        label: context.l10n.contacts,
+      ),
+      (
+        icon: Icons.star_outline,
+        selected: Icons.star,
+        label: context.l10n.highlights,
+      ),
+      (
+        icon: Icons.folder_open_outlined,
+        selected: Icons.folder_open,
+        label: context.l10n.organize,
+      ),
+    ];
+    final Widget pages = IndexedStack(
+      index: _tabIndex,
+      children: [
+        _buildContactsPane(),
+        _buildHighlightsTab(),
+        _buildOrganizeTab(),
+      ],
+    );
     return Scaffold(
       appBar: selecting ? _buildSelectionBar() : null,
       body: SafeArea(
-        child: IndexedStack(
-          index: _tabIndex,
-          children: [
-            _buildContactsTab(),
-            _buildHighlightsTab(),
-            _buildOrganizeTab(),
-          ],
-        ),
+        child: rail
+            ? Row(
+                children: <Widget>[
+                  NavigationRail(
+                    key: const Key('home_rail'),
+                    selectedIndex: _tabIndex,
+                    onDestinationSelected: _selectTab,
+                    labelType: NavigationRailLabelType.all,
+                    leading: selecting
+                        ? null
+                        : Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: FloatingActionButton(
+                              heroTag: 'rail_new_contact',
+                              tooltip: context.l10n.newContact,
+                              onPressed: _createContact,
+                              child: const Icon(Icons.add),
+                            ),
+                          ),
+                    destinations: <NavigationRailDestination>[
+                      for (final tab in tabs)
+                        NavigationRailDestination(
+                          icon: Icon(tab.icon),
+                          selectedIcon: Icon(tab.selected),
+                          label: Text(tab.label),
+                        ),
+                    ],
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: pages),
+                ],
+              )
+            : pages,
       ),
-      floatingActionButton: selecting ? null : FloatingActionButton.large(
-        onPressed: () async {
-          final VaultContact? created = await Navigator.of(context)
-              .push<VaultContact>(MaterialPageRoute<VaultContact>(
-                  builder: (_) => CreateContactPage()));
-          if (created != null && mounted) {
-            await _loadContacts();
-          }
-        },
-        child: Icon(Icons.add),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tabIndex,
-        onDestinationSelected: (int value) {
-          setState(() {
-            _tabIndex = value;
-            _selected.clear();
-          });
-        },
-        destinations: [
-          NavigationDestination(
-              icon: Icon(Icons.people_alt_outlined), label: context.l10n.contacts),
-          NavigationDestination(
-              icon: Icon(Icons.star_outline), label: context.l10n.highlights),
-          NavigationDestination(
-              icon: Icon(Icons.folder_open_outlined), label: context.l10n.organize),
-        ],
-      ),
+      floatingActionButton: selecting || rail
+          ? null
+          : FloatingActionButton.large(
+              tooltip: context.l10n.newContact,
+              onPressed: _createContact,
+              child: Icon(Icons.add),
+            ),
+      bottomNavigationBar: rail
+          ? null
+          : NavigationBar(
+              selectedIndex: _tabIndex,
+              onDestinationSelected: _selectTab,
+              destinations: [
+                for (final tab in tabs)
+                  NavigationDestination(
+                      icon: Icon(tab.icon),
+                      selectedIcon: Icon(tab.selected),
+                      label: tab.label),
+              ],
+            ),
     );
   }
 
@@ -1339,9 +1607,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   void dispose() {
     _openedContactSubscription?.cancel();
     _incomingSubscription?.cancel();
+    _reminderTaps?.cancel();
+    _phoneCalls?.close();
+    _goals?.close();
     _storeChanges?.cancel();
     _reloadDebounce?.cancel();
     _searchController.dispose();
+    _searchFocus.dispose();
     _listScroll.dispose();
     super.dispose();
   }

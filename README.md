@@ -27,6 +27,49 @@ sign-in, unlock, settings and look.
 - Interaction tracking (calls/messages increment usage metrics).
 - Search + source filtering + sorting (A-Z, recent, source).
 
+### Birthdays
+- Birthdays page (Organize → Birthdays soon, or the widget): every birthday
+  and anniversary, soonest first, with the age they turn.
+- Reminders on this phone: on the day, the day before and/or a week before,
+  at a chosen time; anniversaries too. Set each time the app is unlocked for
+  the coming year. "Show names in reminders" off keeps the name out of the
+  notification ("A birthday today").
+- Upcoming birthdays home screen widget. The vault can't be read while
+  locked, so the app leaves the widget a snapshot of the dates; names only
+  when "Show names in the birthdays widget" is on (off by default).
+
+### Activity and keeping in touch
+- Each contact's page shows what you did together in the other Zero-Trust
+  apps: calls from ZT Phone (when its call history backup is on, or private
+  calls), events from ZT Calendar (linked to the contact or inviting one of
+  their emails) and tasks from ZT Tasks linked to them. "See all" lists it
+  by month. Read only: Contacts never changes the other apps' data.
+- Keep in touch: pick "every week" up to "every 6 months" on a contact. A
+  reminder comes on the day the next talk is due, at the birthday reminder
+  time; an answered call in ZT Phone or a call or message started from
+  Contacts moves it on. Organize → Keep in touch lists who is due. Goals are
+  their own synced items, so older app versions can't drop them.
+
+### Shared address books
+- Organize → Shared address books: keep contacts together with family or a
+  team (the babysitter, the plumber, the kids' friends' parents). Make one,
+  copy some of your own contacts in, and invite people by link or QR code;
+  they join from the link (https://zerotrust.bz/join/contacts#…) after
+  comparing a short code with you. Everyone in it adds and edits contacts;
+  only owners rename it.
+- Built on the shared spaces of the core (Z24): end-to-end encrypted with a
+  key only the members' phones hold. The server sees member ids and
+  encrypted blobs, never names or numbers. Photos, favourites and pins stay
+  personal and aren't shared.
+- Shared contacts stay out of your own address book; "Save to my contacts"
+  makes your own copy.
+
+### Shortcuts and big screens
+- Long-press the app icon: New contact, Search, Scan card, Birthdays. Each
+  opens once the vault is unlocked.
+- From 600dp wide the tabs move to a side rail; from 840dp (tablets,
+  unfolded foldables) a contact opens beside the list.
+
 ### Highlights and organization
 - Highlights tab for pinned, favorites, and frequent contacts.
 - Organize tab with:
@@ -57,6 +100,12 @@ sign-in, unlock, settings and look.
 - vCard export/import.
 - Secure one-contact share package generation (encrypted payload + passphrase + expiry).
 - Current UI uses clipboard for export/share flows.
+
+### Desktop contacts apps
+
+- Settings, Desktop contacts apps: the phone itself serves the address book, read-only, to a computer's contacts app over CardDAV (Thunderbird, Apple Contacts, GNOME Evolution, DAVx5). No server is involved.
+- HTTPS with the phone's own self-signed certificate (its SHA-256 fingerprint is shown to check), a random password, five tries per address, and only local-network addresses (home or office Wi-Fi) are answered. Port 8444, so ZT Calendar's bridge (8443) can run beside it.
+- Runs only while the app is unlocked and stops on lock. The switch belongs to the account that turned it on. Blocked contacts, the trash and shared address books are left out, and every write is refused.
 
 ### Android integrations
 - Reads Android device contacts via platform channel.

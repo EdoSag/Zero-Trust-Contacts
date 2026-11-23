@@ -2478,6 +2478,744 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'A .vcf or .csv file from iCloud, Outlook, Google or a spreadsheet'**
   String get aVcfOrCsvFile;
+
+  /// No description provided for @insertIntoKeyboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert into ZT Keyboard'**
+  String get insertIntoKeyboard;
+
+  /// No description provided for @insertPickHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a contact, then what to type.'**
+  String get insertPickHint;
+
+  /// No description provided for @insertNothingToInsert.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts match.'**
+  String get insertNothingToInsert;
+
+  /// No description provided for @birthdayReminderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to see their details and say hello.'**
+  String get birthdayReminderBody;
+
+  /// No description provided for @birthdayReminderHiddenBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock ZT Contacts to see who.'**
+  String get birthdayReminderHiddenBody;
+
+  /// No description provided for @reminderHiddenBirthdayToday.
+  ///
+  /// In en, this message translates to:
+  /// **'A birthday today'**
+  String get reminderHiddenBirthdayToday;
+
+  /// No description provided for @reminderHiddenAnniversaryToday.
+  ///
+  /// In en, this message translates to:
+  /// **'An anniversary today'**
+  String get reminderHiddenAnniversaryToday;
+
+  /// No description provided for @reminderHiddenBirthdayTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'A birthday tomorrow'**
+  String get reminderHiddenBirthdayTomorrow;
+
+  /// No description provided for @reminderHiddenAnniversaryTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'An anniversary tomorrow'**
+  String get reminderHiddenAnniversaryTomorrow;
+
+  /// No description provided for @reminderHiddenBirthdayInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'A birthday in {days} days'**
+  String reminderHiddenBirthdayInDays(int days);
+
+  /// No description provided for @reminderHiddenAnniversaryInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'An anniversary in {days} days'**
+  String reminderHiddenAnniversaryInDays(int days);
+
+  /// No description provided for @reminderBirthdayToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s birthday is today'**
+  String reminderBirthdayToday(String name);
+
+  /// No description provided for @reminderBirthdayTodayTurns.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} turns {years} today'**
+  String reminderBirthdayTodayTurns(String name, int years);
+
+  /// No description provided for @reminderBirthdayTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s birthday is tomorrow'**
+  String reminderBirthdayTomorrow(String name);
+
+  /// No description provided for @reminderBirthdayTomorrowTurns.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} turns {years} tomorrow'**
+  String reminderBirthdayTomorrowTurns(String name, int years);
+
+  /// No description provided for @reminderBirthdayInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s birthday is in {days} days'**
+  String reminderBirthdayInDays(String name, int days);
+
+  /// No description provided for @reminderAnniversaryToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s anniversary is today'**
+  String reminderAnniversaryToday(String name);
+
+  /// No description provided for @reminderAnniversaryTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s anniversary is tomorrow'**
+  String reminderAnniversaryTomorrow(String name);
+
+  /// No description provided for @reminderAnniversaryInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s anniversary is in {days} days'**
+  String reminderAnniversaryInDays(String name, int days);
+
+  /// No description provided for @birthdayRemindersChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthday reminders'**
+  String get birthdayRemindersChannel;
+
+  /// No description provided for @birthdayRemindersChannelDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthdays and anniversaries of your contacts'**
+  String get birthdayRemindersChannelDescription;
+
+  /// No description provided for @notificationsAreOffForZt.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off for ZT Contacts. Turn them on in the phone\'s settings to get reminders.'**
+  String get notificationsAreOffForZt;
+
+  /// No description provided for @birthdayReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthday reminders'**
+  String get birthdayReminders;
+
+  /// No description provided for @birthdayRemindersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A notification on this phone for each birthday'**
+  String get birthdayRemindersSubtitle;
+
+  /// No description provided for @remindOnTheDay.
+  ///
+  /// In en, this message translates to:
+  /// **'On the day'**
+  String get remindOnTheDay;
+
+  /// No description provided for @remindTheDayBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'The day before'**
+  String get remindTheDayBefore;
+
+  /// No description provided for @remindAWeekBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'A week before'**
+  String get remindAWeekBefore;
+
+  /// No description provided for @reminderTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get reminderTime;
+
+  /// No description provided for @remindAnniversariesToo.
+  ///
+  /// In en, this message translates to:
+  /// **'Anniversaries too'**
+  String get remindAnniversariesToo;
+
+  /// No description provided for @showNamesInReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Show names in reminders'**
+  String get showNamesInReminders;
+
+  /// No description provided for @showNamesInRemindersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: the reminder says only \"A birthday today\" until you unlock'**
+  String get showNamesInRemindersSubtitle;
+
+  /// No description provided for @showNamesOnHomeScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Show names in the birthdays widget'**
+  String get showNamesOnHomeScreen;
+
+  /// No description provided for @showNamesOnHomeScreenSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: the widget on the home screen shows only when, not who'**
+  String get showNamesOnHomeScreenSubtitle;
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
+
+  /// No description provided for @tomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get tomorrow;
+
+  /// No description provided for @inDays.
+  ///
+  /// In en, this message translates to:
+  /// **'In {days} days'**
+  String inDays(int days);
+
+  /// No description provided for @anniversary.
+  ///
+  /// In en, this message translates to:
+  /// **'Anniversary'**
+  String get anniversary;
+
+  /// No description provided for @turnsYears.
+  ///
+  /// In en, this message translates to:
+  /// **'Turns {years}'**
+  String turnsYears(int years);
+
+  /// No description provided for @anniversaryYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{years} years married'**
+  String anniversaryYears(int years);
+
+  /// No description provided for @birthdaysAndAnniversaries.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthdays'**
+  String get birthdaysAndAnniversaries;
+
+  /// No description provided for @noBirthdaysYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No birthdays yet. Add one on a contact\'s page and it shows up here.'**
+  String get noBirthdaysYet;
+
+  /// No description provided for @nextThirtyDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Next 30 days'**
+  String get nextThirtyDays;
+
+  /// No description provided for @laterThisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get laterThisYear;
+
+  /// No description provided for @birthdaysAndReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming birthdays and reminders'**
+  String get birthdaysAndReminders;
+
+  /// No description provided for @pickAContactToSeeItHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a contact to see it here'**
+  String get pickAContactToSeeItHere;
+
+  /// No description provided for @keepInTouchReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to catch up with {name}'**
+  String keepInTouchReminder(String name);
+
+  /// No description provided for @keepInTouchReminderHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to catch up with someone'**
+  String get keepInTouchReminderHidden;
+
+  /// No description provided for @keepInTouchReminderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You wanted to keep in touch. Call or send a message?'**
+  String get keepInTouchReminderBody;
+
+  /// No description provided for @everyWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Every week'**
+  String get everyWeek;
+
+  /// No description provided for @everyTwoWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 2 weeks'**
+  String get everyTwoWeeks;
+
+  /// No description provided for @everyMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Every month'**
+  String get everyMonth;
+
+  /// No description provided for @everyThreeMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 3 months'**
+  String get everyThreeMonths;
+
+  /// No description provided for @everySixMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 6 months'**
+  String get everySixMonths;
+
+  /// No description provided for @everyNDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {days} days'**
+  String everyNDays(int days);
+
+  /// No description provided for @callMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String callMinutes(int minutes);
+
+  /// No description provided for @callSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s'**
+  String callSeconds(int seconds);
+
+  /// No description provided for @incomingCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming call'**
+  String get incomingCall;
+
+  /// No description provided for @outgoingCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Outgoing call'**
+  String get outgoingCall;
+
+  /// No description provided for @missedCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed call'**
+  String get missedCall;
+
+  /// No description provided for @event.
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get event;
+
+  /// No description provided for @task.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get task;
+
+  /// No description provided for @keepInTouchWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep in touch with {name}'**
+  String keepInTouchWith(String name);
+
+  /// No description provided for @keepInTouchOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get keepInTouchOff;
+
+  /// No description provided for @keepInTouch.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep in touch'**
+  String get keepInTouch;
+
+  /// No description provided for @keepInTouchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a nudge when it\'s been too long'**
+  String get keepInTouchHint;
+
+  /// No description provided for @lastTalkedDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =0{Talked today} =1{Last talked yesterday} other{Last talked {days} days ago}}'**
+  String lastTalkedDaysAgo(int days);
+
+  /// No description provided for @noTalksYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No calls yet'**
+  String get noTalksYet;
+
+  /// No description provided for @dueNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Due'**
+  String get dueNow;
+
+  /// No description provided for @activity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activity;
+
+  /// No description provided for @activityEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Calls in ZT Phone, events in ZT Calendar and tasks in ZT Tasks with {name} show up here. Calls need ZT Phone\'s call history backup.'**
+  String activityEmpty(String name);
+
+  /// No description provided for @seeAllActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'See all ({count})'**
+  String seeAllActivity(int count);
+
+  /// No description provided for @keepInTouchEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No one yet. Open a contact and tap Keep in touch to get a nudge when it\'s been too long.'**
+  String get keepInTouchEmpty;
+
+  /// No description provided for @keepInTouchDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep in touch ({count} due)'**
+  String keepInTouchDue(int count);
+
+  /// No description provided for @search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get search;
+
+  /// No description provided for @addContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Add contact'**
+  String get addContact;
+
+  /// No description provided for @sharedBooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared address books'**
+  String get sharedBooks;
+
+  /// No description provided for @sharedBooksTile.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Shared address books} =1{1 shared address book} other{{count} shared address books}}'**
+  String sharedBooksTile(int count);
+
+  /// No description provided for @sharedBooksHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep contacts together with family or a team, end-to-end encrypted'**
+  String get sharedBooksHint;
+
+  /// No description provided for @sharedBooksEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No shared address books yet. Make one to keep contacts together with family or a team (a babysitter, the plumber, the kids\' friends\' parents), or join one with an invite.'**
+  String get sharedBooksEmpty;
+
+  /// No description provided for @newSharedBook.
+  ///
+  /// In en, this message translates to:
+  /// **'New shared address book'**
+  String get newSharedBook;
+
+  /// No description provided for @joinSharedBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Join with an invite'**
+  String get joinSharedBook;
+
+  /// No description provided for @bookName.
+  ///
+  /// In en, this message translates to:
+  /// **'Address book name'**
+  String get bookName;
+
+  /// No description provided for @renameBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename address book'**
+  String get renameBook;
+
+  /// No description provided for @sharedBookE2e.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the people here can read these contacts: they are end-to-end encrypted, and the server never sees names or numbers.'**
+  String get sharedBookE2e;
+
+  /// No description provided for @sharingNeedsInternet.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing needs an internet connection. Try again when you\'re online.'**
+  String get sharingNeedsInternet;
+
+  /// No description provided for @waitingToJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to join'**
+  String get waitingToJoin;
+
+  /// No description provided for @waitingToJoinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'An owner of the address book needs to let you in.'**
+  String get waitingToJoinHint;
+
+  /// No description provided for @waitingToJoinCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell the owner this code: {code}'**
+  String waitingToJoinCode(String code);
+
+  /// No description provided for @sharedBookSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{contacts, plural, =1{1 contact} other{{contacts} contacts}} · {people, plural, =1{1 person} other{{people} people}}'**
+  String sharedBookSummary(int contacts, int people);
+
+  /// No description provided for @sharedBookPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get sharedBookPeople;
+
+  /// No description provided for @copyMyContactsIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy from my contacts'**
+  String get copyMyContactsIn;
+
+  /// No description provided for @copiedToBook.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 contact copied} other{{count} contacts copied}}'**
+  String copiedToBook(int count);
+
+  /// No description provided for @copyN.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Copy} other{Copy {count}}}'**
+  String copyN(int count);
+
+  /// No description provided for @sharedBookGone.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re no longer in this address book.'**
+  String get sharedBookGone;
+
+  /// No description provided for @sharedContactGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This contact was removed from the address book.'**
+  String get sharedContactGone;
+
+  /// No description provided for @sharedWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with {names}'**
+  String sharedWith(String names);
+
+  /// No description provided for @searchThisBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Search this address book'**
+  String get searchThisBook;
+
+  /// No description provided for @sharedBookEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts here yet. Add one, or copy some from your own contacts.'**
+  String get sharedBookEmpty;
+
+  /// No description provided for @saveToMyContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to my contacts'**
+  String get saveToMyContacts;
+
+  /// No description provided for @savedToMyContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your contacts'**
+  String get savedToMyContacts;
+
+  /// No description provided for @removeFromBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from address book'**
+  String get removeFromBook;
+
+  /// No description provided for @removeFromBookQ.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String removeFromBookQ(String name);
+
+  /// No description provided for @removeFromBookBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This contact goes from \"{book}\" for everyone in it.'**
+  String removeFromBookBody(String book);
+
+  /// No description provided for @inSharedBook.
+  ///
+  /// In en, this message translates to:
+  /// **'In \"{book}\"'**
+  String inSharedBook(String book);
+
+  /// No description provided for @copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copy;
+
+  /// No description provided for @desktopApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop contacts apps'**
+  String get desktopApps;
+
+  /// No description provided for @desktopAppsSubtitleOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off. Let Thunderbird, Apple Contacts or Evolution read your contacts over Wi-Fi'**
+  String get desktopAppsSubtitleOff;
+
+  /// No description provided for @desktopAppsSubtitleOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On while ZT Contacts is unlocked'**
+  String get desktopAppsSubtitleOn;
+
+  /// No description provided for @desktopAppsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Your computer\'s contacts app can show your ZT Contacts, read-only, over your home or office Wi-Fi. The phone serves them itself: nothing goes through a server, and it stops when the app locks.'**
+  String get desktopAppsIntro;
+
+  /// No description provided for @desktopAppsSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Share with computers on this Wi-Fi'**
+  String get desktopAppsSwitch;
+
+  /// No description provided for @desktopAppsRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'On. Computers with the password can read your contacts'**
+  String get desktopAppsRunning;
+
+  /// No description provided for @desktopAppsStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts when ZT Contacts is unlocked'**
+  String get desktopAppsStarting;
+
+  /// No description provided for @desktopAppsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get desktopAppsOff;
+
+  /// No description provided for @desktopAppsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t start'**
+  String get desktopAppsFailed;
+
+  /// No description provided for @desktopAppsServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server address (CardDAV)'**
+  String get desktopAppsServer;
+
+  /// No description provided for @desktopAppsNoWifi.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect the phone to Wi-Fi to see its address'**
+  String get desktopAppsNoWifi;
+
+  /// No description provided for @desktopAppsUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User name'**
+  String get desktopAppsUser;
+
+  /// No description provided for @desktopAppsPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get desktopAppsPassword;
+
+  /// No description provided for @desktopAppsFingerprint.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate fingerprint (SHA-256)'**
+  String get desktopAppsFingerprint;
+
+  /// No description provided for @desktopAppsHowTo.
+  ///
+  /// In en, this message translates to:
+  /// **'In your contacts app, add a CardDAV account (Thunderbird: New Address Book, Add CardDAV Address Book; Apple Contacts: Add Account, Other Contacts Account, CardDAV, Manual) with this address, user name and password. The app warns that the certificate isn\'t trusted: check that its fingerprint matches the one above, then trust it. The computer and phone must be on the same Wi-Fi, and the computer refreshes while ZT Contacts is open and unlocked.'**
+  String get desktopAppsHowTo;
+
+  /// No description provided for @desktopAppsNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Make a new password'**
+  String get desktopAppsNewPassword;
+
+  /// No description provided for @desktopAppsNewPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Computers using the old one lose access'**
+  String get desktopAppsNewPasswordHint;
+
+  /// No description provided for @desktopAppsPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Only computers on a local network (home or office Wi-Fi) are answered, only with the password, and only to read. Traffic is encrypted with this phone\'s own certificate. A computer keeps the copy it last read, unencrypted, in its contacts app: turn this on only for computers you trust. Blocked contacts, the trash and shared address books are not shared.'**
+  String get desktopAppsPrivacy;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

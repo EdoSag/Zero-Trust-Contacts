@@ -16,6 +16,17 @@ import io.flutter.plugin.common.MethodChannel
 import java.util.Locale
 
 class MainActivity : FlutterFragmentActivity() {
+    companion object {
+        /**
+         * A page of the app to open once it is unlocked: "birthdays" (the
+         * birthdays widget). Anyone may ask; it only picks the first page shown.
+         */
+        const val EXTRA_OPEN = "dev.sagron.zerotrustcontacts.OPEN"
+
+        /// The last invite link handed to the app, so it isn't offered twice.
+        private var lastJoinLink: String? = null
+    }
+
     private val channelName = "zerotrust_contacts/device_contacts"
     private val googleAccountType = "com.google"
     private val requestCodeReadContacts = 2001
@@ -28,8 +39,21 @@ class MainActivity : FlutterFragmentActivity() {
     /** A vCard file or an "add a contact" request from another app. */
     private var pendingIncoming: Map<String, Any?>? = null
 
+    /** ZT Keyboard is waiting for the user to pick a text here (see [TextPick]). */
+    private var pickingText = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (TextPick.isPick(intent)) {
+            // Only another Zero-Trust app may ask; anyone else gets nothing.
+            if (TextPick.callerAllowed(this)) {
+                pickingText = true
+                pendingIncoming = mapOf("kind" to "pick")
+            } else {
+                TextPick.answer(this, null)
+            }
+            return
+        }
         cacheContactFromIntent(intent)
     }
 
@@ -56,6 +80,18 @@ class MainActivity : FlutterFragmentActivity() {
                     "consumePendingIncoming" -> {
                         result.success(pendingIncoming)
                         pendingIncoming = null
+                    }
+                    "updateBirthdaysWidget" -> {
+                        BirthdaysWidgetProvider.save(this, call.argument<String>("json") ?: "{}")
+                        result.success(null)
+                    }
+                    "finishTextPick" -> {
+                        // Answers only the screen the keyboard itself opened.
+                        if (pickingText) {
+                            pickingText = false
+                            TextPick.answer(this, call.argument<String>("text"))
+                        }
+                        result.success(null)
                     }
                     "launchDialer" -> {
                         val phoneNumber = call.argument<String>("phoneNumber")
@@ -195,6 +231,16 @@ class MainActivity : FlutterFragmentActivity() {
                         }.start()
                     }
 
+                    "getDeviceContactDetails" -> {
+                        // Every number, email and address of one phone-only contact,
+                        // for ZT Keyboard's picker (C-8).
+                        val id = call.argument<String>("id")?.toLongOrNull()
+                        try {
+                            result.success(id?.let { getDeviceContactDetails(it) })
+                        } catch (error: SecurityException) {
+                            result.success(null)
+                        }
+                    }
                     "getRawContactPhoto" -> {
                         val rawId = call.argument<Number>("rawContactId")?.toLong()
                         if (rawId == null) {
@@ -228,6 +274,9 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // A pick request is only honoured when it opens its own screen (onCreate), where
+        // Android tells who is asking.
+        if (TextPick.isPick(intent)) return
         setIntent(intent)
         cacheContactFromIntent(intent)
         flushPendingOpenedContact()
@@ -654,6 +703,44 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    /** One contact of the phone's address book with all its fields, or null. */
+    private fun getDeviceContactDetails(contactId: Long): Map<String, Any>? {
+        ensureContactsPermission()
+        val contact = mutableMapOf<String, Any>(
+            "phones" to mutableListOf<String>(),
+            "emails" to mutableListOf<String>(),
+            "addresses" to mutableListOf<String>(),
+            "labels" to mutableListOf<String>(),
+            "birthdays" to mutableListOf<String>(),
+            "other" to mutableListOf<String>(),
+            "types" to mutableMapOf<String, String>(),
+        )
+        var found = false
+        contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            arrayOf(
+                ContactsContract.Data.RAW_CONTACT_ID,
+                ContactsContract.Data.MIMETYPE,
+                ContactsContract.Data.DATA1,
+                ContactsContract.Data.DATA2,
+                ContactsContract.Data.DATA3,
+                ContactsContract.Data.DATA4,
+                ContactsContract.Data.DATA5,
+            ),
+            "${ContactsContract.Data.CONTACT_ID} = ?",
+            arrayOf(contactId.toString()),
+            null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                found = true
+                val mimeType = cursor.getString(1) ?: continue
+                val data1 = cursor.getString(2)?.trim().orEmpty()
+                applyDataRow(contact, mimeType, data1, cursor, emptyMap())
+            }
+        }
+        return if (found) contact else null
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun applyDataRow(
         contact: MutableMap<String, Any>,
@@ -783,6 +870,27 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun cacheContactFromIntent(intent: Intent?) {
+        val open = intent?.getStringExtra(EXTRA_OPEN)
+        if (intent != null && open != null) {
+            // Taken once, so turning the phone doesn't open the page again.
+            intent.removeExtra(EXTRA_OPEN)
+            pendingIncoming = mapOf("kind" to "open", "target" to open)
+            return
+        }
+        val join = intent?.data
+        if (intent?.action == Intent.ACTION_VIEW && join != null &&
+            join.scheme == "https" && join.host == "zerotrust.bz" &&
+            (join.path ?: "").startsWith("/join/contacts")
+        ) {
+            // A shared address book invite: kept until the unlocked app takes
+            // it. The same intent comes back after a rotation; once is enough.
+            val link = join.toString()
+            if (link != lastJoinLink) {
+                lastJoinLink = link
+                pendingIncoming = mapOf("kind" to "join", "link" to link)
+            }
+            return
+        }
         val incoming = try {
             IncomingIntents.read(this, intent)
         } catch (error: Exception) {

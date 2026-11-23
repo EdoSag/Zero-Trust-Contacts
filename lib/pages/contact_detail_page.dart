@@ -19,6 +19,7 @@ import 'package:zerotrust_contacts/services/vault_repository.dart';
 import 'package:zerotrust_contacts/widgets/contact_avatar.dart';
 import 'package:zerotrust_contacts/widgets/compact_button_style.dart';
 import 'package:zerotrust_contacts/l10n/l10n.dart';
+import 'package:zerotrust_contacts/timeline/person_activity.dart';
 
 class ContactDetailPage extends ConsumerStatefulWidget {
   const ContactDetailPage({
@@ -552,6 +553,8 @@ class _ContactDetailPageState extends ConsumerState<ContactDetailPage> {
             style: TextStyle(color: colorScheme.onSurfaceVariant),
           ),
         ],
+        const SizedBox(height: 12),
+        PersonActivitySection(contact: _contact, saved: _isSavedContact),
         const SizedBox(height: 20),
         Text(
           context.l10n.interactionCount(_contact.interactionCount),
