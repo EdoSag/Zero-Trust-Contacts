@@ -134,8 +134,10 @@ forget the password. How the keys work:
   `.vcf` file: no Google sign-in, no Google API.
 - A shared address book has a key only its members' phones hold. The
   server sees member ids and encrypted blobs, never names or numbers.
-- Birthday reminders and the birthdays widget keep names out unless you
-  turn them on.
+- Birthday reminders are off until you turn them on. Once on, they show
+  the person's name unless you switch off "Show names in reminders". The
+  birthdays widget shows no names unless you turn on "Show names in the
+  birthdays widget".
 - The desktop bridge answers only on the local network, read-only, and
   only while the app is unlocked.
 - vCard exports are plain files.
@@ -202,12 +204,18 @@ photos in the `contactsProfilePictures` bucket. Their key was PBKDF2 of
 Flutter 3.47.9, the version CI pins (3.50 deprecates `material.dart` and
 fails analyze).
 
-```bash
-# .env (not committed; CI writes its own). Public client values only:
-# never a service-role key, because .env is bundled into the APK.
+First create a file named `.env` in the project folder. It is not committed
+(CI writes its own) and it is bundled into the APK, so it holds public client
+values only, never a service-role key:
+
+```
 SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_ANON_KEY=<publishable key>
+```
 
+Then:
+
+```bash
 flutter pub get
 dart run zt_release_checks --app contacts   # shared release checks
 flutter analyze && flutter test
